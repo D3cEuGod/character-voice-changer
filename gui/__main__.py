@@ -1,0 +1,77 @@
+"""入口：python -m gui [--backend-url URL] [--no-autostart] [--backend-script PATH]"""
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+import traceback
+from pathlib import Path
+
+from .backend import DEFAULT_URL, ROOT, START_SCRIPT
+
+from .taskbar import set_process_app_id, set_window_relaunch
+
+LOG_FILE = ROOT / ".run" / "gui.log"
+
+
+def create_app(argv=None):
+    """先创建 QApplication，再导入会加载 PortAudio 的模块（顺序反了会让 Qt 的原生文件对话框失效）。"""
+    set_process_app_id()  # 要在创建任何窗口之前
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QFont, QGuiApplication
+    from PySide6.QtWidgets import QApplication
+
+    from . import theme
+
+    # 125%、150% 等非整数缩放按系统比例原样渲染
+    QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+    app = QApplication.instance() or QApplication(list(argv or sys.argv[:1]))
+    app.setApplicationName("角色变声器")
+    app.setStyle("Fusion")
+    font = QFont("Microsoft YaHei UI", 10)
+    font.setStyleStrategy(QFont.PreferAntialias)
+    app.setFont(font)
+    app.setStyleSheet(theme.STYLESHEET)
+    return app
+
+
+def _log_exception(kind, value, trace) -> None:
+    text = "".join(traceback.format_exception(kind, value, trace))
+    try:
+        LOG_FILE.parent.mkdir(exist_ok=True)
+        with LOG_FILE.open("a", encoding="utf-8") as log:
+            log.write(text + "\n")
+    except OSError:
+        pass
+    if sys.stderr is not None:
+        sys.stderr.write(text)
+    try:
+        from PySide6.QtWidgets import QApplication, QMessageBox
+        if QApplication.instance() is not None:
+            QMessageBox.critical(None, "角色变声器出错了", f"{value}\n\n详细信息已写入 {LOG_FILE}")
+    except Exception:
+        pass
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m gui", description="角色变声器桌面界面")
+    parser.add_argument("--backend-url", default=os.environ.get("VOICE_GUI_BACKEND_URL", DEFAULT_URL),
+                        help=f"后端地址，默认 {DEFAULT_URL}")
+    parser.add_argument("--no-autostart", action="store_true", help="后端未运行时不自动启动")
+    parser.add_argument("--backend-script", default=str(START_SCRIPT), help="启动后端用的脚本")
+    args = parser.parse_args(argv)
+
+    sys.excepthook = _log_exception
+    app = create_app()
+    from .app import Config, MainWindow
+
+    window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script)))
+    available = app.primaryScreen().availableGeometry()
+    window.resize(min(1180, available.width() - 40), min(730, available.height() - 60))
+    set_window_relaunch(int(window.winId()))  # 在窗口显示之前写入，任务栏按这些信息建立图标
+    window.show()
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
