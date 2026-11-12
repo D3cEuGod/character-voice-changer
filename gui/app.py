@@ -1,4 +1,4 @@
-"""主窗口：二次元广播室的调音台。只在 QApplication 创建之后导入。"""
+"""主窗口：左边选角色和强度，右边是实时变声与文件变声两页。只在 QApplication 创建之后导入。"""
 from __future__ import annotations
 
 import io
@@ -11,16 +11,15 @@ import numpy as np
 import soundfile as sf
 from PySide6.QtCore import QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
-                               QProgressBar, QPushButton, QScrollArea, QSizePolicy, QSlider, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
+                               QPushButton, QSizePolicy, QSlider, QStackedWidget, QVBoxLayout, QWidget)
 
-from . import audio, theme
+from . import __version__, audio, theme
 from .backend import (CONTENT_TYPES, DEFAULT_URL, ROOT, START_SCRIPT, BackendClient, BackendError,
                       BackendLauncher, stop_process_tree)
 from .live import LiveMonitor
-from .widgets import (ConsoleCombo, HeroArt, LevelMeter, Panel, RecButton, ToggleSwitch, VoiceCard,
-                      make_icon, set_state)
+from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCard,
+                      divider, label, make_icon, set_state)
 
 ASSETS = ROOT / "assets"
 PREVIEWS = ASSETS / "previews"
@@ -115,11 +114,11 @@ class MainWindow(QWidget):
         self._live_stats: dict = {}
         self._closing = False
         self._last_dir = str(ROOT)
-        avatar = QPixmap(str(ASSETS / "taffy-avatar.jpg"))
-        self._avatar = None if avatar.isNull() else avatar
+        self._avatars: dict[str, QPixmap | None] = {}
+        self._avatar = self._pixmap("taffy")
 
         self.setObjectName("root")
-        self.setWindowTitle("角色变声器 · 广播室调音台")
+        self.setWindowTitle("角色变声器")
         if self._avatar is not None:
             self.setWindowIcon(QIcon(self._avatar))
         self._build()
@@ -146,37 +145,24 @@ class MainWindow(QWidget):
     # ---- 界面搭建 -------------------------------------------------------
     def _build(self) -> None:
         root = QVBoxLayout(self)
-        root.setContentsMargins(14, 12, 14, 10)
-        root.setSpacing(10)
+        root.setContentsMargins(18, 14, 18, 10)
+        root.setSpacing(12)
 
-        header = QFrame()
-        header.setObjectName("header")
-        row = QHBoxLayout(header)
-        row.setContentsMargins(16, 7, 16, 7)
-        row.setSpacing(14)
-        self.lamp = QLabel("STANDBY")
-        self.lamp.setObjectName("lamp")
-        self.lamp.setAlignment(Qt.AlignCenter)
-        self.lamp.setMinimumWidth(84)
-        row.addWidget(self.lamp)
-        titles = QVBoxLayout()
-        titles.setSpacing(0)
-        title = QLabel("角色变声器")
-        title.setObjectName("appTitle")
-        subtitle = QLabel("广播室调音台 · RVC / So-VITS-SVC")
-        subtitle.setObjectName("appSubtitle")
-        titles.addWidget(title)
-        titles.addWidget(subtitle)
-        row.addLayout(titles)
-        row.addStretch(1)
-        self.backend_pill = QLabel("后端：检查中")
-        self.backend_pill.setObjectName("pill")
-        row.addWidget(self.backend_pill)
+        top = QHBoxLayout()
+        top.setSpacing(10)
+        top.addWidget(label("角色变声器", "appTitle"))
+        top.addWidget(label(f"v{__version__} 内测", "version"), 0, Qt.AlignBottom)
+        top.addStretch(1)
+        self.lamp = label("STANDBY", "lamp")
+        self.lamp.hide()
+        top.addWidget(self.lamp)
+        self.backend_pill = label("后端：检查中", "pill")
+        top.addWidget(self.backend_pill)
         self.reconnect_button = QPushButton("重新连接")
         self.reconnect_button.setObjectName("ghost")
         self.reconnect_button.setToolTip("检查本地后端；没有运行时启动 start-backend.cmd")
-        row.addWidget(self.reconnect_button)
-        root.addWidget(header)
+        top.addWidget(self.reconnect_button)
+        root.addLayout(top)
 
         self.notice = QLabel()
         self.notice.setObjectName("notice")
@@ -186,27 +172,9 @@ class MainWindow(QWidget):
         root.addWidget(self.notice)
 
         columns = QHBoxLayout()
-        columns.setSpacing(12)
-        columns.addWidget(self._build_cast(), 0)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        console = QWidget()
-        stack = QVBoxLayout(console)
-        stack.setContentsMargins(0, 0, 0, 0)
-        stack.setSpacing(10)
-        stack.addWidget(self._build_devices())
-        work = QHBoxLayout()
-        work.setSpacing(10)
-        work.addWidget(self._build_input(), 5)
-        work.addWidget(self._build_mix(), 4)
-        stack.addLayout(work)
-        stack.addWidget(self._build_audition())
-        stack.addWidget(self._build_live())
-        stack.addStretch(1)
-        scroll.setWidget(console)
-        columns.addWidget(scroll, 1)
+        columns.setSpacing(14)
+        columns.addWidget(self._build_voice(), 0)
+        columns.addWidget(self._build_work(), 1)
         root.addLayout(columns, 1)
 
         self.status_label = QLabel("")
@@ -215,65 +183,129 @@ class MainWindow(QWidget):
         self.status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         root.addWidget(self.status_label)
 
-    def _build_cast(self) -> QWidget:
-        panel = Panel("当前角色", "点角色卡切换声线")
-        panel.setFixedWidth(330)
-        self.hero = HeroArt(286)
-        panel.body.addWidget(self.hero, 1)
-        self.hero_name = QLabel("…")
-        self.hero_name.setObjectName("heroName")
+    def _build_voice(self) -> QWidget:
+        """左栏：当前角色、角色切换和音色强度。"""
+        card = Card()
+        card.setFixedWidth(336)
+        self.hero = HeroArt(288)
+        card.body.addWidget(self.hero, 1)
+        names = QVBoxLayout()
+        names.setSpacing(0)
+        self.hero_name = label("…", "heroName")
         self.hero_name.setAlignment(Qt.AlignCenter)
-        panel.body.addWidget(self.hero_name)
-        self.hero_caption = QLabel("正在读取角色列表")
-        self.hero_caption.setObjectName("heroCaption")
+        names.addWidget(self.hero_name)
+        self.hero_caption = label("正在读取角色列表", "heroCaption")
         self.hero_caption.setAlignment(Qt.AlignCenter)
-        panel.body.addWidget(self.hero_caption)
+        names.addWidget(self.hero_caption)
+        card.body.addLayout(names)
         self.cards_row = QHBoxLayout()
-        self.cards_row.setSpacing(8)
-        panel.body.addLayout(self.cards_row)
-        self.cards_placeholder = QLabel("连接后端后，这里显示 /api/voices 返回的角色。")
-        self.cards_placeholder.setObjectName("muted")
+        self.cards_row.setSpacing(4)
+        self.cards_placeholder = label("连接后端后，这里显示 /api/voices 返回的角色。")
         self.cards_placeholder.setWordWrap(True)
         self.cards_placeholder.setAlignment(Qt.AlignCenter)
-        self.cards_placeholder.setMinimumHeight(120)
+        self.cards_placeholder.setMinimumHeight(110)
         self.cards_row.addWidget(self.cards_placeholder)
-        self.original_button = QPushButton("原声示例（未变声）")
+        card.body.addLayout(self.cards_row)
+        card.body.addWidget(divider())
+        strength = QHBoxLayout()
+        strength.addWidget(label("音色强度", "sectionLabel"))
+        strength.addStretch(1)
+        self.strength_value = label("100%", "value")
+        strength.addWidget(self.strength_value)
+        card.body.addLayout(strength)
+        self.strength_slider = QSlider(Qt.Horizontal)
+        self.strength_slider.setRange(0, 100)
+        self.strength_slider.setSingleStep(5)
+        self.strength_slider.setPageStep(10)
+        self.strength_slider.setValue(100)
+        self.strength_slider.setMinimumHeight(22)
+        self.strength_slider.setAccessibleName("音色强度")
+        self.strength_slider.setToolTip("0% 是原声，100% 最接近角色")
+        card.body.addWidget(self.strength_slider)
+        self.original_button = QPushButton("原声示例")
         self.original_button.setObjectName("ghost")
-        self.original_button.setIconSize(QSize(12, 12))
-        self.original_button.setIcon(make_icon("play", theme.SKY, 12))
+        self.original_button.setIconSize(QSize(11, 11))
+        self.original_button.setIcon(make_icon("play", theme.SKY, 11))
         self.original_button.setToolTip("播放 assets/previews/original.wav，三位角色的示例都由这句话转换而来")
         self.original_button.setEnabled((PREVIEWS / "original.wav").is_file())
-        panel.body.addWidget(self.original_button)
-        return panel
+        card.body.addWidget(self.original_button, 0, Qt.AlignHCenter)
+        return card
 
-    def _build_devices(self) -> QWidget:
-        panel = Panel()
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(4)
-        mic_label = QLabel("麦克风 · 录音和监听用")
-        mic_label.setObjectName("fieldLabel")
-        out_label = QLabel("输出设备 · 本机试听与监听")
-        out_label.setObjectName("fieldLabel")
-        self.mic_combo = ConsoleCombo()
-        self.mic_combo.setAccessibleName("麦克风")
-        self.out_combo = ConsoleCombo()
-        self.out_combo.setAccessibleName("输出设备")
-        self.rescan_button = QPushButton("刷新设备")
-        self.rescan_button.setObjectName("ghost")
-        self.rescan_button.setToolTip("插拔耳机或麦克风后点这里重新扫描")
-        grid.addWidget(mic_label, 0, 0)
-        grid.addWidget(out_label, 0, 1)
-        grid.addWidget(self.mic_combo, 1, 0)
-        grid.addWidget(self.out_combo, 1, 1)
-        grid.addWidget(self.rescan_button, 1, 2)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
-        panel.body.addLayout(grid)
-        return panel
+    def _build_work(self) -> QWidget:
+        """右栏：实时变声和文件变声两页，底部是设备。"""
+        card = Card()
+        tabs = QHBoxLayout()
+        tabs.setSpacing(4)
+        self.tab_group = QButtonGroup(self)
+        self.tab_group.setExclusive(True)
+        self.tab_buttons = {}
+        for index, (name, text) in enumerate((("live", "实时变声"), ("file", "文件变声"))):
+            button = QPushButton(text)
+            button.setObjectName("tab")
+            button.setCheckable(True)
+            button.setCursor(Qt.PointingHandCursor)
+            self.tab_group.addButton(button, index)
+            self.tab_buttons[name] = button
+            tabs.addWidget(button)
+        tabs.addStretch(1)
+        card.body.addLayout(tabs)
+        self.pages = QStackedWidget()
+        self.live_page = self._build_live()
+        self.file_page = self._build_file()
+        self.pages.addWidget(self.live_page)
+        self.pages.addWidget(self.file_page)
+        card.body.addWidget(self.pages, 1)
+        self.tab_buttons["live"].setChecked(True)
+        card.body.addWidget(divider())
+        card.body.addLayout(self._build_devices())
+        return card
 
-    def _build_input(self) -> QWidget:
-        panel = Panel("① 输入", "录音，或导入 WAV / FLAC / MP3 / OGG")
+    def _build_live(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.addStretch(2)
+        self.live_switch = LiveButton()
+        layout.addWidget(self.live_switch, 0, Qt.AlignHCenter)
+        self.live_title = label("点一下开始变声", "liveTitle")
+        self.live_title.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.live_title)
+        self.route_mode = Segmented()
+        self.route_mode.addItem("Discord 通话", "discord")
+        self.route_mode.addItem("本机监听", "local")
+        layout.addWidget(self.route_mode, 0, Qt.AlignHCenter)
+        self.route_hint = label("")
+        self.route_hint.setWordWrap(True)
+        self.route_hint.setAlignment(Qt.AlignCenter)
+        self.route_hint.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        layout.addWidget(self.route_hint)
+        layout.addStretch(1)
+        meters = QGridLayout()
+        meters.setHorizontalSpacing(12)
+        meters.setVerticalSpacing(8)
+        self.live_in_meter = LevelMeter()
+        self.live_out_meter = LevelMeter()
+        meters.addWidget(label("麦克风", "sectionLabel"), 0, 0)
+        meters.addWidget(self.live_in_meter, 0, 1)
+        meters.addWidget(label("变声后", "sectionLabel"), 1, 0)
+        meters.addWidget(self.live_out_meter, 1, 1)
+        meters.setColumnStretch(1, 1)
+        layout.addLayout(meters)
+        self.live_status = label("")
+        self.live_status.setWordWrap(True)
+        self.live_status.setMinimumHeight(34)
+        self.live_status.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        layout.addWidget(self.live_status)
+        layout.addStretch(1)
+        return page
+
+    def _build_file(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        layout.addStretch(1)
         row = QHBoxLayout()
         row.setSpacing(14)
         self.rec_button = RecButton()
@@ -281,52 +313,25 @@ class MainWindow(QWidget):
         row.addWidget(self.rec_button, 0, Qt.AlignVCenter)
         side = QVBoxLayout()
         side.setSpacing(6)
-        self.rec_clock = QLabel("0:00.0")
-        self.rec_clock.setObjectName("clock")
+        self.rec_clock = label("0:00.0", "clock")
         side.addWidget(self.rec_clock)
         self.rec_meter = LevelMeter()
         side.addWidget(self.rec_meter)
-        self.rec_hint = QLabel("点红色按钮开始录音")
-        self.rec_hint.setObjectName("muted")
+        self.rec_hint = label("点红色按钮开始录音")
         self.rec_hint.setWordWrap(True)
         side.addWidget(self.rec_hint)
         row.addLayout(side, 1)
-        panel.body.addLayout(row)
-        panel.body.addStretch(1)
-        bottom = QHBoxLayout()
-        bottom.setSpacing(10)
-        self.import_button = QPushButton("导入音频文件…")
-        bottom.addWidget(self.import_button, 0, Qt.AlignVCenter)
-        self.input_label = QLabel("当前输入：还没有")
-        self.input_label.setObjectName("muted")
+        self.import_button = QPushButton("导入音频…")
+        self.import_button.setToolTip("支持 WAV、FLAC、MP3、OGG")
+        row.addWidget(self.import_button, 0, Qt.AlignVCenter)
+        layout.addLayout(row)
+        self.input_label = label("当前输入：还没有")
         self.input_label.setWordWrap(True)
-        bottom.addWidget(self.input_label, 1)
-        panel.body.addLayout(bottom)
-        return panel
-
-    def _build_mix(self) -> QWidget:
-        panel = Panel("② 音色强度", "越高越接近角色")
-        self.strength_value = QLabel("100%")
-        self.strength_value.setObjectName("bigValue")
-        panel.header.addWidget(self.strength_value)
-        self.strength_slider = QSlider(Qt.Horizontal)
-        self.strength_slider.setRange(0, 100)
-        self.strength_slider.setSingleStep(5)
-        self.strength_slider.setPageStep(10)
-        self.strength_slider.setValue(100)
-        self.strength_slider.setMinimumHeight(30)
-        self.strength_slider.setAccessibleName("音色强度")
-        panel.body.addWidget(self.strength_slider)
-        ends = QHBoxLayout()
-        left = QLabel("0% 原声")
-        left.setObjectName("muted")
-        right = QLabel("100% 角色")
-        right.setObjectName("muted")
-        ends.addWidget(left)
-        ends.addStretch(1)
-        ends.addWidget(right)
-        panel.body.addLayout(ends)
-        panel.body.addStretch(1)
+        layout.addWidget(self.input_label)
+        self.convert_button = QPushButton("开始变声")
+        self.convert_button.setObjectName("primary")
+        self.convert_button.setMinimumHeight(44)
+        layout.addWidget(self.convert_button)
         self.busy_bar = QProgressBar()
         self.busy_bar.setRange(0, 0)
         self.busy_bar.setTextVisible(False)
@@ -334,18 +339,13 @@ class MainWindow(QWidget):
         keep.setRetainSizeWhenHidden(True)
         self.busy_bar.setSizePolicy(keep)
         self.busy_bar.hide()
-        panel.body.addWidget(self.busy_bar)
-        self.convert_button = QPushButton("开始变声")
-        self.convert_button.setObjectName("primary")
-        self.convert_button.setMinimumHeight(44)
-        panel.body.addWidget(self.convert_button)
-        return panel
+        layout.addWidget(self.busy_bar)
+        layout.addSpacing(6)
+        layout.addWidget(divider())
+        layout.addSpacing(6)
 
-    def _build_audition(self) -> QWidget:
-        panel = Panel("③ 试听与保存", "原声和结果可随时切换，播放位置保持不变")
-        self.audition_panel = panel
-        row = QHBoxLayout()
-        row.setSpacing(12)
+        play = QHBoxLayout()
+        play.setSpacing(12)
         seg = QHBoxLayout()
         seg.setSpacing(0)
         self.seg_input = QPushButton("原声")
@@ -361,22 +361,21 @@ class MainWindow(QWidget):
         self.seg_group.addButton(self.seg_result)
         seg.addWidget(self.seg_input)
         seg.addWidget(self.seg_result)
-        row.addLayout(seg)
+        play.addLayout(seg)
         self.play_button = QPushButton("播放")
-        self.play_button.setIconSize(QSize(14, 14))
-        self.play_button.setMinimumWidth(92)
-        row.addWidget(self.play_button)
+        self.play_button.setIconSize(QSize(13, 13))
+        self.play_button.setMinimumWidth(84)
+        play.addWidget(self.play_button)
         self.seek_slider = QSlider(Qt.Horizontal)
         self.seek_slider.setRange(0, 1000)
-        self.seek_slider.setMinimumHeight(30)
+        self.seek_slider.setMinimumHeight(22)
         self.seek_slider.setAccessibleName("播放进度")
-        row.addWidget(self.seek_slider, 1)
-        self.time_label = QLabel("0:00.0 / 0:00.0")
-        self.time_label.setObjectName("muted")
-        self.time_label.setMinimumWidth(104)
+        play.addWidget(self.seek_slider, 1)
+        self.time_label = label("0:00.0 / 0:00.0")
+        self.time_label.setMinimumWidth(100)
         self.time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        row.addWidget(self.time_label)
-        panel.body.addLayout(row)
+        play.addWidget(self.time_label)
+        layout.addLayout(play)
         bottom = QHBoxLayout()
         bottom.setSpacing(12)
         self.result_tag = QLabel()
@@ -387,56 +386,45 @@ class MainWindow(QWidget):
         self.save_button = QPushButton("另存为 WAV…")
         self.save_button.setMinimumHeight(36)
         bottom.addWidget(self.save_button, 0, Qt.AlignVCenter)
-        panel.body.addLayout(bottom)
-        return panel
+        layout.addLayout(bottom)
+        layout.addStretch(1)
+        return page
 
-    def _build_live(self) -> QWidget:
-        panel = Panel("实时变声", "选择变声后的声音送到哪里")
-        self.route_mode = ConsoleCombo()
-        self.route_mode.addItem("Discord 通话", "discord")
-        self.route_mode.addItem("本机监听", "local")
-        panel.body.addWidget(self.route_mode)
-        self.route_hint = QLabel()
-        self.route_hint.setWordWrap(True)
-        panel.body.addWidget(self.route_hint)
-        row = QHBoxLayout()
-        row.setSpacing(10)
-        self.live_switch = ToggleSwitch()
-        self.live_switch.setAccessibleName("麦克风监听")
-        row.addWidget(self.live_switch)
-        self.live_title = QLabel("监听已关闭")
-        self.live_title.setStyleSheet("font-size: 11.5pt; font-weight: 700;")
-        self.live_title.setMinimumWidth(150)
-        row.addWidget(self.live_title)
-        tip = QFrame()
-        tip.setObjectName("headphonesBox")
-        tip.setStyleSheet(f"QFrame#headphonesBox {{ background: {theme.SUNFLOWER}; border-radius: 9px; }}"
-                          f"QFrame#headphonesBox QLabel {{ color: {theme.INK}; font-size: 9pt; font-weight: 700;"
-                          " background: transparent; }")
-        tip_row = QHBoxLayout(tip)
-        tip_row.setContentsMargins(10, 5, 12, 5)
-        tip_row.setSpacing(6)
-        icon = QLabel()
-        icon.setPixmap(make_icon("headphones", theme.INK, 16).pixmap(QSize(16, 16)))
-        tip_row.addWidget(icon)
-        tip_row.addWidget(QLabel("请戴耳机监听，外放会被麦克风收回去产生啸叫"))
-        panel.header.addWidget(tip)
-        in_label = QLabel("输入")
-        in_label.setObjectName("fieldLabel")
-        out_label = QLabel("输出")
-        out_label.setObjectName("fieldLabel")
-        self.live_in_meter = LevelMeter()
-        self.live_out_meter = LevelMeter()
-        row.addWidget(in_label)
-        row.addWidget(self.live_in_meter, 1)
-        row.addWidget(out_label)
-        row.addWidget(self.live_out_meter, 1)
-        panel.body.addLayout(row)
-        self.live_status = QLabel("打开开关后开始实时变声。")
-        self.live_status.setObjectName("muted")
-        self.live_status.setWordWrap(True)
-        panel.body.addWidget(self.live_status)
-        return panel
+    def _build_devices(self) -> QGridLayout:
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(4)
+        self.mic_combo = ConsoleCombo()
+        self.mic_combo.setAccessibleName("麦克风")
+        self.out_combo = ConsoleCombo()
+        self.out_combo.setAccessibleName("输出设备")
+        self.rescan_button = QPushButton("刷新")
+        self.rescan_button.setObjectName("ghost")
+        self.rescan_button.setIconSize(QSize(13, 13))
+        self.rescan_button.setIcon(make_icon("refresh", theme.MUTED, 13))
+        self.rescan_button.setToolTip("插拔耳机或麦克风后点这里重新扫描")
+        # 一行一个设备，下拉框够宽，系统报告的完整设备名不被截断
+        grid.setVerticalSpacing(8)
+        output_label = label("耳机或音箱", "sectionLabel")
+        output_label.setToolTip("试听和本机监听从这里播放。Discord 通话不经过它。")
+        grid.addWidget(label("麦克风", "sectionLabel"), 0, 0)
+        grid.addWidget(self.mic_combo, 0, 1)
+        grid.addWidget(output_label, 1, 0)
+        grid.addWidget(self.out_combo, 1, 1)
+        grid.addWidget(self.rescan_button, 1, 2)
+        grid.setColumnStretch(1, 1)
+        return grid
+
+    def show_tab(self, name: str) -> None:
+        """切到“实时变声”（live）或“文件变声”（file）页。"""
+        self.tab_buttons[name].setChecked(True)
+        self.pages.setCurrentWidget(self.live_page if name == "live" else self.file_page)
+
+    def reveal(self, widget: QWidget) -> None:
+        """让某个控件所在的页显示出来。"""
+        for name, page in (("live", self.live_page), ("file", self.file_page)):
+            if page.isAncestorOf(widget):
+                self.show_tab(name)
 
     def _wire(self) -> None:
         b = self.bridge
@@ -453,6 +441,8 @@ class MainWindow(QWidget):
         b.live_stopped.connect(self._on_live_stopped)
 
         self.reconnect_button.clicked.connect(self.connect_backend)
+        self.tab_buttons["live"].clicked.connect(lambda: self.show_tab("live"))
+        self.tab_buttons["file"].clicked.connect(lambda: self.show_tab("file"))
         self.original_button.clicked.connect(lambda: self.toggle_preview("original"))
         self.mic_combo.currentIndexChanged.connect(self._on_device_changed)
         self.out_combo.currentIndexChanged.connect(self._on_device_changed)
@@ -476,6 +466,14 @@ class MainWindow(QWidget):
 
     def _voice_name(self, voice_id: str | None) -> str:
         return next((v["name"] for v in self.voices if v["id"] == voice_id), voice_id or "")
+
+    def _pixmap(self, voice_id: str) -> QPixmap | None:
+        """角色头像；assets/ 里没有对应文件时返回 None，界面改画图案。"""
+        if voice_id not in self._avatars:
+            name = theme.voice_style(voice_id).avatar
+            pixmap = QPixmap(str(ASSETS / name)) if name else QPixmap()
+            self._avatars[voice_id] = None if pixmap.isNull() else pixmap
+        return self._avatars[voice_id]
 
     def current_key(self) -> tuple | None:
         if self.input is None or self.voice_id is None:
@@ -556,10 +554,12 @@ class MainWindow(QWidget):
             "没有找到麦克风" if not has_mic else
             "没有找到输出设备" if not has_out else "先选择角色")
         if not live_on:
-            self.live_title.setText("监听已关闭")
+            self.live_title.setText("点一下开始变声" if self.live_switch.isEnabled() else
+                                    self.live_switch.toolTip())
         self.hero.set_on_air(live_on)
         self.lamp.setText("ON AIR" if live_on else "REC" if recording else "STANDBY")
         set_state(self.lamp, "live" if live_on else "rec" if recording else "")
+        self.lamp.setVisible(live_on or recording)
 
     def _update_result_tag(self, result: ResultClip | None) -> None:
         key = self.current_key()
@@ -698,9 +698,8 @@ class MainWindow(QWidget):
                 item.widget().deleteLater()
         self.cards = {}
         for voice in voices:
-            style = theme.voice_style(voice["id"])
-            pixmap = self._avatar if style.art == "avatar" else None
-            card = VoiceCard(voice["id"], voice["name"], pixmap, (PREVIEWS / f"{voice['id']}.wav").is_file())
+            card = VoiceCard(voice["id"], voice["name"], self._pixmap(voice["id"]),
+                             (PREVIEWS / f"{voice['id']}.wav").is_file())
             card.chosen.connect(self.select_voice)
             card.preview_requested.connect(self.toggle_preview)
             self.cards_row.addWidget(card, 1)
@@ -716,13 +715,14 @@ class MainWindow(QWidget):
     # ---- 角色 -----------------------------------------------------------
     def _show_voice(self, voice_id: str | None) -> None:
         style = theme.voice_style(voice_id or "taffy")
-        self.hero.set_voice(style, self._avatar if style.art == "avatar" else None)
+        self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
+        self.live_switch.set_color(style.color)
         if voice_id is None:
             self.hero_name.setText("…")
             self.hero_caption.setText("正在读取角色列表")
         else:
             self.hero_name.setText(self._voice_name(voice_id))
-            self.hero_caption.setText(f"{voice_id.upper()} · 当前声线")
+            self.hero_caption.setText(voice_id.upper())
         self.hero_caption.setStyleSheet(f"color: {style.color};")
         for card_id, card in self.cards.items():
             card.set_active(card_id == voice_id)
@@ -779,10 +779,10 @@ class MainWindow(QWidget):
     def _route_changed(self):
         if self.route_mode.currentData() == "discord":
             pair = self.discord_pair
-            hint = (f"Discord → 语音与视频 → 输入设备：{pair[1].name}。通话输出仍选耳机。"
-                    if pair else "未发现虚拟麦克风。安装 VB-CABLE 后刷新设备，或切换至本机监听。")
+            hint = (f"在 Discord 的“语音与视频”里，把输入设备选为\n{pair[1].name}"
+                    if pair else "没有找到虚拟麦克风。安装 VB-CABLE 后点“刷新”，或者改用本机监听。")
         else:
-            hint = "变声通过所选输出设备播放。要让朋友听见，请选择 Discord 通话。"
+            hint = "变声后的声音从下面选的耳机或音箱播放。\n请戴耳机，外放会被麦克风收回去。"
         self.route_hint.setText(hint)
         if self.live is not None:
             self._restart_live()
@@ -914,8 +914,10 @@ class MainWindow(QWidget):
 
         threading.Thread(target=work, daemon=True, name="convert").start()
 
-    @staticmethod
-    def _emit(signal, *args) -> None:
+    def _emit(self, signal, *args) -> None:
+        """工作线程用它回到界面线程。窗口关闭后不再发信号：那时 Qt 对象可能正在销毁。"""
+        if self._closing:
+            return
         try:
             signal.emit(*args)
         except RuntimeError:
@@ -986,7 +988,7 @@ class MainWindow(QWidget):
         for voice_id, card in self.cards.items():
             card.set_previewing(voice_id == current)
         playing_original = current == "original"
-        self.original_button.setText("停止原声示例" if playing_original else "原声示例（未变声）")
+        self.original_button.setText("停止" if playing_original else "原声示例")
         self.original_button.setIcon(make_icon("stop" if playing_original else "play", theme.SKY, 12))
 
     def toggle_preview(self, name: str) -> None:
@@ -1113,7 +1115,8 @@ class MainWindow(QWidget):
             raise audio.AudioDeviceError("没有找到输出设备，无法监听。")
         mic = audio.MicStream(mic_device)
         try:
-            speaker = audio.SpeakerStream(out_device, slack_seconds=0.24, receiver=receiver)
+            # 通话输出多留一点余量：0.24 秒时每次会话开头都会断流一次，0.31 秒时六次测试都没有断流
+            speaker = audio.SpeakerStream(out_device, slack_seconds=0.31 if receiver else 0.24, receiver=receiver)
         except audio.AudioDeviceError:
             mic.close()
             raise
@@ -1148,7 +1151,7 @@ class MainWindow(QWidget):
         self.live = monitor
         self._live_stats = {}
         self.live_title.setText("正在连接…")
-        self.live_status.setText(f"麦克风：{mic.name} → 输出：{speaker.name}")
+        self.live_status.setText(f"{mic.name} → {speaker.name}")
         monitor.start()
         self._refresh()
 
@@ -1163,9 +1166,9 @@ class MainWindow(QWidget):
     def _on_live_connected(self, monitor, hello: dict) -> None:
         if monitor is not self.live:
             return
-        mode = self.route_mode.currentText()
-        self.live_title.setText(f"{mode}中 · {monitor.label}")
-        self.set_status(f"监听已连接：{hello['sample_rate']} Hz，每帧 {hello['frame_samples']} 个样本。请戴耳机。", "ok")
+        self.live_title.setText(f"正在变声 · {monitor.label}")
+        self.set_status(f"{self.route_mode.currentText()}已连接：{hello['sample_rate']} Hz，"
+                        f"每包 {hello['frame_samples']} 个样本。", "ok")
 
     def _on_live_stats(self, monitor, stats: dict) -> None:
         if monitor is not self.live:
@@ -1178,8 +1181,8 @@ class MainWindow(QWidget):
         delay = (frame_ms + stats["avg_ms"] + getattr(speaker, "slack_seconds", 0) * 1000 + overlap_ms
                  + getattr(speaker, "latency", 0) * 1000) / 1000
         self.live_status.setText(
-            f"麦克风：{monitor.mic.name} → 输出：{speaker.name}\n"
-            f"已送 {stats['frames']} 帧 · 每帧往返 {stats['avg_ms']:.0f} 毫秒 · 估算延迟约 {delay:.1f} 秒"
+            f"{monitor.mic.name} → {speaker.name}\n"
+            f"延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒 · 已送 {stats['frames']} 包"
             f" · 丢弃输入 {stats['mic_dropped']} 块 · 播放断流 {stats['underruns']} 次")
 
     def _on_live_stopped(self, monitor, kind: str, message: str) -> None:

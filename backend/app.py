@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
-from . import engine
+from . import __version__, engine
 from .character import graph
 from .live import FRAME, SHORT_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
 
@@ -30,7 +30,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="角色变声器", version="1.0", lifespan=lifespan)
+app = FastAPI(title="角色变声器", version=__version__, lifespan=lifespan)
 app.add_middleware(CORSMiddleware,
                    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
                    allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
@@ -38,7 +38,8 @@ app.add_middleware(CORSMiddleware,
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "engine": "RVC v2 / So-VITS-SVC 3.0", "provider": graph("taffy_svc").get_providers()[0],
+    return {"status": "ok", "version": __version__, "engine": "RVC v2 / So-VITS-SVC 3.0",
+            "provider": graph("taffy_svc").get_providers()[0],
             "sample_rate": engine.RATE,
             "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES}
 

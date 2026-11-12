@@ -92,6 +92,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="python -m gui.selfcheck")
     parser.add_argument("--out", default=str(ROOT / ".run" / "selfcheck"), help="保存结果和截图的目录")
     parser.add_argument("--skip-autostart", action="store_true", help="不在 8766 端口另起一个后端来测试自动启动")
+    parser.add_argument("--backend-url", default=DEFAULT_URL, help=f"被测后端的地址，默认 {DEFAULT_URL}")
     args = parser.parse_args(argv)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -107,7 +108,7 @@ def main(argv=None) -> int:
     from .live import LiveMonitor
 
     c = Checker()
-    client = BackendClient(DEFAULT_URL)
+    client = BackendClient(args.backend_url)
 
     def pump(milliseconds: float) -> None:
         """处理界面事件并等待。不用 QTest.qWait：它等待时一直占着 GIL，音频回调会被饿死，
@@ -141,13 +142,17 @@ def main(argv=None) -> int:
         return None
 
     def click(widget) -> None:
+        top = widget.window()
+        if hasattr(top, "reveal"):  # 控件可能在没显示的那一页上
+            top.reveal(widget)
+            pump(30)
         QTest.mouseClick(widget, Qt.LeftButton)
         pump(60)
 
     # ------------------------------------------------------------------ 启动
-    window = MainWindow(Config())
+    window = MainWindow(Config(args.backend_url))
     window.route_mode.setCurrentIndex(window.route_mode.findData("local"))
-    window.resize(1180, 730)
+    window.resize(1060, 700)
     window.show()
     wait(lambda: bool(window.cards) or window.notice.isVisible(), 30)
     how = "由自检启动" if window.owned_backend is not None else "复用已运行的后端"
@@ -217,7 +222,7 @@ def main(argv=None) -> int:
         position = window.player.position
         click(window.cards["taffy"].preview_button)
         c.check("角色示例：点一下立即播放，再点停止", started and position > 0.5 and window.playing_tag is None,
-                f"taffy.wav 在“{default_out.name}”上播了 {position:.2f} 秒后停止（真实输出设备，无法确认是否听得到）")
+                f"taffy.wav 在“{default_out.name}”上播了 {position:.2f} 秒后停止（脚本听不到声音，只确认音频按时送出）")
         choose(window.out_combo, quiet_out.name)
         for name in [i for i in ids if i != "taffy"] + ["original"]:
             if name == "original":
@@ -293,7 +298,7 @@ def main(argv=None) -> int:
             finished = wait(lambda: window.playing_tag is None, 12)
             c.check("试听结果并在播放中切换 原声 / 结果", playing and on_input and back and finished,
                     f"在“{default_out.name}”上播放；{at_switch:.2f} 秒处切到原声，位置保持，再切回结果播完"
-                    "（真实输出设备，无法确认是否听得到）")
+                    "（脚本听不到声音，只确认音频按时送出）")
         saved = out_dir / "selfcheck_original_taffy_100.wav"
         saved.unlink(missing_ok=True)
         QFileDialog.getSaveFileName = staticmethod(lambda *a, **k: (str(saved), ""))
@@ -439,7 +444,7 @@ def main(argv=None) -> int:
                 f"{first.hello}；{window.live_status.text()}".replace("\n", "；") if first else "没有启动")
         c.check("监听：输入和输出都有信号", levels["in"] > 0.02 and levels["out"] > 0.02,
                 f"输入峰值 {levels['in']:.2f}，输出峰值 {levels['out']:.2f}；麦克风“{cable_in.name}”的信号是脚本"
-                f"播进“{cable_out.name}”的 original.wav，输出到“{default_out.name}”（无法确认是否听得到）")
+                f"播进“{cable_out.name}”的 original.wav，输出到“{default_out.name}”（脚本听不到声音，只确认音频按时送出）")
         c.check("监听时文件转换和录音被禁用", not window.convert_button.isEnabled() and not window.rec_button.isEnabled(),
                 window.convert_button.toolTip())
         shot(window, "06_live_on_air")
@@ -604,7 +609,8 @@ def main(argv=None) -> int:
     c.check("启动脚本不存在：显示路径", "找不到启动脚本" in missing.notice.text(), missing.notice.text().replace("\n", " "))
     missing.close()
 
-    alt = BackendClient(ALT_URL)
+    alt_url = ALT_URL if client.port != 8766 else "http://127.0.0.1:8767"
+    alt = BackendClient(alt_url)
     try:
         alt.health(timeout=1)
         port_free = False
@@ -617,10 +623,11 @@ def main(argv=None) -> int:
         starter = scripts / "start-backend-8766.cmd"
         starter.write_text(
             '@echo off\r\ncd /d "%VOICE_SELFCHECK_ROOT%"\r\nset PYTHONUTF8=1\r\n'
-            '".venv\\Scripts\\python.exe" -m uvicorn backend.app:app --host 127.0.0.1 --port 8766 '
+            '".venv\\Scripts\\python.exe" -m uvicorn backend.app:app --host 127.0.0.1 --port %VOICE_SELFCHECK_PORT% '
             "--ws-max-size 16384 --ws-max-queue 2\r\n", encoding="ascii")
         os.environ["VOICE_SELFCHECK_ROOT"] = str(ROOT)
-        started = MainWindow(Config(ALT_URL, autostart=True, script=starter))
+        os.environ["VOICE_SELFCHECK_PORT"] = str(alt.port)
+        started = MainWindow(Config(alt_url, autostart=True, script=starter))
         started.show()
         t0 = time.monotonic()
         ready = wait(lambda: started.backend_ok and bool(started.cards), 180)
@@ -643,7 +650,11 @@ def main(argv=None) -> int:
         c.check("关闭窗口时停止由本程序启动的后端", gone and (process is None or process.poll() is not None),
                 "8766 端口不再响应")
 
-    print(f"\n结果和截图在 {out_dir}")
+    # 等后台线程（健康检查、后端输出读取）收尾，再让解释器退出
+    for thread in threading.enumerate():
+        if thread is not threading.current_thread():
+            thread.join(6)
+    print(f"\n结果和截图在 {out_dir}", flush=True)
     return c.summary()
 
 

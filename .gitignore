@@ -7,3 +7,4 @@ models/*.part
 .run/
 *.lnk
 voices/*-frames.npy
+models/knn-vc-PROVENANCE.md

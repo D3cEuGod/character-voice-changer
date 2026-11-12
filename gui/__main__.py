@@ -67,7 +67,7 @@ def main(argv=None) -> int:
 
     window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script)))
     available = app.primaryScreen().availableGeometry()
-    window.resize(min(1180, available.width() - 40), min(730, available.height() - 60))
+    window.resize(min(1060, available.width() - 40), min(700, available.height() - 60))
     set_window_relaunch(int(window.winId()))  # 在窗口显示之前写入，任务栏按这些信息建立图标
     window.show()
     return app.exec()
