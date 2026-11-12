@@ -83,9 +83,15 @@ def tone_target(voice_id):
     return data
 
 
-def refine_timbre(samples, voice_id, strength):
+def refine_timbre(samples, voice_id, strength, source=None):
+    """Pull the timbre toward the voice's speaking reference with the OpenVoice converter.
+
+    `source` is the timbre vector of the audio being corrected. Pass a session-level
+    estimate for streaming: a vector measured from one second of audio changes from
+    packet to packet, and the converter then treats neighbouring packets differently.
+    """
     spec = tone_spec(np.pad(samples, (0, (-len(samples)) % 256), mode="reflect"))
-    src = tone_embedding(spec)
+    src = tone_embedding(spec) if source is None else source
     tgt = src + strength * (tone_target(voice_id) - src)
     result = tone_converter().run(None, {
         "spec": spec.T[None], "spec_lengths": np.asarray([len(spec)], dtype="int64"),

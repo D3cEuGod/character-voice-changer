@@ -9,9 +9,18 @@ from scipy.ndimage import maximum_filter1d, uniform_filter1d
 from scipy.signal import butter, resample_poly, sosfilt
 from scipy.signal.windows import hann
 
-from .engine import ROOT, RATE, load_graph, refine_timbre
+from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
+# How far OpenVoice pulls each trained voice toward its speaking reference. 0 skips the stage.
+TIMBRE_REFINE = {"tomori": 1.0, "anon": 1.0, "taffy": 1.0}
+# Measure the converter's source timbre over the session instead of per one-second window.
+STABLE_TONE = False
+TONE_WINDOWS = 40
+# Scale of the consonant band taken from the denoised input.
+CONSONANT_MIX = 1.0
+# Correct the timbre before restoring consonants, so the converter never sees the input's own consonants.
+REFINE_FIRST = False
 # Conversational registers estimated from the project's speaker references.
 REGISTER = {"tomori": 285, "anon": 310, "taffy": 315}
 # Match typical speaking levels across the three independently trained vocoders.
@@ -126,7 +135,17 @@ class CharacterModel:
         self.name = name
         self.strength = strength
         self.register = None
+        self.tone = None
+        self.tone_windows = 0
         self.denoiser = StreamingDenoiser() if strength else None
+
+    def source_tone(self, wet, voiced_frames):
+        """Running mean of the trained voice's own timbre vector, from windows with enough voicing."""
+        if voiced_frames >= 25:
+            current = tone_embedding(tone_spec(np.pad(wet, (0, (-len(wet)) % 256), mode="reflect")))
+            self.tone_windows = min(self.tone_windows + 1, TONE_WINDOWS)
+            self.tone = current if self.tone is None else self.tone + (current - self.tone) / self.tone_windows
+        return self.tone
 
     def render(self, window, count):
         if self.strength == 0:
@@ -174,9 +193,19 @@ class CharacterModel:
         dry = resample_poly(clean, 441, 320)
         # Restore high-frequency consonant detail before correcting the timbre.
         voiced_mask = np.interp(np.arange(RATE) * 100 / RATE, np.arange(100), f0 > 0)
-        mix = 0.7 - 0.45 * voiced_mask
+        mix = CONSONANT_MIX * (0.7 - 0.45 * voiced_mask)
+        refine = TIMBRE_REFINE[self.name] * self.strength
+
+        def correct(audio):
+            if refine <= 0 or np.max(np.abs(audio)) <= 0.001:
+                return audio
+            source = self.source_tone(audio, int(np.count_nonzero(f0))) if STABLE_TONE else None
+            return refine_timbre(audio, self.name, refine, source) * gate
+
+        if REFINE_FIRST:
+            wet = correct(wet)
         level = np.clip(np.linalg.norm(wet) / max(np.linalg.norm(dry), .02), .4, 2.5)
         wet += mix * sosfilt(CONSONANT_BAND, level * dry - wet)
-        if np.max(np.abs(wet)) > 0.001:
-            wet = refine_timbre(wet, self.name, self.strength) * gate
+        if not REFINE_FIRST:
+            wet = correct(wet)
         return np.clip(self.strength * OUTPUT_GAIN[self.name] * wet + (1-self.strength)*dry, -.99, .99)
