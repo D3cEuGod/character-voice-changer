@@ -3,8 +3,8 @@
 Run with the backend venv from the project root:
     .venv\\Scripts\\python.exe <this> <tag> [voice ...]
 Environment:
-    EVAL_VARIANT=norefine,nodry        legacy ablations by patching
-    EVAL_SET=character.NAME=value;...  set module-level tunables (values parsed as Python literals)
+    EVAL_SET=character.NAME=value;character.TABLE.voice=value;...
+                                       set module-level tunables (values parsed as Python literals)
 Outputs go to .run/eval/<tag>/. Nothing here talks to the running server on 8765.
 """
 import ast
@@ -97,17 +97,15 @@ def render(voice, samples, strength=1.0):
 
 
 def apply_settings():
-    flags = set(filter(None, os.environ.get("EVAL_VARIANT", "").split(",")))
-    from backend import character
-    if "norefine" in flags and hasattr(character, "refine_timbre"):
-        character.refine_timbre = lambda wet, name, strength: wet
-    if "nodry" in flags and hasattr(character, "sosfilt"):
-        character.sosfilt = lambda sos, x: np.zeros_like(x)
     for item in filter(None, os.environ.get("EVAL_SET", "").split(";")):
         target, value = item.split("=", 1)
-        module, name = target.rsplit(".", 1)
-        setattr(importlib.import_module("backend." + module), name, ast.literal_eval(value))
-        print(f"set backend.{module}.{name} = {value}", flush=True)
+        module, name, *key = target.split(".")
+        owner = importlib.import_module("backend." + module)
+        if key:  # character.TIMBRE_REFINE.anon=0 sets one entry of a per-voice table
+            getattr(owner, name)[key[0]] = ast.literal_eval(value)
+        else:
+            setattr(owner, name, ast.literal_eval(value))
+        print(f"set backend.{target} = {value}", flush=True)
 
 
 def main():

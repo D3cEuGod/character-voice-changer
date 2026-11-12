@@ -4,9 +4,8 @@ The same clip is rendered 21 times, each time delayed by another 1/21 of a packe
 speech therefore lands once in every position inside a packet, so after folding the outputs modulo the
 packet length the speech content averages out evenly and whatever remains is caused by the packet joins.
 
-Run from the project root with the backend venv. argv: tag [voice ...]; EVAL_VARIANT=norefine,nodry for ablations.
+Run from the project root with the backend venv. argv: tag [voice ...]; EVAL_SET as in eval_render.py.
 """
-import os
 import sys
 from pathlib import Path
 
@@ -43,13 +42,10 @@ def folded(signal_sets):
 def main():
     tag = sys.argv[1]
     voices = sys.argv[2:] or list(engine.VOICES)
-    flags = set(filter(None, os.environ.get("EVAL_VARIANT", "").split(",")))
-    from backend import character
-    if "norefine" in flags and hasattr(character, "refine_timbre"):
-        character.refine_timbre = lambda wet, name, strength: wet
-    if "nodry" in flags and hasattr(character, "sosfilt"):
-        character.sosfilt = lambda sos, x: np.zeros_like(x)
-    clip = engine.decode((ROOT / ".run/male-call.wav").read_bytes()).astype(np.float32)
+    sys.path.insert(0, str(Path(__file__).parent))
+    from eval_render import apply_settings
+    apply_settings()  # same EVAL_SET switches as eval_render.py
+    clip = engine.decode((ROOT / ".run/evalset/m2.wav").read_bytes()).astype(np.float32)
     high_pass = butter(4, 5000, btype="highpass", fs=RATE, output="sos")
     inputs = [np.pad(clip, (SHORT_FRAME + k * WIDTH, SHORT_FRAME)) for k in range(STEPS)]
     control = folded(inputs)

@@ -13,6 +13,7 @@ from scipy.signal.windows import hann
 ROOT = Path(__file__).resolve().parents[1]
 RATE = 22050
 TONE_WINDOW = hann(1024, sym=False).astype("float32")
+TONE_CONTEXT = 8192
 MAX_SECONDS = 60
 VOICES = {"tomori": "高松灯", "taffy": "永雏塔菲", "anon": "千早爱音"}
 
@@ -90,8 +91,11 @@ def refine_timbre(samples, voice_id, strength, source=None):
     estimate for streaming: a vector measured from one second of audio changes from
     packet to packet, and the converter then treats neighbouring packets differently.
     """
-    spec = tone_spec(np.pad(samples, (0, (-len(samples)) % 256), mode="reflect"))
-    src = tone_embedding(spec) if source is None else source
+    # The converter looks about 0.37 s to either side. Mirror that much audio past the end so
+    # the newest samples are not converted against silence.
+    extended = np.pad(samples, (0, TONE_CONTEXT + (-len(samples)) % 256), mode="reflect")
+    spec = tone_spec(extended)
+    src = tone_embedding(spec[:len(samples) // 256 + 1]) if source is None else source
     tgt = src + strength * (tone_target(voice_id) - src)
     result = tone_converter().run(None, {
         "spec": spec.T[None], "spec_lengths": np.asarray([len(spec)], dtype="int64"),

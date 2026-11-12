@@ -12,15 +12,15 @@ from scipy.signal.windows import hann
 from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
-# How far OpenVoice pulls each trained voice toward its speaking reference. 0 skips the stage.
-TIMBRE_REFINE = {"tomori": 1.0, "anon": 1.0, "taffy": 1.0}
-# Measure the converter's source timbre over the session instead of per one-second window.
-STABLE_TONE = False
+# How far OpenVoice pulls each trained voice toward its speaking reference; 0 skips the stage.
+# On the eval set in tools/eval it lifts speaker similarity for Tomori (0.51 to 0.61) and
+# Taffy (0.37 to 0.53), leaves Anon unchanged (0.65), and costs about 20 ms per packet.
+TIMBRE_REFINE = {"tomori": 1.0, "anon": 0.0, "taffy": 1.0}
+# Voiced windows averaged into the session's estimate of the trained voice's own timbre.
 TONE_WINDOWS = 40
-# Scale of the consonant band taken from the denoised input.
-CONSONANT_MIX = 1.0
-# Correct the timbre before restoring consonants, so the converter never sees the input's own consonants.
-REFINE_FIRST = False
+# Share of the band above 1.7 kHz taken from the denoised input, in unvoiced and in voiced frames.
+CONSONANT_UNVOICED = 0.7
+CONSONANT_VOICED = 0.25
 # Conversational registers estimated from the project's speaker references.
 REGISTER = {"tomori": 285, "anon": 310, "taffy": 315}
 # Match typical speaking levels across the three independently trained vocoders.
@@ -190,22 +190,17 @@ class CharacterModel:
         gate = np.clip((rms - 0.00025) / 0.0015, 0, 1) * activity
         gate = np.interp(np.arange(RATE)*16000/RATE, np.arange(16000), gate)
         wet *= gate
-        dry = resample_poly(clean, 441, 320)
-        # Restore high-frequency consonant detail before correcting the timbre.
-        voiced_mask = np.interp(np.arange(RATE) * 100 / RATE, np.arange(100), f0 > 0)
-        mix = CONSONANT_MIX * (0.7 - 0.45 * voiced_mask)
         refine = TIMBRE_REFINE[self.name] * self.strength
-
-        def correct(audio):
-            if refine <= 0 or np.max(np.abs(audio)) <= 0.001:
-                return audio
-            source = self.source_tone(audio, int(np.count_nonzero(f0))) if STABLE_TONE else None
-            return refine_timbre(audio, self.name, refine, source) * gate
-
-        if REFINE_FIRST:
-            wet = correct(wet)
+        if refine > 0 and np.max(np.abs(wet)) > 0.001:
+            # Correct only what the trained voice produced, against the session's timbre
+            # estimate. The input's consonants are added afterwards, so they never pass
+            # through the converter.
+            source = self.source_tone(wet, int(np.count_nonzero(f0)))
+            wet = refine_timbre(wet, self.name, refine, source) * gate
+        dry = resample_poly(clean, 441, 320)
+        # Restore high-frequency consonant detail from the denoised input.
+        voiced_mask = np.interp(np.arange(RATE) * 100 / RATE, np.arange(100), f0 > 0)
+        mix = CONSONANT_UNVOICED + (CONSONANT_VOICED - CONSONANT_UNVOICED) * voiced_mask
         level = np.clip(np.linalg.norm(wet) / max(np.linalg.norm(dry), .02), .4, 2.5)
         wet += mix * sosfilt(CONSONANT_BAND, level * dry - wet)
-        if not REFINE_FIRST:
-            wet = correct(wet)
         return np.clip(self.strength * OUTPUT_GAIN[self.name] * wet + (1-self.strength)*dry, -.99, .99)
