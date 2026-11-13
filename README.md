@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.3.0
+- Versioned releases with a changelog; current internal beta is 0.3.1
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.3.0`（内测版）
+当前版本：`0.3.1`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 

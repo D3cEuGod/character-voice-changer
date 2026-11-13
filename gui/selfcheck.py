@@ -587,23 +587,29 @@ def main(argv=None) -> int:
 
     # ------------------------------------------------------------------ 设备不可用（模拟）
     ghost = audio.Device(index=9999, name="已拔出的设备（模拟）", rate=48000, channels=2, is_default=False, hostapi="模拟")
-    for combo in (window.mic_combo, window.out_combo):
-        combo.addItem(ghost.name, ghost)
-    window.mic_combo.setCurrentIndex(window.mic_combo.count() - 1)
+    def choose_ghost(combo):
+        """选中模拟的失效设备。界面遇到失效设备会自动重新扫描并删掉它，所以每次测试前重新加上。"""
+        if combo.itemData(combo.count() - 1) is not ghost:
+            combo.addItem(ghost.name, ghost)
+        combo.setCurrentIndex(combo.count() - 1)
+
+    choose_ghost(window.mic_combo)
     click(window.rec_button)
     c.check("模拟麦克风打不开：录音报错并复位", window.recorder is None and not window.rec_button.isChecked()
-            and "无法打开" in window.status_label.text(), window.status_label.text())
+            and any(w in window.status_label.text() for w in ("无法打开", "不在系统")), window.status_label.text())
+    choose_ghost(window.mic_combo)
     click(window.live_switch)
     pump(200)
     c.check("模拟麦克风打不开：监听报错并复位", window.live is None and not window.live_switch.isChecked()
-            and "无法打开" in window.live_status.text(), window.live_status.text())
+            and any(w in window.live_status.text() for w in ("无法打开", "不在系统")), window.live_status.text())
     if inputs:
         choose(window.mic_combo, (cable_in or inputs[0]).name)
-    window.out_combo.setCurrentIndex(window.out_combo.count() - 1)
+    choose_ghost(window.out_combo)
     click(window.reference_button)
-    c.check("模拟输出设备打不开：试听报错", window.playing_tag is None and "无法打开" in window.status_label.text(),
+    c.check("模拟输出设备打不开：试听报错", window.playing_tag is None and any(w in window.status_label.text() for w in ("无法打开", "不在系统")),
             window.status_label.text())
     if inputs:
+        choose_ghost(window.out_combo)  # 不重新加上的话，开关会用真实设备开始监听
         click(window.live_switch)
         pump(300)
         c.check("模拟输出设备打不开：监听报错并释放麦克风", window.live is None and not window.live_switch.isChecked(),

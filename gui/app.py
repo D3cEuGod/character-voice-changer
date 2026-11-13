@@ -24,6 +24,9 @@ from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecBu
 ASSETS = ROOT / "assets"
 MAX_RESULTS = 8
 MODE_NAMES = {"character": "音色优先", "call": "通话清晰"}
+# PortAudio 报这些错时，多半是窗口打开后 Windows 的设备编号变了（显示器音频唤醒、装驱动、改默认设备）。
+STALE_DEVICE_ERRORS = ("-9996", "-9985", "-9986", "Invalid device", "Device unavailable",
+                       "Error querying device")
 
 
 @dataclass
@@ -859,6 +862,35 @@ class MainWindow(QWidget):
         if self.live is not None:
             self._restart_live()
 
+    def _retry_after_rescan(self, attempt):
+        """运行 attempt()；PortAudio 说设备无效时，重新扫描一次设备再试。
+
+        PortAudio 只在启动时给设备编号。窗口开着的时候 Windows 的音频设备有变化，旧编号就会失效，
+        报“Invalid device [PaErrorCode -9996]”。重新扫描后按名称找回原来选的设备；
+        设备真的不在了，就明确告诉用户，而不是悄悄换成别的设备。
+        """
+        try:
+            return attempt()
+        except audio.AudioDeviceError as exc:
+            if (not any(code in str(exc) for code in STALE_DEVICE_ERRORS)
+                    or self.recorder is not None or self.live is not None):
+                raise
+            wanted = {combo: combo.currentData().name for combo in (self.mic_combo, self.out_combo)
+                      if combo.currentData() is not None}
+            self.player.stop()  # 重新扫描前必须关掉所有音频流
+            audio.rescan()
+            self._populate_devices(announce=False)
+            self._refresh()
+            missing = [name for combo, name in wanted.items()
+                       if combo.currentData() is None or combo.currentData().name != name]
+            if missing:
+                raise audio.AudioDeviceError(
+                    f"“{'”、“'.join(missing)}”已经不在系统的设备列表里（可能被拔出或停用）。"
+                    "设备列表已刷新，请重新选择。") from exc
+            result = attempt()
+            self.set_status("音频设备有变化，已自动刷新设备列表。", "ok")
+            return result
+
     def rescan_devices(self) -> None:
         if self.recorder is not None or self.live is not None:
             return
@@ -891,8 +923,14 @@ class MainWindow(QWidget):
             if device is None:
                 raise audio.AudioDeviceError("没有找到麦克风，无法录音。")
             self.stop_playback()
-            recorder = audio.Recorder(device, self.max_seconds)
-            recorder.start()
+
+            def open_recorder():
+                opened = audio.Recorder(self._device(self.mic_combo), self.max_seconds)
+                opened.start()
+                return opened
+
+            recorder = self._retry_after_rescan(open_recorder)
+            device = recorder.device
         except audio.AudioDeviceError as exc:
             self.rec_button.setChecked(False)
             self.set_status(str(exc), "error")
@@ -1035,7 +1073,7 @@ class MainWindow(QWidget):
         try:
             if device is None:
                 raise audio.AudioDeviceError("没有找到输出设备，无法播放。")
-            self.player.play(samples, rate, device, start)
+            self._retry_after_rescan(lambda: self.player.play(samples, rate, self._device(self.out_combo), start))
         except audio.AudioDeviceError as exc:
             self.stop_playback()
             self.set_status(str(exc), "error")
@@ -1209,7 +1247,7 @@ class MainWindow(QWidget):
             self.live_switch.setChecked(False)
             return
         try:
-            mic, speaker = self._open_live_devices()
+            mic, speaker = self._retry_after_rescan(self._open_live_devices)
         except audio.AudioDeviceError as exc:
             self.live_switch.setChecked(False)
             self.live_status.setText(f"监听没有打开：{exc}")
