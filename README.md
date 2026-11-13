@@ -6,21 +6,23 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 
 ## Key Features
 
-- Three character voices: RVC v2 with FAISS retrieval for Tomori and Anon, So-VITS-SVC 3.0 for Taffy
-- Real-time conversion over a local WebSocket, about 0.8 s from mouth to listener
+- Three dedicated RVC v2 40k voices, with matched retrieval indexes and RMVPE pitch extraction
+- Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
+- Real-time conversion over a local WebSocket, about 1 s to the local virtual microphone on the tested setup
 - Discord output through a virtual microphone (Steam Streaming Microphone or VB-CABLE), or local monitoring
 - Streaming noise suppression (GTCRN) and voice activity detection (Silero VAD), silent during pauses
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
-- Taffy presets for character similarity or call clarity, with separate previews and conversion results
-- Versioned releases with a changelog; current internal beta is 0.1.1
+- Original character recordings and converted previews available directly in the GUI
+- Versioned releases with a changelog; current internal beta is 0.2.0
 
 ## Tech Stack
 
 - Python 3.13
 - FastAPI and Uvicorn (HTTP and WebSocket backend)
 - ONNX Runtime with DirectML
+- Optional experimental Seed-VC runtime, disabled by default
 - RVC v2, So-VITS-SVC 3.0, OpenVoice V2, ContentVec, HuBERT-Soft
 - GTCRN, Silero VAD, RMVPE, Praat (parselmouth), FAISS
 - PySide6 (Qt 6), sounddevice (PortAudio), soxr
@@ -84,35 +86,64 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.1.1`（内测版）
+当前版本：`0.2.0`（内测版）
 
-需要 Windows 10 或 11、Python 3.13 和 Git。建议有支持 DirectML 的独立显卡。
+需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
 1. 克隆仓库，双击 `start-gui.cmd`。
-2. 首次启动会建立两个虚拟环境并安装依赖。后端随后下载约 2 GB 的模型和权重，校验 SHA-256，再临时安装 PyTorch 把三个角色导出成 ONNX。这一步需要联网，耗时取决于网速，导出产物与构建环境也需要磁盘空间。
+2. 首次启动会建立虚拟环境并安装依赖。已安装三套本地角色模型时，只准备 ContentVec、RMVPE、GTCRN 和 VAD 等必要推理图。没有本地模型时会准备原来的兼容声线（约 2 GB 权重及导出环境）；这与本次导入的新声线有区别。权重均校验 SHA-256。
 3. 窗口右上角显示“后端：已连接”后即可使用。之后可以离线运行。
 
-选中塔菲时，强度滑块下方可以选择“音色优先”或“通话清晰”。默认“音色优先”减少说话人原声的混入，改用 RMVPE 提取音高。背景噪声较大时，“通话清晰”能保留更多发音细节。两档的“示例”按钮播放各自的转换结果。
+三位角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
+
+本机已导入的模型如下，清单与 SHA-256 见 [安装记录](notes/installed-rvc-models.json)：
+
+| 角色 | 实际权重 | 来源 |
+| --- | --- | --- |
+| 高松灯 | `deng.pth` / 40k RVC v2 | 用户提供的教程模型与配套索引 |
+| 永雏塔菲 | `mygf-tf.pth` / 40k RVC v2 | 用户提供的 `Ai塔菲.zip` |
+| 千早爱音 | `Anon_v2.pth` / 40k RVC v2 | Wanlau 的 BanG Dream 对白模型及配套索引 |
+
+### 导入模型与迁移电脑
+
+大权重不放进 Git。迁移本机这套声线时，把整个 `models/local-rvc/` 文件夹一并复制到新电脑的项目目录；其中的配置使用相对路径，并校验推理图与索引。只克隆源码不会自动获得网盘里的用户模型。
+
+也可以在后端环境已准备好后分别导入自己的权重与索引：
+
+```powershell
+.venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320
+.venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429
+.venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310
+```
+
+导入器使用 `torch.load(weights_only=True)`，验证 RVC v2 / f0 架构、已填充的 768 维索引、说话人编号和完整一秒输出，通过后才更新角色配置。导入后重启后端和界面。`--pitch 12` 可使用固定半音移调，默认按目标音域自动调整。`.index` 应与该权重配套，不能把别的角色索引混用。
+
+Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=seed` 才安装并启用；它需要额外 CUDA 环境和约 1.5 GB 权重。它不是本版本默认通话后端。
+
+左栏“角色原声”播放真实配音 / 直播片段，“输入示例”播放测试输入，各角色卡片上的播放按钮播放当前档位的变声示例。参考音出处、片段时间和校验值在 [assets/references/sources.json](assets/references/sources.json)。
 
 想把入口放到任务栏：运行一次 `powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1`，右键生成的“角色变声器”快捷方式，在“显示更多选项”里选“固定到任务栏”。
 
 ### 在 Discord 里用
 
-1. 在界面底部的“麦克风”里选你平时说话的设备。
+1. 在界面底部的“麦克风”里选原声输入。如果用手机，通过 WO Mic 接入时这里选 `Microphone (WO Mic Device)`。
 2. 选角色，在“实时变声”页选“Discord 通话”，点一下大圆键。
 3. 界面会显示 Discord 该选的输入设备名。在 Discord 的“用户设置 → 语音与视频 → 输入设备”里选它。本机验证过的是 `Microphone (Steam Streaming Microphone)`。Discord 的输出设备继续用耳机。
 4. 用 Discord 自带的麦克风测试说一句话确认。
 
-没有成对的虚拟音频设备时，界面会提示安装 [VB-CABLE](https://vb-audio.com/Cable/index.htm) 后刷新设备。
+WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续选 WO Mic 会绕过变声器。也可以使用 VB-CABLE，不限于 Steam。
+
+项目目录已保存 [VB-CABLE 官方原版安装包与安装说明](third_party/installers/vb-cable/README.md)。软件优先使用 VB-CABLE，Steam 为备用。驱动需要独立以管理员安装并重启；安装器请从纯英文临时目录运行。
 
 ## 当前状态
 
-0.1.1 继续调整塔菲音色，仍属于内测。
+0.2.0 默认使用三套角色专用 RVC，仍属于内测。验证范围和结果见 [本次评测记录](notes/reference-engine-evaluation.md)。
 
-- 三位角色都能实时变声和转换文件，自检 62 项全部通过。
-- 塔菲“音色优先”的 CAM++ 均值为 0.618，本次重测的 0.1.0 为 0.533。干净女声和男声的字错误率均为 3.3%，10 dB 加噪男声为 26.8%。
-- 塔菲“通话清晰”的 CAM++ 均值为 0.529，加噪男声字错误率为 19.6%。两个档位的取舍和完整数据记录在 CHANGELOG。
-- 还没有在真实的 Discord 通话里由另一个人确认过听感。
+**参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
+
+没有在真实 Discord 通话里由另一个人确认过听感。自动相似度分数不等于人耳判断。
+
+用户提供的“凑企鹅”视频是演唱目标示例，未核实原始录制方式，不作为已确认的角色原始配音。灯的新默认音域为 320 Hz，目标是贴近用户选定的示例；官方 CM 原声仍单独保留供对照。两种参考不混为一谈。
 
 ## 0.1.0 发布说明
 
@@ -130,6 +161,11 @@ All images are captures of the running app on Windows 11, taken while the self-c
 - `start-backend.cmd`，单独启动后端
 - `setup_models.py`，按固定版本下载模型并校验，缺少角色模型时调用导出
 - `prepare_voices.py`，从固定版本的参考录音重建三个音色向量
+- `tools/import_rvc.py`，验证、导出并安装用户 RVC 模型
+- `backend/local_rvc.py`，读取本地模型配置并校验文件
+- `third_party/rvc/`，RVC 的 MIT 许可证和集成说明
+- `setup_reference_engine.py`、`backend/reference_worker.py`，可选的 Seed-VC 对照实现
+- `third_party/seed_vc/`，Seed-VC 的 GPL v3 许可证和版本说明
 - `make-shortcut.ps1`，生成带头像图标的快捷方式
 - `backend/app.py`，HTTP 与 WebSocket 接口
 - `backend/engine.py`，音频解码、OpenVoice 音色校正、文件转换入口
@@ -175,21 +211,23 @@ All images are captures of the running app on Windows 11, taken while the self-c
 - 后端启动失败时显示脚本的退出码和最后几行输出
 - 设备被拔出、引擎被占用时给出原因并释放设备
 
-## 当前稳定方案
+## 当前推理流程
 
 一包音频经过的步骤：
 
 1. GTCRN 连续降噪，Silero VAD 判断是否在说话。
-2. 跟踪音高，并把说话人的音域移到角色的音域。塔菲“音色优先”使用 RMVPE，其余配置使用 Praat。
-3. 提取发音特征：高松灯和千早爱音用 ContentVec 加 FAISS 检索，永雏塔菲用 HuBERT-Soft。
-4. 角色模型生成一秒的波形。
-5. 高松灯和永雏塔菲再经过 OpenVoice 音色校正，使用整段会话累计的音色向量。
-6. 从降噪后的输入补回 1.7 kHz 以上的辅音细节。
-7. 取窗口里有 104 毫秒前瞻的那一段，与上一包用 SOLA 对齐后交叉淡化。
+2. RMVPE 跟踪音高，按角色目标音域或固定半音数调整。
+3. ContentVec 第 12 层提取 768 维发音特征，检索本角色索引的 8 个近邻，以距离平方的倒数加权。
+4. 在特征域保护清辅音，再由本角色的 RVC v2 模型生成波形。100% 强度时不会把说话人的原始有声波形混回来，也不会再经过另一个音色转换模型。
+5. 语音门控、SOLA 对齐、分频交叉淡化与最终限幅，再发送有 104 毫秒前瞻的音频。
+
+没有导入本地角色模型时仍可使用原来的兼容声线，界面会显示实际模型名。原兼容路径和可选 Seed-VC 的历史取舍见决策记录。
 
 每一步为什么这样做、试过哪些别的做法，记录在 [notes/decisions.md](notes/decisions.md)。
 
 ## 0.1.0 的评测记录
+
+以下为历史结果。灯和爱音的相似度对照音已查明为第三方合成语音，不能用来评价与角色原始配音的接近程度。
 
 在 i5-12400F、RTX 5060 Ti、Windows 11 上测得。
 
@@ -214,7 +252,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 | `GET /api/voices` | 数组，每条记录包含 `id` 和中文 `name` |
 | `POST /api/convert?voice_id=taffy&strength=1` | 请求体直接放音频文件字节。成功返回 `audio/wav`，22,050 Hz 单声道 PCM16 |
 
-`voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。塔菲还支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口都使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
+`voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。三位角色都支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
 错误用 HTTP 状态码和 JSON 的 `detail` 表示。413 是文件过大，422 是音频或参数无效，429 是引擎正忙，500 是推理失败。一次只处理一个转换任务或一个实时会话。
 
@@ -245,7 +283,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 .venv\Scripts\python.exe tools\eval\join_test.py my-change
 ```
 
-`run_config.ps1` 在进程内按实时路径渲染测试集，输出字错误率、相似度和耗时，不占用正在运行的后端。`-Settings 'character.TIMBRE_REFINE.taffy=0'` 这样的参数可以临时改 `backend/character.py` 顶部的开关。识别用的 SenseVoice 模型、CAM++ 模型和角色参考音需要自己放进 `.run/`，位置见脚本开头。
+`run_config.ps1` 在进程内按实时路径渲染测试集，输出字错误率、相似度和耗时，不占用正在运行的后端。识别用的 SenseVoice 模型和 CAM++ 模型需要自己放进 `.run/`，位置见脚本开头；角色参考音使用仓库里的真实录音。`compare_references.py` 可对同一批新旧输出分别计算提示录音和独立片段的相似度。
 
 `.venv-gui\Scripts\python.exe -m gui.selfcheck` 打开真实窗口，把导入、变声、试听、保存、录音、实时变声、角色切换和退出跑一遍。试听会出声。录音和实时变声需要一对虚拟音频线设备提供麦克风信号，找不到时跳过。设备被拔出、引擎被占用和启动脚本失败是模拟的，输出里有注明。
 
@@ -255,9 +293,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 
 | 项目 | 来源 |
 | --- | --- |
-| 高松灯、千早爱音的模型 | TogetsuDo 发布的 RVC v2 权重和 FAISS 索引。[高松灯](https://huggingface.co/TogetsuDo/tomori-rvc) · [千早爱音](https://huggingface.co/TogetsuDo/anon-rvc) |
-| 永雏塔菲的模型 | NyaruTaffy 32 kHz 的 So-VITS-SVC 3.0 权重，使用配置里的 `taffy` 说话人。[模型与配置](https://huggingface.co/spaces/ZilliaxOfficial/nyaru-svc-3.0/tree/main) |
-| 音色校正用的参考音 | 高松灯和千早爱音取自角色日语对白，永雏塔菲取自直播的说话片段。固定版本和时间段写在 `prepare_voices.py`。[对白](https://github.com/telecom888/Live2dOnAndroid/tree/af08c7b8a0c77444502f27fab0c19e88aeb3c923/app/src/main/assets/voices_builtin) · [直播音频](https://huggingface.co/datasets/KYOU-0/Ace-Taffy-voice) |
+| 旧版兼容声线的灯、爱音模型 | TogetsuDo 发布的 RVC v2 权重和 FAISS 索引。[高松灯](https://huggingface.co/TogetsuDo/tomori-rvc) · [千早爱音](https://huggingface.co/TogetsuDo/anon-rvc) |
+| 旧版兼容声线的塔菲模型 | NyaruTaffy 32 kHz 的 So-VITS-SVC 3.0 权重，使用配置里的 `taffy` 说话人。[模型与配置](https://huggingface.co/spaces/ZilliaxOfficial/nyaru-svc-3.0/tree/main) |
+| 原始参考录音 | [灯官方角色 CM](https://www.youtube.com/watch?v=oo5DW-QZYeo)、[爱音官方角色 CM](https://www.youtube.com/watch?v=7GZ-7YQ-sKk) 分离配乐后的说话片段；[塔菲直播数据集](https://huggingface.co/datasets/KYOU-0/Ace-Taffy-voice)。固定版本、时间段和校验值见 `assets/references/sources.json`。旧第三方合成参考已替换 |
+| 本次导入的模型 | 灯与塔菲为用户提供的 `.pth` / `.index`；爱音取自 [Wanlau/RVC_BanGDream](https://huggingface.co/Wanlau/RVC_BanGDream)，使用 bestdori 对白数据训练。权重与索引的固定版本、SHA-256 见安装记录 |
+| RVC 后端 | [RVC 官方项目](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)，MIT 许可，固定导出版本与实现说明见 `third_party/rvc/` |
+| 可选对照引擎 | [Seed-VC](https://github.com/Plachtaa/seed-vc)，源码与 GPL v3 见 `third_party/seed_vc/`；下载地址与 SHA-256 见 `tools/seed_models.json`。默认不安装、不启动 |
 | 高松灯、千早爱音的头像 | 从动画《BanG Dream! It's MyGO!!!!!》官网的角色立绘裁出，版权归原权利方所有。[角色页](https://anime.bang-dream.com/mygo/character/) |
 | 永雏塔菲的头像 | 账号的公开头像。[账号主页](https://space.bilibili.com/1265680561) |
 | 试听示例 | `assets/previews/original.wav` 是 Windows 中文合成语音，其余三个由本后端转换 |
@@ -276,8 +317,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 
 ## 下一步
 
-1. 找一个用说话素材训练、来源清楚的塔菲 RVC v2 模型，替换 So-VITS-SVC 3.0 加音色校正的组合。
-2. 继续检查音高提取和发音保护对强噪声的影响，RMVPE 已用于塔菲的音色优先档。
-3. 用真人麦克风录音和真实的 Discord 通话各验证一次。
-4. 在没有独立显卡的电脑上测一次速度。
-5. 做一次听感对比，确认客观指标和实际听感一致。
+1. 用用户本人的麦克风录音和真实 Discord 通话校准音域、音色、清晰度与延迟。
+2. 扩充跨场景、没有参与训练的原始对白，检查模型的泛化。
+3. 对照试听确认默认档位；自动相似度不代替听感。
+4. 在其他显卡和没有独立显卡的电脑上测速度。

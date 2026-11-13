@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket,
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
-from . import __version__, engine
+from . import __version__, engine, reference, local_rvc
 from .character import graph
 from .live import FRAME, SHORT_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
 
@@ -27,7 +27,10 @@ async def lifespan(app):
         else:
             raise RuntimeError(f"角色模型启动自检没有检测到语音：{voice_id}")
     app.state.busy = asyncio.Lock()
-    yield
+    try:
+        yield
+    finally:
+        reference.client().close()
 
 
 app = FastAPI(title="角色变声器", version=__version__, lifespan=lifespan)
@@ -38,8 +41,22 @@ app.add_middleware(CORSMiddleware,
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "version": __version__, "engine": "RVC v2 / So-VITS-SVC 3.0",
-            "provider": graph("taffy_svc").get_providers()[0],
+    worker = reference.client()
+    ready = worker.port is not None and worker.process is not None and worker.process.poll() is None
+    profiles = {voice: local_rvc.profile(voice) for voice in engine.VOICES}
+    references = sorted(reference.PREFERRED_VOICES) if ready else []
+    models = {voice: ("Seed-VC · 直播参考" if voice == "taffy" and voice in references
+                      else "Seed-VC · 原声参考" if voice in references
+                      else f"{profile.label} · RVC v2 {profile.sample_rate//1000}k" if profile is not None
+                      else "So-VITS-SVC 3.0" if voice == "taffy" else "RVC v2")
+              for voice, profile in profiles.items()}
+    current_engine = "Seed-VC / RVC" if ready else "RVC v2" if all(profiles.values()) else "RVC v2 / So-VITS-SVC 3.0"
+    provider = ("PyTorch CUDA" if ready else local_rvc.graph(next(voice for voice, profile in profiles.items() if profile)).get_providers()[0]
+                if any(profiles.values()) else graph("taffy_svc").get_providers()[0])
+    return {"status": "ok", "version": __version__, "engine": current_engine,
+            "reference_engine": ready, "reference_error": reference.client().failure,
+            "reference_voices": sorted(references), "voice_models": models,
+            "provider": provider,
             "sample_rate": engine.RATE,
             "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES}
 

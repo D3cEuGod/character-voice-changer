@@ -1,0 +1,78 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.2.0",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng · RVC v2 40k",
+      "taffy": "mygf-tf · RVC v2 40k",
+      "anon": "Anon_v2 · RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "sender": "Speakers (Steam Streaming Microphone)",
+  "receiver": "Microphone (Steam Streaming Microphone)",
+  "tests": [
+    {
+      "input": ".run\\noisy-input.wav",
+      "voice": "tomori",
+      "mode": "character",
+      "repeat": 5,
+      "correlation": 1.0,
+      "signal_delay_s": 1.12,
+      "p95_ms": 68.3,
+      "max_ms": 91.7,
+      "starvations": 0,
+      "device_underflows": 0,
+      "fifo_dropped": 0,
+      "playback_slack_s": 0.5,
+      "device_latency_s": 0.1596,
+      "underruns": 0,
+      "full_scale_pct": 0.0,
+      "audio_present": true
+    },
+    {
+      "input": ".run\\noisy-input.wav",
+      "voice": "taffy",
+      "mode": "character",
+      "repeat": 5,
+      "correlation": 1.0,
+      "signal_delay_s": 1.12,
+      "p95_ms": 70.4,
+      "max_ms": 92.4,
+      "starvations": 0,
+      "device_underflows": 0,
+      "fifo_dropped": 0,
+      "playback_slack_s": 0.5,
+      "device_latency_s": 0.1596,
+      "underruns": 0,
+      "full_scale_pct": 0.0,
+      "audio_present": true
+    },
+    {
+      "input": ".run\\noisy-input.wav",
+      "voice": "anon",
+      "mode": "character",
+      "repeat": 5,
+      "correlation": 1.0,
+      "signal_delay_s": 0.96,
+      "p95_ms": 87.2,
+      "max_ms": 120.5,
+      "starvations": 0,
+      "device_underflows": 0,
+      "fifo_dropped": 0,
+      "playback_slack_s": 0.5,
+      "device_latency_s": 0.1596,
+      "underruns": 0,
+      "full_scale_pct": 0.0,
+      "audio_present": true
+    }
+  ],
+  "report_note": "Correlation is clipped to [-1,1] to remove float32-norm rounding of at most 2e-5 in this test run. The loopback tool now uses float64 norms."
+}

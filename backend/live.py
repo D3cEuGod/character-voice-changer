@@ -46,7 +46,7 @@ class LiveVoice:
     def __init__(self, voice_id, strength, lookahead=OVERLAP, mode="character"):
         self.model = CharacterModel(voice_id, strength, mode)
         self.lookahead = lookahead
-        self.history = np.zeros(RATE, np.float32)
+        self.history = np.zeros(self.model.context_samples, np.float32)
         self.tail = np.empty(0, np.float32)
         self.sent = np.zeros(SPLIT_PAD, np.float32)  # the samples emitted just before the tail
 
@@ -55,8 +55,8 @@ class LiveVoice:
         self.history[:-count] = self.history[count:]
         self.history[-count:] = frame
         rendered = self.model.render(self.history, count)
-        start = RATE-count-(self.lookahead if self.tail.size else 0)
-        end = RATE-self.lookahead
+        start = len(self.history)-count-(self.lookahead if self.tail.size else 0)
+        end = len(self.history)-self.lookahead
         shift = 0
         if self.tail.size and self.model.strength > 0:
             # SOLA: align the overlapping voiced cycles before mixing them.
@@ -73,6 +73,8 @@ class LiveVoice:
                                   rendered[first-SPLIT_PAD:first+JOIN+SPLIT_PAD])
         elif self.tail.size:
             result[:JOIN] = self.tail[:JOIN]*(1-FADE) + result[:JOIN]*FADE
+        if self.model.strength > 0:
+            np.clip(result, -.99, .99, out=result)
         self.sent = result[-SPLIT_PAD:].copy()
         # Keep nominal duration even when the best join lies a few samples later.
         self.tail = rendered[end+shift:].copy()

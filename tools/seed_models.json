@@ -1,0 +1,51 @@
+[
+  {
+    "file": "tiny/DiT_uvit_tat_xlsr_ema.pth",
+    "url": "https://huggingface.co/Plachta/Seed-VC/resolve/257283f9f41585055e8f858fba4fd044e5caed6e/DiT_uvit_tat_xlsr_ema.pth",
+    "sha256": "c853ea578b409f625f961bcb15d5cff1f8ef9a75f3209ec21d9b7c73ab422e88",
+    "repo": "Plachta/Seed-VC",
+    "revision": "257283f9f41585055e8f858fba4fd044e5caed6e"
+  },
+  {
+    "file": "tiny/config_dit_mel_seed_uvit_xlsr_tiny.yml",
+    "url": "https://huggingface.co/Plachta/Seed-VC/resolve/257283f9f41585055e8f858fba4fd044e5caed6e/config_dit_mel_seed_uvit_xlsr_tiny.yml",
+    "sha256": "e4f152f9c7b8924f82c9661cd28737204dd93368871a6feaec36437cb7138e74",
+    "repo": "Plachta/Seed-VC",
+    "revision": "257283f9f41585055e8f858fba4fd044e5caed6e"
+  },
+  {
+    "file": "xlsr/config.json",
+    "url": "https://huggingface.co/facebook/wav2vec2-xls-r-300m/resolve/1a640f32ac3e39899438a2931f9924c02f080a54/config.json",
+    "sha256": "0bffa0d0e98153e883b828d86491f3c6062cb563dc9d7a9cfd1790da30c286ac",
+    "repo": "facebook/wav2vec2-xls-r-300m",
+    "revision": "1a640f32ac3e39899438a2931f9924c02f080a54"
+  },
+  {
+    "file": "xlsr/preprocessor_config.json",
+    "url": "https://huggingface.co/facebook/wav2vec2-xls-r-300m/resolve/1a640f32ac3e39899438a2931f9924c02f080a54/preprocessor_config.json",
+    "sha256": "a2254a5b58f72cd4de3632f8eee64f3f098b7c1402128d2f419e7d00ae13e335",
+    "repo": "facebook/wav2vec2-xls-r-300m",
+    "revision": "1a640f32ac3e39899438a2931f9924c02f080a54"
+  },
+  {
+    "file": "xlsr/pytorch_model.bin",
+    "url": "https://huggingface.co/facebook/wav2vec2-xls-r-300m/resolve/1a640f32ac3e39899438a2931f9924c02f080a54/pytorch_model.bin",
+    "sha256": "d5e490574712ad0a6736923b9ed11d4cd51c78609c36205f704fc4e87b11d2e0",
+    "repo": "facebook/wav2vec2-xls-r-300m",
+    "revision": "1a640f32ac3e39899438a2931f9924c02f080a54"
+  },
+  {
+    "file": "tiny/campplus_cn_common.bin",
+    "url": "https://huggingface.co/funasr/campplus/resolve/e4b6ede7ce16997aff4ae69fbca1f0175e2afede/campplus_cn_common.bin",
+    "sha256": "3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8",
+    "repo": "funasr/campplus",
+    "revision": "e4b6ede7ce16997aff4ae69fbca1f0175e2afede"
+  },
+  {
+    "file": "tiny/hift.pt",
+    "url": "https://huggingface.co/FunAudioLLM/CosyVoice-300M/resolve/24c40509c3c5ea6fe06b5f8790ff99e3714a6bee/hift.pt",
+    "sha256": "91e679b6ca1eff71187ffb4f3ab0444935594cdcc20a9bd12afad111ef8d6012",
+    "repo": "FunAudioLLM/CosyVoice-300M",
+    "revision": "24c40509c3c5ea6fe06b5f8790ff99e3714a6bee"
+  }
+]

@@ -114,7 +114,7 @@ def main():
     voices = sys.argv[2:] or list(engine.VOICES)
     out = ROOT / ".run/eval" / tag
     out.mkdir(parents=True, exist_ok=True)
-    refs = {v: speaker_embedding(*sf.read(str(ROOT / f".run/refs/{v}.wav"), dtype="float32")) for v in voices}
+    refs = {v: speaker_embedding(*sf.read(str(ROOT / f"assets/references/{v}.wav"), dtype="float32")) for v in voices}
     clips, ranges = build_clips()
     render(voices[0], clips["female"][:2 * RATE])  # warm up
     rows = []

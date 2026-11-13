@@ -1,0 +1,80 @@
+[
+  {
+    "voice": "tomori",
+    "input": "female",
+    "old_prompt": 0.438,
+    "old_heldout": 0.428,
+    "old_user_demo": 0.555,
+    "new_prompt": 0.372,
+    "new_heldout": 0.384,
+    "new_user_demo": 0.546
+  },
+  {
+    "voice": "tomori",
+    "input": "male",
+    "old_prompt": 0.431,
+    "old_heldout": 0.421,
+    "old_user_demo": 0.556,
+    "new_prompt": 0.447,
+    "new_heldout": 0.436,
+    "new_user_demo": 0.604
+  },
+  {
+    "voice": "tomori",
+    "input": "noisy",
+    "old_prompt": 0.416,
+    "old_heldout": 0.425,
+    "old_user_demo": 0.563,
+    "new_prompt": 0.47,
+    "new_heldout": 0.465,
+    "new_user_demo": 0.625
+  },
+  {
+    "voice": "taffy",
+    "input": "female",
+    "old_prompt": 0.531,
+    "old_heldout": 0.454,
+    "new_prompt": 0.507,
+    "new_heldout": 0.426
+  },
+  {
+    "voice": "taffy",
+    "input": "male",
+    "old_prompt": 0.505,
+    "old_heldout": 0.443,
+    "new_prompt": 0.565,
+    "new_heldout": 0.51
+  },
+  {
+    "voice": "taffy",
+    "input": "noisy",
+    "old_prompt": 0.524,
+    "old_heldout": 0.484,
+    "new_prompt": 0.583,
+    "new_heldout": 0.524
+  },
+  {
+    "voice": "anon",
+    "input": "female",
+    "old_prompt": 0.597,
+    "old_heldout": 0.619,
+    "new_prompt": 0.64,
+    "new_heldout": 0.635
+  },
+  {
+    "voice": "anon",
+    "input": "male",
+    "old_prompt": 0.61,
+    "old_heldout": 0.686,
+    "new_prompt": 0.673,
+    "new_heldout": 0.721
+  },
+  {
+    "voice": "anon",
+    "input": "noisy",
+    "old_prompt": 0.643,
+    "old_heldout": 0.724,
+    "new_prompt": 0.683,
+    "new_heldout": 0.744
+  }
+]

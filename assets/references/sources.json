@@ -1,0 +1,40 @@
+[
+  {
+    "voice": "tomori",
+    "source": "https://www.youtube.com/watch?v=oo5DW-QZYeo",
+    "source_page": "https://anime.bang-dream.com/mygo/special/movie/",
+    "kind": "official character introduction CM, original performance",
+    "start_seconds": 3.8,
+    "end_seconds": 10.8,
+    "processing": "Kim_Vocal_2 vocal separation, mono 22050 Hz, peak normalization",
+    "sha256": "f56b421b9925e2284efedaea4c0d28efe07a6edcb07610178cda4c9f7b01fb69"
+  },
+  {
+    "voice": "anon",
+    "source": "https://www.youtube.com/watch?v=7GZ-7YQ-sKk",
+    "source_page": "https://anime.bang-dream.com/mygo/special/movie/",
+    "kind": "official character introduction CM, original performance",
+    "start_seconds": 2.1,
+    "end_seconds": 7.1,
+    "processing": "Kim_Vocal_2 vocal separation, mono 22050 Hz, peak normalization",
+    "sha256": "d30935c4aca1fef4bcb1ac34a928f31824f17191e7023130c2c246e19a0d2579"
+  },
+  {
+    "voice": "taffy",
+    "source": "https://huggingface.co/datasets/KYOU-0/Ace-Taffy-voice/tree/48623d4de7338a82a83bd9c76a9a4ee193aadb3f/raw/2025-06-26_21-15",
+    "kind": "original livestream speech",
+    "start_seconds": 1383.81,
+    "end_seconds": 1391.134,
+    "processing": "mono 22050 Hz, peak normalization",
+    "sha256": "fc20a674da548048d55fafaaf0378cc761b850102cfc2d57554813cffb17179f"
+  },
+  {
+    "voice": "tomori-user-demo",
+    "source": "User-provided 凑企鹅（音频）.mp4",
+    "kind": "user-selected singing example; original recording provenance unverified",
+    "start_seconds": 0,
+    "end_seconds": 16,
+    "processing": "Kim_Vocal_2 vocal separation, mono 22050 Hz",
+    "sha256": "8de119cb553596be7c55eda44f1db1c4e72053a8389552a0711abd5db24d07cc"
+  }
+]

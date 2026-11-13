@@ -1,0 +1,1 @@
+v020-rvc CER ALL 7.9%  anon 9.6%  female 2.4%  male 4.1%  noisy 17.2%  taffy 6.1%  tomori 8.1%  female/anon 2.6%  female/taffy 3.3%  female/tomori 1.3%  male/anon 5.2%  male/taffy 4.6%  male/tomori 2.6%  noisy/anon 20.9%  noisy/taffy 10.5%  noisy/tomori 20.3%

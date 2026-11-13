@@ -89,6 +89,9 @@ class MainWindow(QWidget):
         self.bridge = Bridge()
 
         self.backend_ok = False
+        self.reference_engine = False
+        self.reference_voices = set()
+        self.voice_models = {}
         self.max_seconds = 60.0
         self.max_bytes = 24 * 1024 * 1024
         self.voices: list[dict] = []
@@ -226,16 +229,22 @@ class MainWindow(QWidget):
         self.voice_mode = ConsoleCombo()
         for mode, name in MODE_NAMES.items():
             self.voice_mode.addItem(name, mode)
-        self.voice_mode.setAccessibleName("塔菲处理方式")
-        self.voice_mode.setToolTip("音色优先减少原声混入。通话清晰保留更多发音细节，适合背景噪声较大的环境。")
+        self.voice_mode.setAccessibleName("处理方式")
+        self.voice_mode.setToolTip("音色优先加强角色模型检索；通话清晰降低检索比例、加强发音保护。下方角色标注显示实际加载的模型。")
         card.body.addWidget(self.voice_mode)
-        self.original_button = QPushButton("原声示例")
+        examples = QHBoxLayout()
+        self.original_button = QPushButton("输入示例")
         self.original_button.setObjectName("ghost")
         self.original_button.setIconSize(QSize(11, 11))
         self.original_button.setIcon(make_icon("play", theme.SKY, 11))
         self.original_button.setToolTip("播放 assets/previews/original.wav，三位角色的示例都由这句话转换而来")
         self.original_button.setEnabled((PREVIEWS / "original.wav").is_file())
-        card.body.addWidget(self.original_button, 0, Qt.AlignHCenter)
+        examples.addWidget(self.original_button)
+        self.reference_button = QPushButton("角色原声")
+        self.reference_button.setObjectName("ghost")
+        self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来与变声示例对照")
+        examples.addWidget(self.reference_button)
+        card.body.addLayout(examples)
         return card
 
     def _build_work(self) -> QWidget:
@@ -451,6 +460,7 @@ class MainWindow(QWidget):
         self.tab_buttons["live"].clicked.connect(lambda: self.show_tab("live"))
         self.tab_buttons["file"].clicked.connect(lambda: self.show_tab("file"))
         self.original_button.clicked.connect(lambda: self.toggle_preview("original"))
+        self.reference_button.clicked.connect(lambda: self.toggle_preview("reference"))
         self.mic_combo.currentIndexChanged.connect(self._on_device_changed)
         self.out_combo.currentIndexChanged.connect(self._on_device_changed)
         self.route_mode.currentIndexChanged.connect(self._route_changed)
@@ -489,7 +499,7 @@ class MainWindow(QWidget):
         return (self.input.serial, self.voice_id, self.strength_pct, self.current_mode())
 
     def current_mode(self) -> str:
-        return self.voice_mode.currentData() if self.voice_id == "taffy" else "call"
+        return self.voice_mode.currentData()
 
     def current_result(self) -> ResultClip | None:
         key = self.current_key()
@@ -627,7 +637,13 @@ class MainWindow(QWidget):
             self.owned_backend = launcher.process
         self.max_seconds = float(health.get("max_seconds", self.max_seconds))
         self.max_bytes = int(health.get("max_bytes", self.max_bytes))
+        self.reference_engine = bool(health.get("reference_engine"))
+        self.reference_voices = set(health.get("reference_voices", ("tomori", "taffy") if self.reference_engine else ()))
+        self.voice_models = health.get("voice_models", {})
         self._set_backend(True)
+        if health.get("reference_error"):
+            self.notice.setText(f"音色优先暂时使用兼容引擎：{health['reference_error']}")
+            self.notice.show()
         how = "由本程序启动（关闭窗口时一并停止）" if started else "复用已在运行的后端"
         self.set_status(f"已连接 {self.client.base_url} · {health.get('engine', '')} · {how}", "ok")
         self._load_voices()
@@ -726,7 +742,8 @@ class MainWindow(QWidget):
 
     # ---- 角色 -----------------------------------------------------------
     def _show_voice(self, voice_id: str | None) -> None:
-        self.voice_mode.setVisible(voice_id == "taffy")
+        self.voice_mode.setEnabled(voice_id is not None)
+        self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
         style = theme.voice_style(voice_id or "taffy")
         self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
         self.live_switch.set_color(style.color)
@@ -735,7 +752,7 @@ class MainWindow(QWidget):
             self.hero_caption.setText("正在读取角色列表")
         else:
             self.hero_name.setText(self._voice_name(voice_id))
-            self.hero_caption.setText(voice_id.upper())
+            self.hero_caption.setText(self.voice_models.get(voice_id, voice_id.upper()))
         self.hero_caption.setStyleSheet(f"color: {style.color};")
         for card_id, card in self.cards.items():
             card.set_active(card_id == voice_id)
@@ -743,6 +760,8 @@ class MainWindow(QWidget):
     def select_voice(self, voice_id: str) -> None:
         if voice_id == self.voice_id or voice_id not in self.cards:
             return
+        if self.playing_tag == ("preview", "reference"):
+            self.stop_playback()
         self.voice_id = voice_id
         self._show_voice(voice_id)
         self._refresh()
@@ -1007,23 +1026,25 @@ class MainWindow(QWidget):
         for voice_id, card in self.cards.items():
             card.set_previewing(voice_id == current)
         playing_original = current == "original"
-        self.original_button.setText("停止" if playing_original else "原声示例")
+        self.original_button.setText("停止" if playing_original else "输入示例")
         self.original_button.setIcon(make_icon("stop" if playing_original else "play", theme.SKY, 12))
+        self.reference_button.setText("停止" if current == "reference" else "角色原声")
 
     def toggle_preview(self, name: str) -> None:
-        """立即播放 assets/previews 下的示例；再点一次停止。"""
+        """播放输入、转换结果或已核实出处的角色原始录音。"""
         if self.playing_tag == ("preview", name):
             self.stop_playback()
             return
-        filename = "taffy-call" if name == "taffy" and self.voice_mode.currentData() == "call" else name
-        path = PREVIEWS / f"{filename}.wav"
+        filename = f"{name}-call" if name in self.cards and self.current_mode() == "call" else name
+        path = ASSETS / "references" / f"{self.voice_id}.wav" if name == "reference" else PREVIEWS / f"{filename}.wav"
         try:
             samples, rate = sf.read(str(path), dtype="float32", always_2d=True)
         except Exception as exc:
             self.set_status(f"无法读取示例 {path.name}：{exc}", "error")
             return
         self.stop_playback()
-        label = "原声示例" if name == "original" else f"{self._voice_name(name)} 的示例"
+        label = ("输入示例" if name == "original" else f"{self._voice_name(self.voice_id)} 的角色原声"
+                 if name == "reference" else f"{self._voice_name(name)} 的变声示例")
         if self._play(("preview", name), samples.mean(axis=1), rate):
             self.set_status(f"正在播放{label}（{path.name}）→ {self._device(self.out_combo).name}")
 
@@ -1136,8 +1157,9 @@ class MainWindow(QWidget):
             raise audio.AudioDeviceError("没有找到输出设备，无法监听。")
         mic = audio.MicStream(mic_device)
         try:
-            # 通话输出多留一点余量：0.24 秒时每次会话开头都会断流一次，0.31 秒时六次测试都没有断流
-            speaker = audio.SpeakerStream(out_device, slack_seconds=0.31 if receiver else 0.24, receiver=receiver)
+            # Virtual output keeps more headroom for inference and device jitter.
+            slack = audio.live_slack(self.voice_id in self.reference_voices, self.voice_id, self.current_mode(), receiver is not None)
+            speaker = audio.SpeakerStream(out_device, slack_seconds=slack, receiver=receiver)
         except audio.AudioDeviceError:
             mic.close()
             raise

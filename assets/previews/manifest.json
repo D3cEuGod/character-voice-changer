@@ -1,0 +1,65 @@
+{
+  "created_utc": "2026-11-13T05:33:02.450563+00:00",
+  "backend": {
+    "status": "ok",
+    "version": "0.2.0",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng · RVC v2 40k",
+      "taffy": "mygf-tf · RVC v2 40k",
+      "anon": "Anon_v2 · RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "input_sha256": "5736f4639d2ec5d1190e4e86d3f2b58d6aca09db30efe72f572ddfe1e0b8fc4d",
+  "files": [
+    {
+      "file": "tomori.wav",
+      "voice": "tomori",
+      "mode": "character",
+      "model": "deng · RVC v2 40k",
+      "sha256": "131444817567510bd7e79fdaf7bb957ae28b8143c467113ac934113f4700915c"
+    },
+    {
+      "file": "tomori-call.wav",
+      "voice": "tomori",
+      "mode": "call",
+      "model": "deng · RVC v2 40k",
+      "sha256": "0d04991641274862292140091c8c173a4b20e006c4dbe1a445c6450f3c0fe647"
+    },
+    {
+      "file": "taffy.wav",
+      "voice": "taffy",
+      "mode": "character",
+      "model": "mygf-tf · RVC v2 40k",
+      "sha256": "84adcc09d4b713e2d9800d70e5fd606a3563234a2c19e64cb1111dfd1c1c64b3"
+    },
+    {
+      "file": "taffy-call.wav",
+      "voice": "taffy",
+      "mode": "call",
+      "model": "mygf-tf · RVC v2 40k",
+      "sha256": "f873712a4b06f526c737b3eb605adadcc289ceb9800eab949065d6475945c8e5"
+    },
+    {
+      "file": "anon.wav",
+      "voice": "anon",
+      "mode": "character",
+      "model": "Anon_v2 · RVC v2 40k",
+      "sha256": "53debd779999f0057c5fef00df645239d2e4495e173e2d2e2555a138b3bc9b13"
+    },
+    {
+      "file": "anon-call.wav",
+      "voice": "anon",
+      "mode": "call",
+      "model": "Anon_v2 · RVC v2 40k",
+      "sha256": "08e71fecbb0fd5ee523d3300d59393e934e708596777e8fcc8242580fdc3949b"
+    }
+  ]
+}

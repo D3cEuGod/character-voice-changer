@@ -317,6 +317,15 @@ class AudioFifo:
             return out
 
 
+def live_slack(reference_engine: bool, voice: str, mode: str, discord: bool) -> float:
+    """Absorb inference and device jitter before sending audio to a virtual microphone."""
+    if discord:
+        return .50
+    if reference_engine and voice in ("tomori", "taffy") and mode == "character":
+        return .40
+    return .24
+
+
 class SpeakerStream:
     """监听用的播放端。每次断流后先留出 slack_seconds 的余量再继续，吸收推理时间的抖动。"""
 
@@ -328,6 +337,8 @@ class SpeakerStream:
         self.rate = receiver.rate if self._steam else device.rate
         self.level = 0.0
         self.underruns = 0
+        self.starvations = 0
+        self.device_underflows = 0
         self.slack_seconds = slack_seconds
         self.fifo = AudioFifo(int(max_seconds * self.rate))
         self._slack = int(slack_seconds * self.rate)
@@ -341,12 +352,13 @@ class SpeakerStream:
                 self._stream = sd.OutputStream(
                     device=device.index, samplerate=self.rate, dtype="int32", channels=1,
                     extra_settings=sd.WasapiSettings(exclusive=True, explicit_sample_format=True),
-                    latency=OUTPUT_LATENCY, callback=self._callback)
+                    latency=max(OUTPUT_LATENCY, .15), callback=self._callback)
             except Exception as exc:
                 raise AudioDeviceError(f"无法打开 Steam 通话输出（{self.rate} Hz 单声道）：{exc}") from exc
         else:
             self._stream, _ = _open_stream(sd.OutputStream, device, "输出设备", (2, 1, device.channels),
-                                           latency=OUTPUT_LATENCY, callback=self._callback)
+                                           latency=max(OUTPUT_LATENCY, .15) if receiver else OUTPUT_LATENCY,
+                                           callback=self._callback)
 
     def _callback(self, outdata, frames, time_info, status):
         if self._waiting and not self._draining and len(self.fifo) < self._target_fill:
@@ -372,9 +384,11 @@ class SpeakerStream:
             self._waiting = True
             if not self._draining:
                 self.underruns += 1
+                self.starvations += 1
                 self._target_fill = min(self._target_fill + self.rate // 16, self.rate // 2)
         elif status.output_underflow:  # 回调来晚了，设备已经断过一小段
             self.underruns += 1
+            self.device_underflows += 1
 
     def write(self, samples: np.ndarray) -> None:
         self.fifo.write(samples)

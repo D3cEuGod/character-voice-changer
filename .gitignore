@@ -4,6 +4,8 @@ __pycache__/
 models/*.onnx
 models/*.index
 models/*.part
+models/seed-vc/
+models/local-rvc/
 .run/
 *.lnk
 voices/*-frames.npy

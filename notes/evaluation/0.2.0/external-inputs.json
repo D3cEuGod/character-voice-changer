@@ -1,0 +1,29 @@
+{
+  "server": {
+    "status": "ok",
+    "version": "0.2.0",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng \u00b7 RVC v2 40k",
+      "taffy": "mygf-tf \u00b7 RVC v2 40k",
+      "anon": "Anon_v2 \u00b7 RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "inputs": [
+    {
+      "file": "source_s3.wav",
+      "sha256": "0e784fc21f6eade4633db4050528110a9fc307686487fcec257ad3db35a65c8d"
+    },
+    {
+      "file": "source_s4.wav",
+      "sha256": "ee7ccf45748bf8918c17e9bf80f79af423cefd78d9c8eebb717a395305272b9f"
+    }
+  ]
+}

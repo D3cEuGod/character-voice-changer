@@ -1,6 +1,7 @@
 """One-second windows for the trained RVC v2 and So-VITS-SVC 3.0 speakers."""
 from functools import lru_cache
 from math import gcd
+import os
 
 import numpy as np
 import faiss
@@ -11,11 +12,11 @@ from scipy.signal.windows import hann
 
 from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
 from .pitch import pitch_track as rmvpe_pitch
+from . import reference, local_rvc
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
 # How far OpenVoice pulls each trained voice toward its speaking reference; 0 skips the stage.
-# On the eval set in tools/eval it lifts speaker similarity for Tomori (0.51 to 0.61) and
-# Taffy (0.37 to 0.53), leaves Anon unchanged (0.65), and costs about 20 ms per packet.
+# Legacy compatibility path only. Imported RVC speakers bypass this stage entirely.
 TIMBRE_REFINE = {"tomori": 1.0, "anon": 0.0, "taffy": 1.0}
 # Voiced windows averaged into the session's estimate of the trained voice's own timbre.
 TONE_WINDOWS = 40
@@ -40,29 +41,32 @@ def graph(name):
     return load_graph(name + ".onnx", gpu=name not in ("gtcrn_simple", "silero_vad_16k_op15"))
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=3)
 def voice_index(name):
-    with (ROOT / "models" / (name + ".index")).open("rb") as stream:
+    local = local_rvc.profile(name)
+    path = local.index if local is not None else ROOT / "models" / (name + ".index")
+    with path.open("rb") as stream:
         return faiss.read_index(faiss.PyCallbackIOReader(stream.read))
 
 
-def retrieve(units, name, f0):
+def retrieve(units, name, f0, index_rate=.38, *, all_frames=False):
     faiss.omp_set_num_threads(2)
     distances, ids, vectors = voice_index(name).search_and_reconstruct(units[0], 8)
     weights = np.where(ids >= 0, np.reciprocal(np.maximum(distances, 1e-5))**2, 0)
     weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1e-12)
     nearest = (np.nan_to_num(vectors) * weights[:, :, None]).sum(axis=1)
-    mix = np.where(f0.reshape(-1, 2).max(axis=1) > 0, .38, .06).astype(np.float32)
+    mix = np.full(units.shape[1], index_rate, np.float32) if all_frames else np.where(
+        f0.reshape(-1, 2).max(axis=1) > 0, index_rate, .06).astype(np.float32)
     return units + (nearest[None] - units) * mix[None, :, None]
 
 
 class SpeechDetector:
-    def __init__(self):
+    def __init__(self, history_samples=16000):
         self.model = graph("silero_vad_16k_op15")
         self.state = np.zeros((2, 1, 128), np.float32)
         self.context = np.zeros(64, np.float32)
         self.pending = np.empty(0, np.float32)
-        self.history = np.zeros(16000, np.float32)
+        self.history = np.zeros(history_samples, np.float32)
 
     def process(self, samples):
         data = np.concatenate((self.pending, samples))
@@ -76,7 +80,7 @@ class SpeechDetector:
             levels[i:i+512] = probability.item()
             self.context = block[-64:]
         self.pending = data[consumed:]
-        self.history = np.concatenate((self.history, levels))[-16000:]
+        self.history = np.concatenate((self.history, levels))[-len(self.history):]
         scores = np.pad(self.history[len(self.pending):], (0, len(self.pending)), mode="edge")
         # Allow 96 ms on either side of detected speech for stops and fricatives.
         scores = maximum_filter1d(scores, 3073)
@@ -85,15 +89,15 @@ class SpeechDetector:
 
 class StreamingDenoiser:
     """Keep GTCRN's recurrent state, STFT overlap and fractional hops across packets."""
-    def __init__(self):
+    def __init__(self, history_samples=16000):
         self.model = graph("gtcrn_simple")
         self.caches = {a.name: np.zeros(a.shape, np.float32) for a in self.model.get_inputs()[1:]}
         self.previous = np.zeros(256, np.float32)
         self.overlap = np.zeros(256, np.float32)
         self.pending = np.empty(0, np.float32)
-        self.history = np.zeros(16000, np.float32)
+        self.history = np.zeros(history_samples, np.float32)
         self.source_count = 0
-        self.detector = SpeechDetector()
+        self.detector = SpeechDetector(history_samples)
 
     def process(self, window, count):
         previous = round(self.source_count * 16000 / RATE)
@@ -115,7 +119,7 @@ class StreamingDenoiser:
             clean[i:i + 256] = self.overlap + block[:256]
             self.previous, self.overlap = hop, block[256:]
         self.pending = data[consumed:]
-        self.history = np.concatenate((self.history, clean))[-16000:]
+        self.history = np.concatenate((self.history, clean))[-len(self.history):]
         # The converter withholds 46 ms at the right edge. The unresolved
         # 16–32 ms here is lookahead only and is never emitted as speech.
         lookahead = 256 + len(self.pending)
@@ -134,15 +138,31 @@ def pitch_track(audio):
     return padded
 
 
+def audio_gate(clean, activity, samples):
+    rms = np.sqrt(np.maximum(uniform_filter1d(clean**2, 480), 0))
+    gate = np.clip((rms - 0.00025) / 0.0015, 0, 1) * activity
+    return np.interp(np.arange(samples)*16000/RATE, np.arange(len(clean)), gate)
+
+
 class CharacterModel:
     def __init__(self, name, strength, mode="character"):
         self.name = name
         self.strength = strength
+        self.local = local_rvc.profile(name)
+        self.mode = mode
         self.fidelity = name == "taffy" and mode == "character"
+        self.anon_fidelity = name == "anon" and mode == "character"
+        self.reference = (reference.client() if os.environ.get("VOICE_REFERENCE_ENGINE") == "seed" and strength and mode == "character"
+                          and name in reference.PREFERRED_VOICES else None)
+        if self.reference is not None and not self.reference.start():
+            self.reference = None
+        if self.reference is not None:
+            self.local = None
+        self.context_samples = reference.CONTEXT_SAMPLES if self.reference is not None else RATE
         self.register = None
         self.tone = None
         self.tone_windows = 0
-        self.denoiser = StreamingDenoiser() if strength else None
+        self.denoiser = StreamingDenoiser(round(self.context_samples*16000/RATE)) if strength else None
 
     def source_tone(self, wet, voiced_frames):
         """Running mean of the trained voice's own timbre vector, from windows with enough voicing."""
@@ -159,16 +179,28 @@ class CharacterModel:
         if np.max(activity) < .005 or np.max(np.abs(clean)) < 0.0006:
             return np.zeros_like(window)
         clean *= activity
-        f0 = rmvpe_pitch(clean) if self.fidelity else pitch_track(clean)
+        if self.reference is not None:
+            rendered = self.reference.convert(clean, self.name)
+            wet = np.zeros_like(window)
+            # Leave headroom for the level-preserving packet crossfade.
+            wet[reference.OUTPUT_START:reference.OUTPUT_START+reference.OUTPUT_SAMPLES] = .7 * rendered
+            wet *= audio_gate(clean, activity, len(window))
+            dry = resample_poly(clean, 441, 320)
+            return np.clip(self.strength*wet + (1-self.strength)*dry, -.99, .99)
+        f0 = rmvpe_pitch(clean) if self.fidelity or self.local is not None else pitch_track(clean)
         voiced = f0[f0 > 0]
         if voiced.size >= 5:
             median = np.log(float(np.median(voiced)))
             self.register = median if self.register is None else .92*self.register + .08*median
-        if self.register is not None:
-            ratio = np.clip(REGISTER[self.name] / np.exp(self.register), .7, 3.2)
+        if self.local is not None and self.local.semitones is not None:
+            f0 *= 2 ** (self.local.semitones * self.strength / 12)
+            np.minimum(f0, 650, out=f0)
+        elif self.register is not None:
+            target = self.local.target_hz if self.local is not None else REGISTER[self.name]
+            ratio = np.clip(target / np.exp(self.register), .7, 3.2)
             f0 *= ratio ** self.strength
             np.minimum(f0, 650, out=f0)
-        if self.name == "taffy":
+        if self.name == "taffy" and self.local is None:
             units = graph("hubert_soft").run(None, {"audio": clean[None, None]})[0]
             inputs = {"units": units.repeat(2, axis=1).transpose(0, 2, 1), "f0": f0[None]}
             model = graph("taffy_svc")
@@ -176,25 +208,36 @@ class CharacterModel:
             units = graph("contentvec_768l12").run(None, {
                 "input_values": np.pad(clean, 40, mode="reflect")[None], "attention_mask": MASK,
             })[0]
-            units = retrieve(units, self.name, f0)
+            if self.local is not None:
+                # RVC's protection happens in feature space, not by mixing the
+                # caller's raw high-frequency voice into the generated waveform.
+                original = units.repeat(2, axis=1)
+                retrieved = retrieve(units, self.name, f0, 1., all_frames=True).repeat(2, axis=1)
+                ratio = self.local.index_rate if self.mode == "character" else min(self.local.index_rate, .5)
+                protect = self.local.protect if self.mode == "character" else min(self.local.protect, .15)
+                mask = (np.ones_like(f0) if protect >= .5 else np.where(f0 > 0, 1., protect).astype(np.float32))
+                units = original + (retrieved-original) * (ratio*mask)[None, :, None]
+            else:
+                units = retrieve(units, self.name, f0, .75 if self.anon_fidelity else .38).repeat(2, axis=1)
             mel = 1127 * np.log1p(f0 / 700)
             low, high = 1127 * np.log1p(np.array([50., 1100.]) / 700)
             pitch = np.rint((mel - low) * 254 / (high-low) + 1).clip(1, 255).astype("int64")
-            inputs = {"units": units.repeat(2, axis=1), "f0": f0[None],
+            inputs = {"units": units, "f0": f0[None],
                       "pitch": pitch[None], "noise": LATENT}
-            model = graph(self.name + "_rvc")
+            model = local_rvc.graph(self.name) if self.local is not None else graph(self.name + "_rvc")
         generated = model.run(None, inputs)[0].ravel()
-        rate = VOICE_RATES[self.name]
+        rate = self.local.sample_rate if self.local is not None else VOICE_RATES[self.name]
         if len(generated) != rate or not np.isfinite(generated).all():
             raise RuntimeError("角色模型返回了无效音频。")
         g = gcd(rate, RATE)
         wet = resample_poly(generated, RATE // g, rate // g)
         # Prevent the vocoder from inventing hiss during pauses. Follow the
         # denoised amplitude envelope while preserving soft, unvoiced consonants.
-        rms = np.sqrt(np.maximum(uniform_filter1d(clean**2, 480), 0))
-        gate = np.clip((rms - 0.00025) / 0.0015, 0, 1) * activity
-        gate = np.interp(np.arange(RATE)*16000/RATE, np.arange(16000), gate)
+        gate = audio_gate(clean, activity, RATE)
         wet *= gate
+        if self.local is not None:
+            dry = resample_poly(clean, 441, 320)
+            return np.clip(self.strength * .8 * wet + (1-self.strength)*dry, -.99, .99)
         refine = TIMBRE_REFINE[self.name] * self.strength
         if refine > 0 and np.max(np.abs(wet)) > 0.001:
             # Correct only what the trained voice produced, against the session's timbre
@@ -207,6 +250,8 @@ class CharacterModel:
         voiced_mask = np.interp(np.arange(RATE) * 100 / RATE, np.arange(100), f0 > 0)
         unvoiced, voiced = ((CHARACTER_CONSONANT_UNVOICED, CHARACTER_CONSONANT_VOICED)
                            if self.fidelity else (CONSONANT_UNVOICED, CONSONANT_VOICED))
+        if self.anon_fidelity:
+            voiced = 0.0
         mix = unvoiced + (voiced - unvoiced) * voiced_mask
         level = np.clip(np.linalg.norm(wet) / max(np.linalg.norm(dry), .02), .4, 2.5)
         wet += mix * sosfilt(CONSONANT_BAND, level * dry - wet)

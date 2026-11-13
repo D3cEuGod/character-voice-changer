@@ -88,10 +88,31 @@ def checkout(folder, remote, revision):
     return folder
 
 
+def prepare_export_environment():
+    """Prepare only the model-export tools, without downloading compatibility speakers."""
+    CACHE.mkdir(parents=True, exist_ok=True)
+    env = CACHE / "export-env"
+    python = env / "Scripts/python.exe" if os.name == "nt" else env / "bin/python"
+    if not python.is_file():
+        subprocess.run([sys.executable, "-m", "venv", str(env)], check=True)
+    pins = ["torch==2.15.0", "onnx==1.23.2", "scipy==1.18.1", "matplotlib==3.11.2"]
+    check = ("from importlib.metadata import version; "
+             f"assert all(version(p)==v for p,v in (item.split('==') for item in {pins!r}))")
+    if subprocess.run([str(python), "-c", check], capture_output=True).returncode:
+        subprocess.run([str(python), "-m", "pip", "install", "--no-cache-dir", *pins], check=True)
+    return python
+
+
 def main():
     MODELS.mkdir(exist_ok=True)
+    from backend.local_rvc import profile
+    fully_local = all(profile(voice) is not None for voice in ("tomori", "taffy", "anon"))
+    required = {"contentvec_768l12.onnx", "rmvpe.onnx", "gtcrn_simple.onnx", "silero_vad_16k_op15.onnx"}
     for file, source in GRAPHS.items():
-        fetch(MODELS / file, *source)
+        if not fully_local or file in required:
+            fetch(MODELS / file, *source)
+    if fully_local:
+        return
     outputs = {"tomori": ["tomori_rvc"], "anon": ["anon_rvc"], "taffy": ["taffy_svc", "hubert_soft"]}
     missing = [role for role, graphs in outputs.items()
                if any(not (MODELS / (name + ".onnx")).is_file() for name in graphs)]
@@ -99,12 +120,7 @@ def main():
         correct_cached_phase(MODELS / "taffy_svc.onnx")
         return
     WEIGHTS.mkdir(parents=True, exist_ok=True)
-    env = CACHE / "export-env"
-    python = env / "Scripts/python.exe" if os.name == "nt" else env / "bin/python"
-    if not python.is_file():
-        subprocess.run([sys.executable, "-m", "venv", str(env)], check=True)
-    subprocess.run([str(python), "-m", "pip", "install", "torch==2.15.0", "onnx==1.23.2",
-                    "scipy==1.18.1", "matplotlib==3.11.2"], check=True)
+    python = prepare_export_environment()
     for role in missing:
         files = [role + ".pth"]
         if role == "taffy":

@@ -19,6 +19,8 @@ if errorlevel 1 (
 )
 ".venv\Scripts\python.exe" setup_models.py
 if errorlevel 1 goto :failed
+".venv\Scripts\python.exe" setup_reference_engine.py
+if errorlevel 1 echo Seed-VC setup failed. Starting available legacy voices.
 ".venv\Scripts\python.exe" -m uvicorn backend.app:app --host 127.0.0.1 --port 8765 --ws-max-size 16384 --ws-max-queue 2
 if errorlevel 1 goto :failed
 exit /b 0

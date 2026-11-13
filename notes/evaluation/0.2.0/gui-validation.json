@@ -1,0 +1,7 @@
+{
+  "functional_checks_passed": 66,
+  "initial_process_exit": "QtWidgets access violation after checks",
+  "cleanup_smoke_exit_code": 0,
+  "repeat_full_run": "interrupted by active user live session; not counted as a pass",
+  "vb_cable": "installed, restart required; new route validation pending"
+}

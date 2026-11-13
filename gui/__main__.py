@@ -12,10 +12,20 @@ from .backend import DEFAULT_URL, ROOT, START_SCRIPT
 from .taskbar import set_process_app_id, set_window_relaunch
 
 LOG_FILE = ROOT / ".run" / "gui.log"
+_APPLICATION = None
+
+
+def cleanup_qt_styles():
+    """Release Qt's stylesheet proxies before widget wrappers are torn down."""
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    if app is not None:
+        app.setStyleSheet("")
 
 
 def create_app(argv=None):
     """先创建 QApplication，再导入会加载 PortAudio 的模块（顺序反了会让 Qt 的原生文件对话框失效）。"""
+    global _APPLICATION
     set_process_app_id()  # 要在创建任何窗口之前
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QFont, QGuiApplication
@@ -26,6 +36,12 @@ def create_app(argv=None):
     # 125%、150% 等非整数缩放按系统比例原样渲染
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication.instance() or QApplication(list(argv or sys.argv[:1]))
+    # Keep Qt alive while main() releases its window wrappers and Python runs
+    # PortAudio's exit handlers. Destroying QApplication first can crash QtWidgets.
+    _APPLICATION = app
+    if not app.property("voiceQuitCleanupConnected"):
+        app.aboutToQuit.connect(cleanup_qt_styles)
+        app.setProperty("voiceQuitCleanupConnected", True)
     app.setApplicationName("角色变声器")
     app.setStyle("Fusion")
     font = QFont("Microsoft YaHei UI", 10)

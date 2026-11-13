@@ -38,13 +38,17 @@ def export(module, inputs, names, name):
         part.unlink(missing_ok=True)
 
 
-def export_rvc(src, weights, key):
+def export_rvc(src, weights, key, *, checkpoint_path=None, output_name=None, speaker_id=0):
     sys.path.insert(0, str(src))
     from infer.lib.infer_pack.models_onnx import SynthesizerTrnMsNSFsidM
 
-    checkpoint = torch.load(weights / f"{key}.pth", map_location="cpu", weights_only=True)
-    config = checkpoint["config"]
+    checkpoint = torch.load(checkpoint_path or weights / f"{key}.pth", map_location="cpu", weights_only=True)
+    if checkpoint.get("version") != "v2" or checkpoint.get("f0") != 1:
+        raise ValueError("Only pitch-conditioned RVC v2 checkpoints are supported.")
+    config = list(checkpoint["config"])
     config[-3] = checkpoint["weight"]["emb_g.weight"].shape[0]
+    if not 0 <= speaker_id < config[-3]:
+        raise ValueError("Invalid speaker ID")
     net = SynthesizerTrnMsNSFsidM(*config, is_half=False, version=checkpoint["version"])
     missing, unexpected = net.load_state_dict(checkpoint["weight"], strict=False)
     if unexpected or any(not k.startswith("enc_q.") for k in missing):
@@ -56,11 +60,11 @@ def export_rvc(src, weights, key):
             self.net = net
 
         def forward(self, units, pitch, f0, noise):
-            return self.net(units, torch.tensor([100]), pitch, f0, torch.tensor([0]), noise)
+            return self.net(units, torch.tensor([100]), pitch, f0, torch.tensor([speaker_id]), noise)
 
     export(RVC(), (torch.randn(1, 100, 768), torch.full((1, 100), 80),
                    torch.full((1, 100), 220.), torch.randn(1, 192, 100)),
-           ["units", "pitch", "f0", "noise"], key + "_rvc")
+           ["units", "pitch", "f0", "noise"], output_name or key + "_rvc")
 
 
 def export_taffy(src, weights):
@@ -119,10 +123,14 @@ if __name__ == "__main__":
     p.add_argument("voice", choices=["tomori","anon","taffy"])
     p.add_argument("source", type=Path)
     p.add_argument("weights", type=Path)
+    p.add_argument("--checkpoint", type=Path)
+    p.add_argument("--output-name")
+    p.add_argument("--speaker-id", type=int, default=0)
     args = p.parse_args()
     torch.manual_seed(0)
     torch.set_num_threads(3)
-    if args.voice == "taffy":
+    if args.voice == "taffy" and args.checkpoint is None:
         export_taffy(args.source.resolve(), args.weights.resolve())
     else:
-        export_rvc(args.source.resolve(), args.weights.resolve(), args.voice)
+        export_rvc(args.source.resolve(), args.weights.resolve(), args.voice,
+                   checkpoint_path=args.checkpoint, output_name=args.output_name, speaker_id=args.speaker_id)

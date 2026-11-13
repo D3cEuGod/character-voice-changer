@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .__main__ import create_app
+from .__main__ import create_app, cleanup_qt_styles
 from .backend import DEFAULT_URL, ROOT, BackendClient, BackendError
 
 ORIGINAL = ROOT / "assets" / "previews" / "original.wav"
@@ -49,7 +49,7 @@ class Checker:
 
     def summary(self) -> int:
         counts = {s: sum(1 for row in self.rows if row[0] == s) for s in ("PASS", "FAIL", "SKIP")}
-        print(f"\n合计：{counts['PASS']} 项通过，{counts['FAIL']} 项失败，{counts['SKIP']} 项跳过")
+        print(f"\n合计：{counts['PASS']} 项通过，{counts['FAIL']} 项失败，{counts['SKIP']} 项跳过", flush=True)
         for status, name, detail in self.rows:
             if status != "PASS":
                 print(f"  {status}: {name} — {detail}")
@@ -161,6 +161,7 @@ def main(argv=None) -> int:
         window.close()
         return c.summary()
     api_voices = client.voices()
+    model_labels = client.health().get("voice_models", {})
     ids = [v["id"] for v in api_voices]
     c.check("角色列表来自 GET /api/voices", window.voices == api_voices and list(window.cards) == ids,
             "、".join(f"{v['id']}={v['name']}" for v in api_voices))
@@ -208,6 +209,9 @@ def main(argv=None) -> int:
         ok = (window.voice_id == voice["id"] and window.hero_name.text() == voice["name"]
               and all(card._active == (vid == voice["id"]) for vid, card in window.cards.items()))
         c.check(f"切换角色：{voice['name']}", ok, window.hero_caption.text())
+        c.check(f"角色原声与处理方式：{voice['name']}", window.reference_button.isEnabled()
+                and window.voice_mode.isVisible() and window.current_mode() == "character"
+                and window.hero_caption.text() == model_labels.get(voice["id"], voice["id"].upper()))
         shot(window, f"02_voice_{voice['id']}")
     click(window.cards["taffy"])
 
@@ -224,6 +228,11 @@ def main(argv=None) -> int:
         c.check("角色示例：点一下立即播放，再点停止", started and position > 0.5 and window.playing_tag is None,
                 f"taffy.wav 在“{default_out.name}”上播了 {position:.2f} 秒后停止（脚本听不到声音，只确认音频按时送出）")
         choose(window.out_combo, quiet_out.name)
+        click(window.reference_button)
+        ok = wait(lambda: window.playing_tag == ("preview", "reference") and window.player.playing, 3)
+        click(window.cards["anon"])
+        c.check("播放角色原声，换角色后停止以免错配", ok and window.playing_tag is None)
+        click(window.cards["taffy"])
         for name in [i for i in ids if i != "taffy"] + ["original"]:
             if name == "original":
                 click(window.original_button)
@@ -336,7 +345,7 @@ def main(argv=None) -> int:
         wait(lambda: window.converting_key is not None, 2)
         click(window.cards["tomori"])  # 转换途中改设置
         wait(lambda: window.converting_key is None, 180)
-        anon_key = (window.input.serial, "anon", 100, "call")
+        anon_key = (window.input.serial, "anon", 100, "character")
         c.check("转换途中换角色：结果记在提交时的参数下", anon_key in window.results and window.current_result() is None
                 and not window.save_button.isEnabled(), window.status_label.text())
         click(window.cards["anon"])
@@ -662,6 +671,7 @@ def main(argv=None) -> int:
         if thread is not threading.current_thread():
             thread.join(6)
     print(f"\n结果和截图在 {out_dir}", flush=True)
+    cleanup_qt_styles()
     return c.summary()
 
 

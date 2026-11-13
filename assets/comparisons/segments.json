@@ -1,0 +1,62 @@
+[
+  {
+    "voice": "tomori",
+    "segments": [
+      {
+        "label": "user_selected_singing_reference",
+        "start_s": 0.0,
+        "end_s": 6.0
+      },
+      {
+        "label": "v011",
+        "start_s": 6.65,
+        "end_s": 10.683
+      },
+      {
+        "label": "v020_RVC",
+        "start_s": 11.333,
+        "end_s": 15.366
+      }
+    ]
+  },
+  {
+    "voice": "taffy",
+    "segments": [
+      {
+        "label": "original_character",
+        "start_s": 0.0,
+        "end_s": 6.0
+      },
+      {
+        "label": "v011",
+        "start_s": 6.65,
+        "end_s": 10.683
+      },
+      {
+        "label": "v020_RVC",
+        "start_s": 11.333,
+        "end_s": 15.366
+      }
+    ]
+  },
+  {
+    "voice": "anon",
+    "segments": [
+      {
+        "label": "original_character",
+        "start_s": 0.0,
+        "end_s": 5.0
+      },
+      {
+        "label": "v011",
+        "start_s": 5.65,
+        "end_s": 9.683
+      },
+      {
+        "label": "v020_RVC",
+        "start_s": 10.333,
+        "end_s": 14.366
+      }
+    ]
+  }
+]
