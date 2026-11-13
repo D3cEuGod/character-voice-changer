@@ -102,14 +102,14 @@ class BackendClient:
             raise BackendError("GET /api/voices 返回的角色列表格式不对。") from exc
 
     def convert(self, data: bytes, content_type: str, voice_id: str, strength: float,
-                timeout: float = 600.0) -> bytes:
-        query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}"})
+                timeout: float = 600.0, *, mode: str = "character") -> bytes:
+        query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "mode": mode})
         return self._request("POST", f"/api/convert?{query}", body=data,
                              headers={"Content-Type": content_type}, timeout=timeout)
 
-    def live_url(self, voice_id: str, strength: float) -> str:
+    def live_url(self, voice_id: str, strength: float, mode: str = "character") -> str:
         query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "low_latency": "true",
-                           "speech_context": "true"})
+                           "speech_context": "true", "mode": mode})
         return f"ws://{self.host}:{self.port}/api/live?{query}"
 
 

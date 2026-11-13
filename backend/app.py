@@ -49,8 +49,8 @@ def voices():
     return [{"id": key, "name": name} for key, name in engine.VOICES.items()]
 
 
-def process(data, voice_id, strength):
-    return engine.wav_bytes(engine.convert(engine.decode(data), voice_id, strength))
+def process(data, voice_id, strength, mode="character"):
+    return engine.wav_bytes(engine.convert(engine.decode(data), voice_id, strength, mode))
 
 
 @app.post("/api/convert", response_class=Response, responses={
@@ -60,7 +60,8 @@ def process(data, voice_id, strength):
     for mime in ("audio/wav", "audio/flac", "audio/mpeg", "audio/ogg", "application/octet-stream")
 }}})
 async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"],
-                  strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0):
+                  strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
+                  mode: Literal["character", "call"] = "character"):
     lock = request.app.state.busy
     if lock.locked():
         raise HTTPException(429, "正在处理另一段音频，请稍后重试。")
@@ -71,7 +72,7 @@ async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"]
                 raise HTTPException(413, "音频文件超过 24 MiB。")
             data.extend(chunk)
         try:
-            wav = await run_in_threadpool(process, data, voice_id, strength)
+            wav = await run_in_threadpool(process, data, voice_id, strength, mode)
         except engine.AudioError as exc:
             raise HTTPException(422, str(exc)) from exc
         except Exception as exc:
@@ -86,7 +87,8 @@ async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"]
 @app.websocket("/api/live")
 async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
                strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
-               low_latency: bool = False, speech_context: bool = False):
+               low_latency: bool = False, speech_context: bool = False,
+               mode: Literal["character", "call"] = "character"):
     if ws.headers.get("origin") not in (None, "http://localhost:5173", "http://127.0.0.1:5173"):
         await ws.close(code=1008)
         return
@@ -97,7 +99,7 @@ async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
         return
     async with lock:
         lookahead = SPEECH_LOOKAHEAD if speech_context else OVERLAP
-        session = LiveVoice(voice_id, strength, lookahead)
+        session = LiveVoice(voice_id, strength, lookahead, mode)
         frame_size = SHORT_FRAME if low_latency else FRAME
         hello = {"sample_rate": engine.RATE, "frame_samples": frame_size, "format": "s16le"}
         if speech_context:

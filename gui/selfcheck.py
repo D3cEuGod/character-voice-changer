@@ -279,8 +279,15 @@ def main(argv=None) -> int:
             window.status_label.text())
     c.check("转换期间监听开关不可用", live_blocked)
     if result is not None:
-        c.check("结果与生成参数关联", result.key == (window.input.serial, "taffy", 100) and window.ab == "result"
+        c.check("结果与生成参数关联", result.key == (window.input.serial, "taffy", 100, "character") and window.ab == "result"
                 and window.result_tag.property("state") == "fresh", window.result_tag.text())
+        window.voice_mode.setCurrentIndex(window.voice_mode.findData("call"))
+        c.check("切换处理方式后旧结果不能试听保存", window.current_result() is None
+                and not window.save_button.isEnabled())
+        window.voice_mode.setCurrentIndex(window.voice_mode.findData("character"))
+        c.check("切回原处理方式恢复对应结果", window.current_result() is result
+                and window.save_button.isEnabled())
+        click(window.seg_result)
         shot(window, "03_converted")
         if default_out is not None:
             click(window.play_button)
@@ -329,7 +336,7 @@ def main(argv=None) -> int:
         wait(lambda: window.converting_key is not None, 2)
         click(window.cards["tomori"])  # 转换途中改设置
         wait(lambda: window.converting_key is None, 180)
-        anon_key = (window.input.serial, "anon", 100)
+        anon_key = (window.input.serial, "anon", 100, "call")
         c.check("转换途中换角色：结果记在提交时的参数下", anon_key in window.results and window.current_result() is None
                 and not window.save_button.isEnabled(), window.status_label.text())
         click(window.cards["anon"])

@@ -15,6 +15,8 @@ import torch
 from torch import nn
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from tools.svc_phase import PHASE_CYCLES, PHASE_VERSION
 
 
 def export(module, inputs, names, name):
@@ -26,7 +28,11 @@ def export(module, inputs, names, name):
         module.eval()
         torch.onnx.export(module, inputs, str(part), dynamo=False, opset_version=18,
                           input_names=names, output_names=["output"], external_data=False)
-        onnx.checker.check_model(str(part))
+        model = onnx.load(part)
+        if name == "taffy_svc":
+            onnx.helper.set_model_props(model, {"svc_harmonic_phase": PHASE_VERSION})
+            onnx.save(model, part)
+        onnx.checker.check_model(model)
         part.replace(target)
     finally:
         part.unlink(missing_ok=True)
@@ -62,10 +68,10 @@ def export_taffy(src, weights):
     from hubert.hubert_model import HubertSoft
     from vdecoder.hifigan.models import SineGen
 
-    # Equivalent expressions for operations unsupported by the legacy exporter:
-    # the phase-wrap correction only adds multiples of 2*pi before sine.
+    # Keep the upstream overtone phases. Only the wrap correction can be omitted
+    # because it adds integer multiples of 2*pi before sine.
     def sine(self, hz):
-        return torch.sin(torch.cumsum(hz / self.sampling_rate, dim=1) * (2 * math.pi))
+        return torch.sin((torch.cumsum(hz / self.sampling_rate, dim=1) + self.initial_phase) * (2 * math.pi))
 
     def coarse(f0):
         low = 1127 * math.log1p(50 / 700)
@@ -83,6 +89,7 @@ def export_taffy(src, weights):
     net = models.SynthesizerTrn(641, 56, **cfg["model"])
     state = torch.load(weights / "taffy.pth", map_location="cpu", weights_only=True)["model"]
     net.load_state_dict(state)
+    net.dec.m_source.l_sin_gen.register_buffer("initial_phase", torch.tensor(PHASE_CYCLES)[None, None])
 
     class Taffy(nn.Module):
         def __init__(self):

@@ -13,7 +13,8 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
-- Versioned releases with a changelog; current internal beta is 0.1.0
+- Taffy presets for character similarity or call clarity, with separate previews and conversion results
+- Versioned releases with a changelog; current internal beta is 0.1.1
 
 ## Tech Stack
 
@@ -21,7 +22,7 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - FastAPI and Uvicorn (HTTP and WebSocket backend)
 - ONNX Runtime with DirectML
 - RVC v2, So-VITS-SVC 3.0, OpenVoice V2, ContentVec, HuBERT-Soft
-- GTCRN, Silero VAD, Praat (parselmouth), FAISS
+- GTCRN, Silero VAD, RMVPE, Praat (parselmouth), FAISS
 - PySide6 (Qt 6), sounddevice (PortAudio), soxr
 
 ## Screenshots
@@ -83,13 +84,15 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.1.0`（内测版）
+当前版本：`0.1.1`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。建议有支持 DirectML 的独立显卡。
 
 1. 克隆仓库，双击 `start-gui.cmd`。
-2. 首次启动会建立两个虚拟环境并安装依赖。后端随后下载约 2.6 GB 的模型，校验 SHA-256，再临时安装 PyTorch 把三个角色导出成 ONNX。这一步需要联网，耗时取决于网速。
+2. 首次启动会建立两个虚拟环境并安装依赖。后端随后下载约 2 GB 的模型和权重，校验 SHA-256，再临时安装 PyTorch 把三个角色导出成 ONNX。这一步需要联网，耗时取决于网速，导出产物与构建环境也需要磁盘空间。
 3. 窗口右上角显示“后端：已连接”后即可使用。之后可以离线运行。
+
+选中塔菲时，强度滑块下方可以选择“音色优先”或“通话清晰”。默认“音色优先”减少说话人原声的混入，改用 RMVPE 提取音高。背景噪声较大时，“通话清晰”能保留更多发音细节。两档的“示例”按钮播放各自的转换结果。
 
 想把入口放到任务栏：运行一次 `powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1`，右键生成的“角色变声器”快捷方式，在“显示更多选项”里选“固定到任务栏”。
 
@@ -104,11 +107,11 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## 当前状态
 
-0.1.0 是第一个记录在案的版本，属于内测。
+0.1.1 继续调整塔菲音色，仍属于内测。
 
-- 三位角色都能实时变声和转换文件，自检 60 项全部通过。
-- 清晰度已经可用：干净输入的字错误率在 1% 到 2%，嘈杂环境约 16%。
-- 相似度还不够：三位角色对参考音的 CAM++ 相似度在 0.54 到 0.66 之间。
+- 三位角色都能实时变声和转换文件，自检 62 项全部通过。
+- 塔菲“音色优先”的 CAM++ 均值为 0.618，本次重测的 0.1.0 为 0.533。干净女声和男声的字错误率均为 3.3%，10 dB 加噪男声为 26.8%。
+- 塔菲“通话清晰”的 CAM++ 均值为 0.529，加噪男声字错误率为 19.6%。两个档位的取舍和完整数据记录在 CHANGELOG。
 - 还没有在真实的 Discord 通话里由另一个人确认过听感。
 
 ## 0.1.0 发布说明
@@ -163,7 +166,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 - 录音，或导入 WAV、FLAC、MP3、OGG，最长 60 秒
 - 原声和结果随时切换试听，播放位置保持不变
 - 另存为 22,050 Hz 单声道 WAV
-- 结果与生成它的输入、角色和强度绑定，改了设置就不能把旧结果当成新结果保存
+- 结果与生成它的输入、角色、强度和处理方式绑定，改了设置就不能把旧结果当成新结果保存
 
 ### 界面
 
@@ -177,7 +180,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 一包音频经过的步骤：
 
 1. GTCRN 连续降噪，Silero VAD 判断是否在说话。
-2. Praat 跟踪音高，并把说话人的音域移到角色的音域。
+2. 跟踪音高，并把说话人的音域移到角色的音域。塔菲“音色优先”使用 RMVPE，其余配置使用 Praat。
 3. 提取发音特征：高松灯和千早爱音用 ContentVec 加 FAISS 检索，永雏塔菲用 HuBERT-Soft。
 4. 角色模型生成一秒的波形。
 5. 高松灯和永雏塔菲再经过 OpenVoice 音色校正，使用整段会话累计的音色向量。
@@ -186,7 +189,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 每一步为什么这样做、试过哪些别的做法，记录在 [notes/decisions.md](notes/decisions.md)。
 
-## 当前已确认的本地运行事实
+## 0.1.0 的评测记录
 
 在 i5-12400F、RTX 5060 Ti、Windows 11 上测得。
 
@@ -211,7 +214,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 | `GET /api/voices` | 数组，每条记录包含 `id` 和中文 `name` |
 | `POST /api/convert?voice_id=taffy&strength=1` | 请求体直接放音频文件字节。成功返回 `audio/wav`，22,050 Hz 单声道 PCM16 |
 
-`voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
+`voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。塔菲还支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口都使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
 错误用 HTTP 状态码和 JSON 的 `detail` 表示。413 是文件过大，422 是音频或参数无效，429 是引擎正忙，500 是推理失败。一次只处理一个转换任务或一个实时会话。
 
@@ -274,7 +277,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 ## 下一步
 
 1. 找一个用说话素材训练、来源清楚的塔菲 RVC v2 模型，替换 So-VITS-SVC 3.0 加音色校正的组合。
-2. 用 RMVPE 替换 Praat 提取音高，看嘈杂环境下能否少吃字。
+2. 继续检查音高提取和发音保护对强噪声的影响，RMVPE 已用于塔菲的音色优先档。
 3. 用真人麦克风录音和真实的 Discord 通话各验证一次。
 4. 在没有独立显卡的电脑上测一次速度。
 5. 做一次听感对比，确认客观指标和实际听感一致。

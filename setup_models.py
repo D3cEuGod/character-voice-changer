@@ -8,6 +8,8 @@ import sys
 import tempfile
 from urllib.request import urlopen
 
+from tools.svc_phase import correct_cached_phase
+
 ROOT = Path(__file__).resolve().parent
 MODELS = ROOT / "models"
 CACHE = ROOT / ".run"
@@ -20,6 +22,9 @@ RVC_REV = "d60cd3d009b7e438f92f8624fa89b710d10c6a39"
 TONE = HF + "TigreGotico/voiceclonnx-openvoice-v2/resolve/34d010c192c97f763207f488f6057fd07fee42ad/"
 
 GRAPHS = {
+    "rmvpe.onnx": (
+        HF + "TigreGotico/voiceclonnx-rvc/resolve/cbfbabdabe6a1414292bade8f857fb6074abf130/rmvpe.onnx",
+        "5370e71ac80af8b4b7c793d27efd51fd8bf962de3a7ede0766dac0befa3660fd"),
     "silero_vad_16k_op15.onnx": (
         "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/src/silero_vad/data/silero_vad_16k_op15.onnx",
         "7ed98ddbad84ccac4cd0aeb3099049280713df825c610a8ed34543318f1b2c49"),
@@ -91,6 +96,7 @@ def main():
     missing = [role for role, graphs in outputs.items()
                if any(not (MODELS / (name + ".onnx")).is_file() for name in graphs)]
     if not missing:
+        correct_cached_phase(MODELS / "taffy_svc.onnx")
         return
     WEIGHTS.mkdir(parents=True, exist_ok=True)
     env = CACHE / "export-env"
@@ -111,6 +117,7 @@ def main():
         print(f"Exporting {role} ...", flush=True)
         subprocess.run([str(python), str(ROOT / "tools/export_voices.py"), role, str(source),
                         str(WEIGHTS)], cwd=ROOT, check=True)
+    correct_cached_phase(MODELS / "taffy_svc.onnx")
 
 
 if __name__ == "__main__":

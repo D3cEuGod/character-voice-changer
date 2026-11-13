@@ -85,7 +85,7 @@ def speaker_embedding(samples, rate):
 
 
 def render(voice, samples, strength=1.0):
-    live = LiveVoice(voice, strength, SPEECH_LOOKAHEAD)
+    live = LiveVoice(voice, strength, SPEECH_LOOKAHEAD, mode=os.environ.get("EVAL_MODE", "character"))
     padded = np.pad(samples, (0, (-len(samples)) % SHORT_FRAME))
     parts, times = [], []
     for frame in padded.reshape(-1, SHORT_FRAME):
@@ -129,7 +129,7 @@ def main():
             spoken = np.concatenate([output[a:b] for a, b in ranges[name]])
             pauses = np.concatenate([output[b + margin:b + GAP - margin] for a, b in ranges[name]])
             row = {
-                "voice": voice, "input": name,
+                "voice": voice, "input": name, "mode": os.environ.get("EVAL_MODE", "character"),
                 "ms_mean": round(float(times.mean()), 1), "ms_p95": round(float(np.percentile(times, 95)), 1),
                 "ms_max": round(float(times.max()), 1),
                 "peak": round(float(np.max(np.abs(output))), 3),

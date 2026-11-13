@@ -24,6 +24,7 @@ from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecBu
 ASSETS = ROOT / "assets"
 PREVIEWS = ASSETS / "previews"
 MAX_RESULTS = 8
+MODE_NAMES = {"character": "音色优先", "call": "通话清晰"}
 
 
 @dataclass
@@ -49,7 +50,7 @@ class InputClip:
 
 @dataclass
 class ResultClip:
-    key: tuple            # (输入序号, voice_id, 强度百分比)：生成这段结果时的参数
+    key: tuple            # (输入序号, voice_id, 强度百分比, 处理方式)
     wav: bytes            # 后端返回的 WAV，另存时原样写出
     samples: np.ndarray
     rate: int
@@ -222,6 +223,12 @@ class MainWindow(QWidget):
         self.strength_slider.setAccessibleName("音色强度")
         self.strength_slider.setToolTip("0% 是原声，100% 最接近角色")
         card.body.addWidget(self.strength_slider)
+        self.voice_mode = ConsoleCombo()
+        for mode, name in MODE_NAMES.items():
+            self.voice_mode.addItem(name, mode)
+        self.voice_mode.setAccessibleName("塔菲处理方式")
+        self.voice_mode.setToolTip("音色优先减少原声混入。通话清晰保留更多发音细节，适合背景噪声较大的环境。")
+        card.body.addWidget(self.voice_mode)
         self.original_button = QPushButton("原声示例")
         self.original_button.setObjectName("ghost")
         self.original_button.setIconSize(QSize(11, 11))
@@ -451,6 +458,7 @@ class MainWindow(QWidget):
         self.rec_button.toggled.connect(self._on_rec_toggled)
         self.import_button.clicked.connect(self.import_dialog)
         self.strength_slider.valueChanged.connect(self._on_strength_changed)
+        self.voice_mode.currentIndexChanged.connect(self._on_voice_mode_changed)
         self.convert_button.clicked.connect(self.convert)
         self.seg_input.clicked.connect(lambda: self.set_ab("input"))
         self.seg_result.clicked.connect(lambda: self.set_ab("result"))
@@ -478,7 +486,10 @@ class MainWindow(QWidget):
     def current_key(self) -> tuple | None:
         if self.input is None or self.voice_id is None:
             return None
-        return (self.input.serial, self.voice_id, self.strength_pct)
+        return (self.input.serial, self.voice_id, self.strength_pct, self.current_mode())
+
+    def current_mode(self) -> str:
+        return self.voice_mode.currentData() if self.voice_id == "taffy" else "call"
 
     def current_result(self) -> ResultClip | None:
         key = self.current_key()
@@ -564,7 +575,7 @@ class MainWindow(QWidget):
     def _update_result_tag(self, result: ResultClip | None) -> None:
         key = self.current_key()
         if result is not None:
-            text = (f"当前结果：{result.voice_name} · 强度 {result.key[2]}% · 来源「{result.input_label}」"
+            text = (f"当前结果：{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · 来源「{result.input_label}」"
                     f" · {len(result.samples) / result.rate:.2f} 秒，可试听和保存")
             state = "fresh"
         elif self.input is None:
@@ -574,7 +585,8 @@ class MainWindow(QWidget):
         else:
             others = [r for r in self.results.values() if r.key[0] == self.input.serial]
             if others:
-                listed = "、".join(f"{r.voice_name} {r.key[2]}%" for r in sorted(others, key=lambda r: r.created))
+                listed = "、".join(f"{r.voice_name} {r.key[2]}% {MODE_NAMES[r.key[3]]}"
+                                  for r in sorted(others, key=lambda r: r.created))
                 text = (f"当前设置（{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}%）还没有结果。"
                         f"已有结果属于：{listed}。改回对应设置可继续试听和保存，或重新变声。")
                 state = "stale"
@@ -714,6 +726,7 @@ class MainWindow(QWidget):
 
     # ---- 角色 -----------------------------------------------------------
     def _show_voice(self, voice_id: str | None) -> None:
+        self.voice_mode.setVisible(voice_id == "taffy")
         style = theme.voice_style(voice_id or "taffy")
         self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
         self.live_switch.set_color(style.color)
@@ -742,6 +755,12 @@ class MainWindow(QWidget):
         self._refresh()
         if self.live is not None:
             self._strength_timer.start()
+
+    def _on_voice_mode_changed(self) -> None:
+        self.stop_playback()
+        self._refresh()
+        if self.live is not None:
+            self._restart_live()
 
     # ---- 设备 -----------------------------------------------------------
     def _populate_devices(self, announce: bool = True) -> None:
@@ -906,7 +925,7 @@ class MainWindow(QWidget):
         def work():
             started = time.perf_counter()
             try:
-                wav = self.client.convert(clip.data, clip.content_type, voice_id, strength)
+                wav = self.client.convert(clip.data, clip.content_type, voice_id, strength, mode=key[3])
             except BackendError as exc:
                 self._emit(self.bridge.convert_failed, key, str(exc))
                 return
@@ -941,7 +960,7 @@ class MainWindow(QWidget):
         while len(self.results) > MAX_RESULTS:
             oldest = min(self.results.values(), key=lambda r: r.created)
             del self.results[oldest.key]
-        described = f"{result.voice_name} · 强度 {key[2]}%"
+        described = f"{result.voice_name} · 强度 {key[2]}% · {MODE_NAMES[key[3]]}"
         if key == self.current_key():
             was_playing = self.playing_tag is not None and self.playing_tag[0] == "input"
             self.ab = "result"
@@ -996,7 +1015,8 @@ class MainWindow(QWidget):
         if self.playing_tag == ("preview", name):
             self.stop_playback()
             return
-        path = PREVIEWS / f"{name}.wav"
+        filename = "taffy-call" if name == "taffy" and self.voice_mode.currentData() == "call" else name
+        path = PREVIEWS / f"{filename}.wav"
         try:
             samples, rate = sf.read(str(path), dtype="float32", always_2d=True)
         except Exception as exc:
@@ -1065,7 +1085,8 @@ class MainWindow(QWidget):
         if result is None:
             return
         stem = Path(result.input_label).stem.replace(":", "-").replace(" ", "_") or "voice"
-        default = str(Path(self._last_dir) / f"{stem}_{result.key[1]}_{result.key[2]}.wav")
+        mode_suffix = f"_{result.key[3]}" if result.key[1] == "taffy" else ""
+        default = str(Path(self._last_dir) / f"{stem}_{result.key[1]}_{result.key[2]}{mode_suffix}.wav")
         path, _ = QFileDialog.getSaveFileName(self, "另存为 WAV", default, "WAV 音频 (*.wav)")
         if path:
             self.save_result(Path(path))
@@ -1085,7 +1106,7 @@ class MainWindow(QWidget):
             self.set_status(f"保存失败：{exc}", "error")
             return False
         self._last_dir = str(path.parent)
-        self.set_status(f"已保存 {path}（{result.voice_name} · 强度 {result.key[2]}% · 来源「{result.input_label}」）", "ok")
+        self.set_status(f"已保存 {path}（{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · 来源「{result.input_label}」）", "ok")
         return True
 
     # ---- 麦克风监听 -------------------------------------------------------
@@ -1141,13 +1162,13 @@ class MainWindow(QWidget):
             self.set_status(str(exc), "error")
             self._refresh()
             return
-        url = self.client.live_url(self.voice_id, self.strength_pct / 100)
+        url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode())
         monitor = LiveMonitor(
             url, mic, speaker,
             on_connected=lambda hello: self._emit(self.bridge.live_connected, monitor, hello),
             on_stats=lambda stats: self._emit(self.bridge.live_stats, monitor, stats),
             on_stopped=lambda kind, message: self._emit(self.bridge.live_stopped, monitor, kind, message))
-        monitor.label = f"{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}%"
+        monitor.label = f"{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}% · {MODE_NAMES[self.current_mode()]}"
         self.live = monitor
         self._live_stats = {}
         self.live_title.setText("正在连接…")

@@ -10,6 +10,7 @@ from scipy.signal import butter, resample_poly, sosfilt
 from scipy.signal.windows import hann
 
 from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
+from .pitch import pitch_track as rmvpe_pitch
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
 # How far OpenVoice pulls each trained voice toward its speaking reference; 0 skips the stage.
@@ -21,6 +22,9 @@ TONE_WINDOWS = 40
 # Share of the band above 1.7 kHz taken from the denoised input, in unvoiced and in voiced frames.
 CONSONANT_UNVOICED = 0.7
 CONSONANT_VOICED = 0.25
+# Taffy's character preset avoids mixing the caller's voiced harmonics back in.
+CHARACTER_CONSONANT_UNVOICED = 0.35
+CHARACTER_CONSONANT_VOICED = 0.0
 # Conversational registers estimated from the project's speaker references.
 REGISTER = {"tomori": 285, "anon": 310, "taffy": 315}
 # Match typical speaking levels across the three independently trained vocoders.
@@ -131,9 +135,10 @@ def pitch_track(audio):
 
 
 class CharacterModel:
-    def __init__(self, name, strength):
+    def __init__(self, name, strength, mode="character"):
         self.name = name
         self.strength = strength
+        self.fidelity = name == "taffy" and mode == "character"
         self.register = None
         self.tone = None
         self.tone_windows = 0
@@ -154,7 +159,7 @@ class CharacterModel:
         if np.max(activity) < .005 or np.max(np.abs(clean)) < 0.0006:
             return np.zeros_like(window)
         clean *= activity
-        f0 = pitch_track(clean)
+        f0 = rmvpe_pitch(clean) if self.fidelity else pitch_track(clean)
         voiced = f0[f0 > 0]
         if voiced.size >= 5:
             median = np.log(float(np.median(voiced)))
@@ -200,7 +205,9 @@ class CharacterModel:
         dry = resample_poly(clean, 441, 320)
         # Restore high-frequency consonant detail from the denoised input.
         voiced_mask = np.interp(np.arange(RATE) * 100 / RATE, np.arange(100), f0 > 0)
-        mix = CONSONANT_UNVOICED + (CONSONANT_VOICED - CONSONANT_UNVOICED) * voiced_mask
+        unvoiced, voiced = ((CHARACTER_CONSONANT_UNVOICED, CHARACTER_CONSONANT_VOICED)
+                           if self.fidelity else (CONSONANT_UNVOICED, CONSONANT_VOICED))
+        mix = unvoiced + (voiced - unvoiced) * voiced_mask
         level = np.clip(np.linalg.norm(wet) / max(np.linalg.norm(dry), .02), .4, 2.5)
         wet += mix * sosfilt(CONSONANT_BAND, level * dry - wet)
         return np.clip(self.strength * OUTPUT_GAIN[self.name] * wet + (1-self.strength)*dry, -.99, .99)
