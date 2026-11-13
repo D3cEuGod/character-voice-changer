@@ -1,0 +1,83 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.2.1",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng \u00b7 RVC v2 40k",
+      "taffy": "mygf-tf \u00b7 RVC v2 40k",
+      "anon": "Anon_v2 \u00b7 RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "tests": [
+    {
+      "voice": "tomori",
+      "packet_ms": 120,
+      "reply_samples": [
+        342,
+        2646,
+        2646,
+        2304
+      ]
+    },
+    {
+      "voice": "tomori",
+      "packet_ms": 200,
+      "reply_samples": [
+        2106,
+        4410,
+        4410,
+        2304
+      ]
+    },
+    {
+      "voice": "taffy",
+      "packet_ms": 120,
+      "reply_samples": [
+        342,
+        2646,
+        2646,
+        2304
+      ]
+    },
+    {
+      "voice": "taffy",
+      "packet_ms": 200,
+      "reply_samples": [
+        2106,
+        4410,
+        4410,
+        2304
+      ]
+    },
+    {
+      "voice": "anon",
+      "packet_ms": 120,
+      "reply_samples": [
+        342,
+        2646,
+        2646,
+        2304
+      ]
+    },
+    {
+      "voice": "anon",
+      "packet_ms": 200,
+      "reply_samples": [
+        2106,
+        4410,
+        4410,
+        2304
+      ]
+    }
+  ],
+  "legacy_default_200_ms": true,
+  "invalid_160_ms_rejected": true
+}

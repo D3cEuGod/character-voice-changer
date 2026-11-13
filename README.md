@@ -2,20 +2,20 @@
 
 A local, real-time voice changer for Windows that turns your microphone into an anime character's voice and sends it to Discord.
 
-Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app converts your speech in 200 ms packets on your own GPU. It can also convert recorded or imported audio files. Nothing leaves the machine.
+Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app converts your speech on your own GPU. VB-CABLE uses 120 ms packets; Steam and file conversion retain 200 ms packets. It can also convert recorded or imported audio files. Conversion runs locally.
 
 ## Key Features
 
 - Three dedicated RVC v2 40k voices, with matched retrieval indexes and RMVPE pitch extraction
 - Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
-- Real-time conversion over a local WebSocket, about 1 s to the local virtual microphone on the tested setup
+- Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE
 - Discord output through a virtual microphone (Steam Streaming Microphone or VB-CABLE), or local monitoring
 - Streaming noise suppression (GTCRN) and voice activity detection (Silero VAD), silent during pauses
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Original character recordings and converted previews available directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.2.0
+- Versioned releases with a changelog; current internal beta is 0.2.1
 
 ## Tech Stack
 
@@ -86,7 +86,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.2.0`（内测版）
+当前版本：`0.2.1`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -139,7 +139,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ## 当前状态
 
-0.2.0 默认使用三套角色专用 RVC，仍属于内测。验证范围和结果见 [本次评测记录](notes/reference-engine-evaluation.md)。
+0.2.1 延续三套角色专用 RVC，缩短 VB-CABLE 的实时音频包和播放缓冲，仍属于内测。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，本次改动见 [延迟测试记录](notes/latency-0.2.1.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
@@ -264,18 +264,18 @@ curl.exe --fail-with-body "http://127.0.0.1:8765/api/convert?voice_id=taffy&stre
 
 ### 实时通道
 
-连接 `ws://127.0.0.1:8765/api/live?voice_id=taffy&strength=1&low_latency=true&speech_context=true`，等待首条 JSON 消息：
+连接 `ws://127.0.0.1:8765/api/live?voice_id=taffy&strength=1&low_latency=true&speech_context=true&packet_ms=120`，等待首条 JSON 消息：
 
 ```json
-{"sample_rate": 22050, "frame_samples": 4410, "format": "s16le", "lookahead_samples": 2304}
+{"sample_rate": 22050, "frame_samples": 2646, "format": "s16le", "lookahead_samples": 2304}
 ```
 
 1. 把采集到的音频连续重采样为 22,050 Hz 单声道，每凑齐 `frame_samples` 个小端 PCM16 样本发一条二进制消息。
-2. 每发一包收到一条二进制 PCM16 回包。首包少 `lookahead_samples` 个样本（2,106 个），后续每包 4,410 个，按顺序播放。
+2. 每发一包收到一条二进制 PCM16 回包。首包少 `lookahead_samples` 个样本（此例为 342 个），后续每包 2,646 个，按顺序播放。
 3. 正常停止时，把不足一包的输入补零发出，再发文本 `finish`，读回最后 2,304 个样本和关闭帧。中途取消可以直接断开。
 4. 关闭码 1013 是引擎正忙，1003 是包长度不对，1001 是超过 30 秒没有收到音频，1008 是来源不被允许。切换角色或强度需要重新连接。
 
-省略 `low_latency` 时每包 8,192 个样本，省略 `speech_context` 时前瞻为 1,024 个样本。
+`packet_ms` 支持 120 和 200，省略时保留旧客户端的 200 毫秒 / 4,410 样本；实验 Seed-VC 保留 200 毫秒。省略 `low_latency` 时每包 8,192 个样本，省略 `speech_context` 时前瞻为 1,024 个样本。以握手里的 `frame_samples` 为准。
 
 ## 评测
 

@@ -241,6 +241,7 @@ class MicStream:
         self.blocks: queue.Queue[np.ndarray] = queue.Queue(maxsize=int(max_seconds / self.BLOCK_SECONDS))
         self._stream, _ = _open_stream(sd.InputStream, device, "麦克风", (1, 2, device.channels),
                                        blocksize=int(device.rate * self.BLOCK_SECONDS),
+                                       latency=.02,
                                        callback=self._callback)
 
     def _callback(self, indata, frames, time_info, status):
@@ -271,6 +272,10 @@ class MicStream:
     @property
     def active(self) -> bool:
         return bool(self._stream.active)
+
+    @property
+    def latency(self) -> float:
+        return float(self._stream.latency)
 
     def close(self) -> None:
         _close_stream(self._stream)
@@ -317,20 +322,28 @@ class AudioFifo:
             return out
 
 
-def live_slack(reference_engine: bool, voice: str, mode: str, discord: bool) -> float:
+def live_slack(reference_engine: bool, voice: str, mode: str, discord: bool,
+               output_name: str = "") -> float:
     """Absorb inference and device jitter before sending audio to a virtual microphone."""
     if discord:
+        if not reference_engine and "cable input" in output_name.casefold():
+            return .24
         return .50
     if reference_engine and voice in ("tomori", "taffy") and mode == "character":
         return .40
     return .24
 
 
+def live_packet_ms(reference_engine: bool, output_name: str) -> int:
+    """Keep the verified 200 ms path for Steam and the optional reference engine."""
+    return 120 if not reference_engine and "cable input" in output_name.casefold() else 200
+
+
 class SpeakerStream:
     """监听用的播放端。每次断流后先留出 slack_seconds 的余量再继续，吸收推理时间的抖动。"""
 
     def __init__(self, device: Device, slack_seconds: float = 0.2, max_seconds: float = 3.0,
-                 receiver: Device | None = None):
+                 receiver: Device | None = None, device_latency: float | None = None):
         self.device = device
         self.name = device.name
         self._steam = receiver is not None and "steam streaming microphone" in device.name.casefold()
@@ -345,6 +358,11 @@ class SpeakerStream:
         self._waiting = True
         self._draining = False
         self._target_fill = self._slack
+        # Large shared-mode device buffers showed sample-position jumps through
+        # VB-CABLE even without a PortAudio underflow; use small native transfers.
+        latency = (device_latency if device_latency is not None else
+                   .02 if receiver and "cable input" in device.name.casefold() and slack_seconds < .5 else
+                   max(OUTPUT_LATENCY, .15) if receiver else OUTPUT_LATENCY)
         if self._steam:
             # Steam passes raw PCM between endpoints. Match the capture format
             # instead of going through the stereo Windows playback mixer.
@@ -352,12 +370,12 @@ class SpeakerStream:
                 self._stream = sd.OutputStream(
                     device=device.index, samplerate=self.rate, dtype="int32", channels=1,
                     extra_settings=sd.WasapiSettings(exclusive=True, explicit_sample_format=True),
-                    latency=max(OUTPUT_LATENCY, .15), callback=self._callback)
+                    latency=latency, callback=self._callback)
             except Exception as exc:
                 raise AudioDeviceError(f"无法打开 Steam 通话输出（{self.rate} Hz 单声道）：{exc}") from exc
         else:
             self._stream, _ = _open_stream(sd.OutputStream, device, "输出设备", (2, 1, device.channels),
-                                           latency=max(OUTPUT_LATENCY, .15) if receiver else OUTPUT_LATENCY,
+                                           latency=latency,
                                            callback=self._callback)
 
     def _callback(self, outdata, frames, time_info, status):
@@ -399,6 +417,10 @@ class SpeakerStream:
     @property
     def buffered_seconds(self) -> float:
         return len(self.fifo) / self.rate
+
+    @property
+    def target_buffer_seconds(self) -> float:
+        return self._target_fill / self.rate
 
     @property
     def latency(self) -> float:

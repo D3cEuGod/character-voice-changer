@@ -28,4 +28,4 @@ bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90
 - Discord 的输入选择 **CABLE Output (VB-Audio Virtual Cable)**，输出仍选择自己的耳机。Discord 若选 WO Mic，会绕过变声处理。
 - 安装新驱动后重新打开变声器和 Discord，以重新枚举设备。
 
-重启后，用户已在真实 Discord 通话中确认 VB-CABLE 能传递变声结果；关闭 WO Mic 本地播放后，朋友确认只剩变声。约一秒的变声延迟仍存在。完整的 VB-CABLE 定量回录与长期稳定性尚未复测，不能用此前 Steam 的回录结果替代。
+重启后，用户已在真实 Discord 通话中确认 VB-CABLE 能传递变声结果；关闭 WO Mic 本地播放后，朋友确认只剩变声。0.2.1 已补做 VB-CABLE 本机回录，短句平均约 0.74 秒、长句约 0.66–0.68 秒，三位角色各约 48 秒长句均零断流。手机传输和 Discord 远端延迟未计入，仍需实际通话复听。本次驱动内部设置保留默认，不需要再次重启 Windows。

@@ -3,6 +3,7 @@
 Run with the backend venv from the project root:
     .venv\\Scripts\\python.exe <this> <tag> [voice ...]
 Environment:
+    EVAL_FRAME_MS=120                  test a shorter streaming packet (default 200)
     EVAL_SET=character.NAME=value;character.TABLE.voice=value;...
                                        set module-level tunables (values parsed as Python literals)
 Outputs go to .run/eval/<tag>/. Nothing here talks to the running server on 8765.
@@ -26,6 +27,7 @@ from backend import engine  # noqa: E402
 from backend.live import SHORT_FRAME, SPEECH_LOOKAHEAD, LiveVoice  # noqa: E402
 
 RATE = engine.RATE
+RENDER_FRAME = round(RATE * int(os.environ.get("EVAL_FRAME_MS", "200")) / 1000)
 EVALSET = ROOT / ".run/evalset"
 GAP = int(0.7 * RATE)
 
@@ -86,9 +88,9 @@ def speaker_embedding(samples, rate):
 
 def render(voice, samples, strength=1.0):
     live = LiveVoice(voice, strength, SPEECH_LOOKAHEAD, mode=os.environ.get("EVAL_MODE", "character"))
-    padded = np.pad(samples, (0, (-len(samples)) % SHORT_FRAME))
+    padded = np.pad(samples, (0, (-len(samples)) % RENDER_FRAME))
     parts, times = [], []
-    for frame in padded.reshape(-1, SHORT_FRAME):
+    for frame in padded.reshape(-1, RENDER_FRAME):
         started = time.perf_counter()
         parts.append(live.process(frame))
         times.append(time.perf_counter() - started)
@@ -130,6 +132,7 @@ def main():
             pauses = np.concatenate([output[b + margin:b + GAP - margin] for a, b in ranges[name]])
             row = {
                 "voice": voice, "input": name, "mode": os.environ.get("EVAL_MODE", "character"),
+                "frame_samples": RENDER_FRAME,
                 "ms_mean": round(float(times.mean()), 1), "ms_p95": round(float(np.percentile(times, 95)), 1),
                 "ms_max": round(float(times.max()), 1),
                 "peak": round(float(np.max(np.abs(output))), 3),

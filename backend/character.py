@@ -191,7 +191,8 @@ class CharacterModel:
         voiced = f0[f0 > 0]
         if voiced.size >= 5:
             median = np.log(float(np.median(voiced)))
-            self.register = median if self.register is None else .92*self.register + .08*median
+            decay = .92 ** (count / (RATE * .2))
+            self.register = median if self.register is None else decay*self.register + (1-decay)*median
         if self.local is not None and self.local.semitones is not None:
             f0 *= 2 ** (self.local.semitones * self.strength / 12)
             np.minimum(f0, 650, out=f0)

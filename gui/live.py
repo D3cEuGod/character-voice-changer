@@ -173,6 +173,9 @@ class LiveMonitor(threading.Thread):
             "mic_dropped": self.mic.dropped,
             "underruns": getattr(self.speaker, "underruns", 0),
             "buffered_ms": getattr(self.speaker, "buffered_seconds", 0.0) * 1000,
+            "resampler_delay_ms": 1000 * (
+                (self._in_resampler.delay() / self.hello["sample_rate"] if self._in_resampler is not None else 0)
+                + (self._out_resampler.delay() / self.speaker.rate if self._out_resampler is not None else 0)),
         })
 
     def _pump(self, ws, hello: dict) -> None:

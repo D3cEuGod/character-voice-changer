@@ -6,6 +6,7 @@ from .character import CharacterModel
 
 FRAME = 8192
 SHORT_FRAME = 4410
+REALTIME_FRAME = 2646  # 120 ms; preserves the full 104 ms speech lookahead.
 OVERLAP = 1024
 SPEECH_LOOKAHEAD = 2304
 JOIN = 320

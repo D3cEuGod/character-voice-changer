@@ -107,9 +107,11 @@ class BackendClient:
         return self._request("POST", f"/api/convert?{query}", body=data,
                              headers={"Content-Type": content_type}, timeout=timeout)
 
-    def live_url(self, voice_id: str, strength: float, mode: str = "character") -> str:
+    def live_url(self, voice_id: str, strength: float, mode: str = "character", *, packet_ms: int = 200) -> str:
+        if packet_ms not in (120, 200):
+            raise ValueError("实时音频包只支持 120 或 200 毫秒。")
         query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "low_latency": "true",
-                           "speech_context": "true", "mode": mode})
+                           "speech_context": "true", "mode": mode, "packet_ms": packet_ms})
         return f"ws://{self.host}:{self.port}/api/live?{query}"
 
 

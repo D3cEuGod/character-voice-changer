@@ -2,6 +2,7 @@ import asyncio
 import logging
 import numpy as np
 from contextlib import asynccontextmanager
+from enum import IntEnum
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
@@ -10,9 +11,14 @@ from starlette.concurrency import run_in_threadpool
 
 from . import __version__, engine, reference, local_rvc
 from .character import graph
-from .live import FRAME, SHORT_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
+from .live import FRAME, SHORT_FRAME, REALTIME_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
 
 MAX_BYTES = 24 * 1024 * 1024
+
+
+class PacketMs(IntEnum):
+    realtime = 120
+    standard = 200
 
 
 @asynccontextmanager
@@ -105,6 +111,7 @@ async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"]
 async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
                strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
                low_latency: bool = False, speech_context: bool = False,
+               packet_ms: PacketMs = PacketMs.standard,
                mode: Literal["character", "call"] = "character"):
     if ws.headers.get("origin") not in (None, "http://localhost:5173", "http://127.0.0.1:5173"):
         await ws.close(code=1008)
@@ -118,6 +125,8 @@ async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
         lookahead = SPEECH_LOOKAHEAD if speech_context else OVERLAP
         session = LiveVoice(voice_id, strength, lookahead, mode)
         frame_size = SHORT_FRAME if low_latency else FRAME
+        if low_latency and packet_ms == 120 and session.model.reference is None:
+            frame_size = REALTIME_FRAME
         hello = {"sample_rate": engine.RATE, "frame_samples": frame_size, "format": "s16le"}
         if speech_context:
             hello["lookahead_samples"] = lookahead

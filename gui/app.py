@@ -1158,7 +1158,8 @@ class MainWindow(QWidget):
         mic = audio.MicStream(mic_device)
         try:
             # Virtual output keeps more headroom for inference and device jitter.
-            slack = audio.live_slack(self.voice_id in self.reference_voices, self.voice_id, self.current_mode(), receiver is not None)
+            slack = audio.live_slack(self.voice_id in self.reference_voices, self.voice_id, self.current_mode(),
+                                     receiver is not None, out_device.name)
             speaker = audio.SpeakerStream(out_device, slack_seconds=slack, receiver=receiver)
         except audio.AudioDeviceError:
             mic.close()
@@ -1184,7 +1185,8 @@ class MainWindow(QWidget):
             self.set_status(str(exc), "error")
             self._refresh()
             return
-        url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode())
+        packet_ms = audio.live_packet_ms(self.voice_id in self.reference_voices, speaker.name)
+        url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode(), packet_ms=packet_ms)
         monitor = LiveMonitor(
             url, mic, speaker,
             on_connected=lambda hello: self._emit(self.bridge.live_connected, monitor, hello),
@@ -1218,11 +1220,13 @@ class MainWindow(QWidget):
             return
         self._live_stats = stats
         speaker = monitor.speaker
-        # 凑满一帧的等待 + 推理往返 + 播放余量 + 服务端保留的 1,024 个交叉淡化样本 + 输出设备缓冲
+        # 估算本机链路，包含采集、前瞻、重采样和断流后增加的缓冲；不含手机网络与 Discord。
         frame_ms = monitor.hello["frame_samples"] / monitor.hello["sample_rate"] * 1000
         overlap_ms = monitor.hello.get("lookahead_samples", 1024) / monitor.hello["sample_rate"] * 1000
-        delay = (frame_ms + stats["avg_ms"] + getattr(speaker, "slack_seconds", 0) * 1000 + overlap_ms
-                 + getattr(speaker, "latency", 0) * 1000) / 1000
+        delay = (frame_ms + stats["avg_ms"]
+                 + getattr(speaker, "target_buffer_seconds", getattr(speaker, "slack_seconds", 0)) * 1000 + overlap_ms
+                 + (getattr(speaker, "latency", 0) + getattr(monitor.mic, "latency", 0)) * 1000
+                 + stats.get("resampler_delay_ms", 0)) / 1000
         self.live_status.setText(
             f"{monitor.mic.name} → {speaker.name}\n"
             f"延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒 · 已送 {stats['frames']} 包"

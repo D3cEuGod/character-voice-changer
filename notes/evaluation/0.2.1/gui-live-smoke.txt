@@ -1,0 +1,11 @@
+2026-11-13: restarted the desktop app and its owned backend after the tests.
+GUI and /api/health version: 0.2.1
+Selected voice: anon / Anon_v2, character mode, strength 100%.
+Capture: Microphone (WO Mic Device), 48 kHz.
+Converted output: CABLE Input (VB-Audio Virtual Cable).
+Preview/headphone output: 24G4 (NVIDIA High Definition Audio).
+WebSocket handshake: 22050 Hz, 2646 samples per packet (120 ms).
+After 319 packets (about 38 seconds): input drops 0, playback underruns 0.
+GUI estimated local delay: 0.6 s. This is not a measured Discord remote delay.
+WO Mic local playback remains disabled (saved play flag 0).
+The user kept Discord muted for testing; no Discord unmute/join action was performed.

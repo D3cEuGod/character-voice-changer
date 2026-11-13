@@ -24,29 +24,41 @@ from gui.live import LiveMonitor
 
 
 class FileMic:
-    rate = 22050
     active = True
     name = "paced test file"
     dropped = 0
     level = 0
 
-    def __init__(self):
+    def __init__(self, rate=22050):
+        self.rate = rate
         self.blocks = queue.Queue()
 
     def close(self):
         self.active = False
 
 
-def test(client, path, voice, mode, sender, receiver, output, repeat):
+def test(client, path, voice, mode, sender, receiver, output, repeat,
+         slack_override=None, device_latency=None, packet_ms=200, input_rate=22050):
     signal, rate = sf.read(path, dtype="float32", always_2d=True)
-    signal = np.tile(soxr.resample(signal.mean(axis=1), rate, 22050), repeat)
-    mic = FileMic()
+    signal = np.tile(soxr.resample(signal.mean(axis=1), rate, input_rate), repeat)
+    mic = FileMic(input_rate)
     health = client.health()
     reference_voices = health.get("reference_voices", ("tomori", "taffy") if health.get("reference_engine") else ())
-    slack = live_slack(voice in reference_voices, voice, mode, True)
-    speaker = SpeakerStream(sender, slack_seconds=slack, receiver=receiver)
+    slack = (slack_override if slack_override is not None else
+             live_slack(voice in reference_voices, voice, mode, True, sender.name))
+    speaker = SpeakerStream(sender, slack_seconds=slack, receiver=receiver, device_latency=device_latency)
     device_latency = speaker.latency
-    expected, recorded, ticks, stops = [], [], [], []
+    expected, recorded, ticks, stops, capture_origin = [], [], [], [], []
+    capture_ready = threading.Event()
+    capture_overflows = []
+
+    def capture_audio(block, frames, clock, status):
+        if not capture_origin:
+            capture_origin.append(clock.inputBufferAdcTime)
+            capture_ready.set()
+        recorded.append(block[:, 0].copy())
+        if status.input_overflow:
+            capture_overflows.append(True)
     write = speaker.write
 
     def tee(samples):
@@ -55,22 +67,27 @@ def test(client, path, voice, mode, sender, receiver, output, repeat):
 
     speaker.write = tee
     ready = threading.Event()
-    monitor = LiveMonitor(client.live_url(voice, 1, mode), mic, speaker,
+    url = client.live_url(voice, 1, mode, packet_ms=packet_ms)
+    monitor = LiveMonitor(url, mic, speaker,
                           lambda hello: ready.set(), ticks.append, lambda *args: stops.append(args))
     capture_rate = 48000
     try:
-        with sd.InputStream(device=receiver.index, samplerate=capture_rate, channels=1, latency=.1,
+        with sd.InputStream(device=receiver.index, samplerate=capture_rate, channels=1, latency=.02,
                             extra_settings=sd.WasapiSettings(auto_convert=True),
-                            callback=lambda block, *args: recorded.append(block[:, 0].copy())):
+                            callback=capture_audio) as capture:
             speaker.start()
             monitor.start()
             if not ready.wait(15):
                 raise RuntimeError(f"WebSocket handshake failed: {stops}")
+            if not capture_ready.wait(2):
+                raise RuntimeError("Capture device did not start.")
+            capture_prefix = capture.time - capture_origin[0]
             start = time.perf_counter()
-            padded = np.r_[np.zeros(4410, np.float32), signal, np.zeros(22050, np.float32)]
-            for offset in range(0, len(padded), 441):
-                mic.blocks.put(padded[offset:offset+441])
-                time.sleep(max(0, start+(offset+441)/22050-time.perf_counter()))
+            padded = np.r_[np.zeros(round(.2*input_rate), np.float32), signal, np.zeros(input_rate, np.float32)]
+            block = round(.02*input_rate)
+            for offset in range(0, len(padded), block):
+                time.sleep(max(0, start+(offset+block)/input_rate-time.perf_counter()))
+                mic.blocks.put(padded[offset:offset+block])
             monitor.request_stop()
             monitor.join(15)
             time.sleep(.2)
@@ -93,7 +110,9 @@ def test(client, path, voice, mode, sender, receiver, output, repeat):
     sf.write(output / f"{name}-sent.wav", sent, capture_rate)
     (output / f"{name}-trace.json").write_text(json.dumps(ticks), encoding="utf-8")
     return {"input": str(path), "voice": voice, "mode": mode, "repeat": repeat,
-            "correlation": round(agreement, 5), "signal_delay_s": round(lag/capture_rate, 3),
+            "correlation": round(agreement, 5), "signal_delay_s": round(lag/capture_rate-capture_prefix, 3),
+            "capture_prefix_s": round(capture_prefix, 4), "capture_overflows": len(capture_overflows),
+            "input_rate": input_rate, "frame_samples": monitor.hello["frame_samples"],
             "p95_ms": round(float(np.percentile([tick["last_ms"] for tick in ticks], 95)), 1),
             "max_ms": round(float(max(tick["last_ms"] for tick in ticks)), 1),
             "starvations": speaker.starvations, "device_underflows": speaker.device_underflows,
@@ -110,20 +129,26 @@ def main():
     parser.add_argument("--mode", choices=("character", "call"), default="character")
     parser.add_argument("--voices", nargs="+", default=("tomori", "taffy", "anon"))
     parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--slack", type=float)
+    parser.add_argument("--device-latency", type=float)
+    parser.add_argument("--packet-ms", type=int, choices=(120, 200), default=200)
+    parser.add_argument("--input-rate", type=int, default=22050)
+    parser.add_argument("--backend-url", default="http://127.0.0.1:8765")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     pair = discord_pair(list_devices("input"), list_devices("output"))
     if pair is None:
         raise RuntimeError("No paired virtual microphone devices were found.")
-    client = BackendClient()
+    client = BackendClient(args.backend_url)
     results = {"health": client.health(), "sender": pair[0].name, "receiver": pair[1].name, "tests": []}
     for path in args.inputs:
         for voice in args.voices:
-            row = test(client, path, voice, args.mode, *pair, args.output, args.repeat)
+            row = test(client, path, voice, args.mode, *pair, args.output, args.repeat,
+                       args.slack, args.device_latency, args.packet_ms, args.input_rate)
             results["tests"].append(row)
             print(json.dumps(row), flush=True)
     (args.output / "metrics.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-    return int(any(row["underruns"] or row["correlation"] < .99 or not row["audio_present"]
+    return int(any(row["underruns"] or row["capture_overflows"] or row["correlation"] < .99 or not row["audio_present"]
                    or row["full_scale_pct"] for row in results["tests"]))
 
 
