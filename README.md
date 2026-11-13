@@ -14,8 +14,9 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
-- Original character recordings and converted previews available directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.2.1
+- Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
+- Original character recordings playable directly in the GUI
+- Versioned releases with a changelog; current internal beta is 0.3.0
 
 ## Tech Stack
 
@@ -37,8 +38,8 @@ All images are captures of the running app on Windows 11, taken while the self-c
       <img src="docs/images/live-on-air.png" alt="Real-time conversion running" width="92%" />
       <br />
       <sub>
-        <strong>EN:</strong> Real-time conversion running. The avatar frame turns red, both level bars move, and the status line shows the devices, delay and per-packet processing time.<br />
-        <strong>中文：</strong> 实时变声进行中。头像描边变红，两条电平条在动，状态行显示设备、延迟和每包处理时间。
+        <strong>EN:</strong> Real-time conversion running. The avatar frame turns red, the level bars move, and the status line shows the devices, delay and per-packet processing time.<br />
+        <strong>中文：</strong> 实时变声进行中。头像描边变红，电平条在动，状态行显示设备、延迟和每包处理时间。
       </sub>
     </td>
   </tr>
@@ -47,16 +48,16 @@ All images are captures of the running app on Windows 11, taken while the self-c
       <img src="docs/images/live-taffy.png" alt="Main window with Taffy selected" width="100%" />
       <br />
       <sub>
-        <strong>EN:</strong> Main window. Character and strength on the left, one large switch on the right, devices at the bottom.<br />
-        <strong>中文：</strong> 主窗口。左边选角色和强度，右边一个大开关，底部选设备。
+        <strong>EN:</strong> Main window on a white background with pink accents. Categories, the character carousel and strength on the left, one large switch on the right. Chibi Taffy sits next to the title.<br />
+        <strong>中文：</strong> 白底粉色点缀的主窗口。左边是分类、角色转盘和强度，右边一个大开关，标题旁是 Q 版塔菲。
       </sub>
     </td>
     <td width="50%" align="center">
       <img src="docs/images/file-converted.png" alt="File conversion with a finished result" width="100%" />
       <br />
       <sub>
-        <strong>EN:</strong> File mode after a conversion. The result is tagged with the input, character and strength that produced it.<br />
-        <strong>中文：</strong> 文件变声完成后。结果标着生成它的输入、角色和强度。
+        <strong>EN:</strong> File mode after a conversion. The result is tagged with the input, character, strength and processing mode that produced it.<br />
+        <strong>中文：</strong> 文件变声完成后。结果标着生成它的输入、角色、强度和处理方式。
       </sub>
     </td>
   </tr>
@@ -65,16 +66,16 @@ All images are captures of the running app on Windows 11, taken while the self-c
       <img src="docs/images/voice-tomori.png" alt="Tomori selected" width="100%" />
       <br />
       <sub>
-        <strong>EN:</strong> Tomori selected. The frame, caption and switch take the character's colour.<br />
-        <strong>中文：</strong> 选中高松灯。描边、标注和开关换成角色色。
+        <strong>EN:</strong> MyGO!!!!! category. Tomori sits in the centre and Anon waits, blurred, on the right; the triangles switch between them.<br />
+        <strong>中文：</strong> MyGO!!!!! 分类。灯在中间，爱音在右侧虚化，两边的三角形用来切换。
       </sub>
     </td>
     <td width="50%" align="center">
       <img src="docs/images/voice-anon.png" alt="Anon selected" width="100%" />
       <br />
       <sub>
-        <strong>EN:</strong> Anon selected.<br />
-        <strong>中文：</strong> 选中千早爱音。
+        <strong>EN:</strong> Anon selected. Tomori moves to the left side; the frame, caption and switch take Anon's colour.<br />
+        <strong>中文：</strong> 选中爱音。灯移到左侧，描边、标注和开关换成爱音的角色色。
       </sub>
     </td>
   </tr>
@@ -86,7 +87,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.2.1`（内测版）
+当前版本：`0.3.0`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -120,7 +121,9 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=seed` 才安装并启用；它需要额外 CUDA 环境和约 1.5 GB 权重。它不是本版本默认通话后端。
 
-左栏“角色原声”播放真实配音 / 直播片段，“输入示例”播放测试输入，各角色卡片上的播放按钮播放当前档位的变声示例。参考音出处、片段时间和校验值在 [assets/references/sources.json](assets/references/sources.json)。
+左栏先选分类（目前有 MyGO!!!!! 和 V圈），再用角色转盘两侧的三角形、键盘左右键或点旁边的角色切换。当前角色在中间，同一分类的其他角色在两侧虚化显示。换分类时会选回这个分类上次用的角色。“角色原声”播放当前角色的真实配音 / 直播片段，参考音出处、片段时间和校验值在 [assets/references/sources.json](assets/references/sources.json)。
+
+新增角色时，把头像放进 `assets/`，在 [assets/characters.json](assets/characters.json) 的 `voices` 里写上角色色和头像文件名，再把角色 id 放进某个分类，或新建一个分类。后端返回、但没有登记的角色会归入“其他”。
 
 想把入口放到任务栏：运行一次 `powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1`，右键生成的“角色变声器”快捷方式，在“显示更多选项”里选“固定到任务栏”。
 
@@ -174,7 +177,8 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 - `backend/character.py`，降噪、语音检测、音高跟踪和三位角色的模型推理
 - `backend/live.py`，按包渲染、SOLA 对齐和接缝交叉淡化
 - `gui/app.py`，主窗口
-- `gui/widgets.py`、`gui/theme.py`，自绘控件和配色
+- `gui/widgets.py`、`gui/theme.py`，自绘控件（含角色转盘）和配色
+- `gui/catalog.py`、`assets/characters.json`，角色分类和每位角色的颜色、头像
 - `gui/audio.py`，设备、录音、播放和实时通道的缓冲
 - `gui/live.py`，实时变声的工作线程
 - `gui/backend.py`，后端客户端和启动器
@@ -183,7 +187,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 - `tools/export_voices.py`，把 RVC 和 So-VITS-SVC 权重导出成 ONNX
 - `tools/eval/`，客观评测脚本
 - `voices/`，三个 256 维音色向量
-- `assets/`，头像、图标和试听示例
+- `assets/`，头像、Q 版形象、图标、角色原声和试听示例
 - `notes/`，决策记录和已知问题
 - `CHANGELOG.md`，更新日志
 
@@ -208,7 +212,9 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ### 界面
 
-- 角色列表来自后端，三位角色都能一键试听示例
+- 角色列表来自后端，按分类显示；左右三角切换，当前角色居中，其余角色在两侧虚化
+- 每位角色都能播放原始配音或直播录音作对照
+- 白色底，粉色点缀
 - 启动时检查后端，没有运行就启动，关闭窗口时一并停止
 - 后端启动失败时显示脚本的退出码和最后几行输出
 - 设备被拔出、引擎被占用时给出原因并释放设备
@@ -303,7 +309,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 | 可选对照引擎 | [Seed-VC](https://github.com/Plachtaa/seed-vc)，源码与 GPL v3 见 `third_party/seed_vc/`；下载地址与 SHA-256 见 `tools/seed_models.json`。默认不安装、不启动 |
 | 高松灯、千早爱音的头像 | 从动画《BanG Dream! It's MyGO!!!!!》官网的角色立绘裁出，版权归原权利方所有。[角色页](https://anime.bang-dream.com/mygo/character/) |
 | 永雏塔菲的头像 | 账号的公开头像。[账号主页](https://space.bilibili.com/1265680561) |
-| 试听示例 | `assets/previews/original.wav` 是 Windows 中文合成语音，其余三个由本后端转换 |
+| Q 版永雏塔菲 | 游戏《盲盒派对》联动角色“王牌发明家”的 Q 版形象，取自该游戏的 BWIKI 文件页，版权归原权利方所有。[角色页](https://wiki.biligame.com/gachaparty/?curid=378) |
+| 试听示例 | `assets/previews/original.wav` 是 Windows 中文合成语音，其余由本后端转换。界面从 0.3.0 起不再播放它们，保留给评测和自检 |
 | 算法与模型 | [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) · [OpenVoice](https://github.com/myshell-ai/OpenVoice) · [GTCRN](https://github.com/Xiaobin-Rong/gtcrn) · [Silero VAD](https://github.com/snakers4/silero-vad)。各模型的下载地址和校验值在 `setup_models.py` |
 
 请不要用变声结果冒充真人或发布成官方内容。

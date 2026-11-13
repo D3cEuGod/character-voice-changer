@@ -93,6 +93,11 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default=str(ROOT / ".run" / "selfcheck"), help="保存结果和截图的目录")
     parser.add_argument("--skip-autostart", action="store_true", help="不在 8766 端口另起一个后端来测试自动启动")
     parser.add_argument("--backend-url", default=DEFAULT_URL, help=f"被测后端的地址，默认 {DEFAULT_URL}")
+    parser.add_argument("--allow-vb-cable", action="store_true",
+                        help="允许把 VB-CABLE 当成测试用的虚拟音频线。它通常是 Discord 的麦克风，测试音频会进入通话")
+    parser.add_argument("--output", default="",
+                        help="试听和监听用的输出设备（名称片段）。默认用系统默认输出；系统默认输出是 Discord 用的虚拟线时，"
+                             "请指定别的设备，以免测试音频进入通话")
     args = parser.parse_args(argv)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -101,7 +106,7 @@ def main(argv=None) -> int:
     import soundfile as sf
     from PySide6.QtCore import Qt
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QFileDialog
+    from PySide6.QtWidgets import QFileDialog, QPushButton
 
     from . import audio
     from .app import Config, MainWindow
@@ -149,12 +154,26 @@ def main(argv=None) -> int:
         QTest.mouseClick(widget, Qt.LeftButton)
         pump(60)
 
+    def pick(win, voice_id: str) -> None:
+        """像用户一样换角色：先点分类，再点转盘两侧的三角形，直到这位角色居中。"""
+        category = next(cat for cat in win.categories if voice_id in cat.voices)
+        index = win.categories.index(category)
+        if win.category_bar.currentIndex() != index:
+            click(win.category_bar.button(index))
+        for _ in range(len(category.voices)):
+            current = win.carousel.current_id()
+            if current == voice_id:
+                break
+            order = win.carousel.ids()
+            click(win.carousel.right if order.index(voice_id) > order.index(current) else win.carousel.left)
+        pump(260)  # 等转盘动画走完
+
     # ------------------------------------------------------------------ 启动
     window = MainWindow(Config(args.backend_url))
     window.route_mode.setCurrentIndex(window.route_mode.findData("local"))
     window.resize(1060, 700)
     window.show()
-    wait(lambda: bool(window.cards) or window.notice.isVisible(), 30)
+    wait(lambda: bool(window.voice_names) or window.notice.isVisible(), 30)
     how = "由自检启动" if window.owned_backend is not None else "复用已运行的后端"
     if not c.check("启动：后端就绪", window.backend_ok, f"{how}；{window.status_label.text()}"):
         print(window.notice.text())
@@ -163,7 +182,7 @@ def main(argv=None) -> int:
     api_voices = client.voices()
     model_labels = client.health().get("voice_models", {})
     ids = [v["id"] for v in api_voices]
-    c.check("角色列表来自 GET /api/voices", window.voices == api_voices and list(window.cards) == ids,
+    c.check("角色列表来自 GET /api/voices", window.voices == api_voices and list(window.voice_names) == ids,
             "、".join(f"{v['id']}={v['name']}" for v in api_voices))
     c.check("默认选中永雏塔菲，主视觉是头像",
             window.voice_id == "taffy" and window.hero_name.text() == "永雏塔菲" and window._avatar is not None,
@@ -174,6 +193,13 @@ def main(argv=None) -> int:
     print("麦克风：", [d.name for d in inputs])
     print("输出设备：", [d.name for d in outputs])
     default_out = next((d for d in outputs if d.is_default), outputs[0] if outputs else None)
+    if args.output:
+        default_out = next((d for d in outputs if args.output in d.name), None)
+        if default_out is None:
+            print(f"找不到名称包含“{args.output}”的输出设备")
+            window.close()
+            return 2
+    print("试听和监听输出：", default_out.name if default_out else "没有")
     def loops_back(mic, out) -> bool:
         """往 out 播一小段 440 Hz，看 mic 能不能录到，确认这一对设备确实是一根虚拟音频线。"""
         tone = (0.3 * np.sin(2 * np.pi * 440 * np.arange(22050) / 22050)).astype(np.float32)
@@ -191,60 +217,91 @@ def main(argv=None) -> int:
 
     cable_in = cable_out = None
     for mic in inputs:
+        # VB-CABLE 是 Discord 用的麦克风：往里播测试音频，通话里的人会听到。除非明确允许，不拿它当测试线。
+        if "cable" in mic.name.casefold() and not args.allow_vb_cable:
+            continue
         inner = mic.name[mic.name.find("(") + 1:mic.name.rfind(")")] if "(" in mic.name else mic.name
         partner = next((o for o in outputs if inner and inner in o.name and not o.is_default), None)
         if partner is not None and loops_back(mic, partner):
             cable_in, cable_out = mic, partner
             break
     print("虚拟音频线：", f"{cable_out.name} → {cable_in.name}" if cable_in else "没有找到")
-    quiet_out = next((o for o in outputs if o is not default_out and o is not cable_out), None) or default_out
+    quiet_out = next((o for o in outputs if o is not default_out and o is not cable_out
+                      and "cable" not in o.name.casefold()), None) or default_out
     combo_names = [window.mic_combo.itemText(i) for i in range(window.mic_combo.count())]
     c.check("设备下拉框显示系统报告的完整名称",
             all(any(d.name in text for text in combo_names) for d in inputs) and bool(inputs) and bool(outputs),
             f"{len(inputs)} 个麦克风，{len(outputs)} 个输出设备")
 
-    # ------------------------------------------------------------------ 角色切换
+    # ------------------------------------------------------------------ 角色分类与切换
+    groups = {cat.id: cat.voices for cat in window.categories}
+    c.check("角色按分类显示：MyGO 一类，V圈一类", groups.get("mygo") == ("tomori", "anon")
+            and groups.get("vtuber") == ("taffy",) and window.category_bar.count() == len(groups),
+            "；".join(f"{cat.name}: {'、'.join(cat.voices)}" for cat in window.categories))
+    c.check("默认分类是永雏塔菲所在的 V圈，转盘只显示这一类", window.category_id == "vtuber"
+            and window.carousel.ids() == ["taffy"] and not window.carousel.left.isEnabled()
+            and not window.carousel.right.isEnabled())
+    click(window.category_bar.button(window.categories.index(next(cat for cat in window.categories if cat.id == "mygo"))))
+    pump(300)
+    c.check("切到 MyGO 分类：转盘换成灯和爱音，选中灯居中", window.voice_id == "tomori"
+            and window.carousel.ids() == ["tomori", "anon"] and window.carousel.current_id() == "tomori"
+            and not window.carousel.left.isEnabled() and window.carousel.right.isEnabled(), window.hero_name.text())
+    shot(window, "02_voice_tomori")
+    click(window.carousel.right)
+    pump(300)
+    c.check("点右侧三角切到爱音，灯移到左侧", window.voice_id == "anon" and window.carousel.current_id() == "anon"
+            and window.carousel.left.isEnabled() and not window.carousel.right.isEnabled(), window.hero_name.text())
+    shot(window, "02_voice_anon")
+    window.carousel.setFocus()
+    QTest.keyClick(window.carousel, Qt.Key_Left)
+    pump(300)
+    c.check("键盘左键切回灯", window.voice_id == "tomori")
+    stage = window.carousel.stage
+    side_rect, _ = stage._slot(1.0)
+    QTest.mouseClick(stage, Qt.LeftButton, pos=side_rect.center().toPoint())
+    pump(300)
+    c.check("点转盘侧边虚化的爱音也能切换", window.voice_id == "anon")
+    click(window.category_bar.button(window.categories.index(next(cat for cat in window.categories if cat.id == "vtuber"))))
+    pump(300)
+    click(window.category_bar.button(window.categories.index(next(cat for cat in window.categories if cat.id == "mygo"))))
+    pump(300)
+    c.check("切走再切回 MyGO 时选回上次用的爱音", window.voice_id == "anon" and window.carousel.current_id() == "anon")
     for voice in api_voices:
-        click(window.cards[voice["id"]])
-        ok = (window.voice_id == voice["id"] and window.hero_name.text() == voice["name"]
-              and all(card._active == (vid == voice["id"]) for vid, card in window.cards.items()))
-        c.check(f"切换角色：{voice['name']}", ok, window.hero_caption.text())
+        pick(window, voice["id"])
+        c.check(f"切换角色：{voice['name']}", window.voice_id == voice["id"] and window.hero_name.text() == voice["name"]
+                and window.carousel.current_id() == voice["id"], window.hero_caption.text())
         c.check(f"角色原声与处理方式：{voice['name']}", window.reference_button.isEnabled()
                 and window.voice_mode.isVisible() and window.current_mode() == "character"
                 and window.hero_caption.text() == model_labels.get(voice["id"], voice["id"].upper()))
-        shot(window, f"02_voice_{voice['id']}")
-    click(window.cards["taffy"])
+    pick(window, "taffy")
+    c.check("示例按钮已经去掉", not hasattr(window, "original_button")
+            and all(not b.text().startswith("示例") for b in window.findChildren(QPushButton)))
 
-    # ------------------------------------------------------------------ 示例试听
+    # ------------------------------------------------------------------ 角色原声
     if default_out is None:
-        c.skip("示例试听", "没有输出设备")
+        c.skip("角色原声", "没有输出设备")
     else:
         choose(window.out_combo, default_out.name)
-        click(window.cards["taffy"].preview_button)
-        started = wait(lambda: window.playing_tag == ("preview", "taffy") and window.player.playing, 3)
+        click(window.reference_button)
+        started = wait(lambda: window.playing_tag == ("preview", "reference") and window.player.playing, 3)
         pump(900)
         position = window.player.position
-        click(window.cards["taffy"].preview_button)
-        c.check("角色示例：点一下立即播放，再点停止", started and position > 0.5 and window.playing_tag is None,
-                f"taffy.wav 在“{default_out.name}”上播了 {position:.2f} 秒后停止（脚本听不到声音，只确认音频按时送出）")
+        click(window.reference_button)
+        c.check("角色原声：点一下立即播放，再点停止", started and position > 0.5 and window.playing_tag is None,
+                f"taffy 的原声在“{default_out.name}”上播了 {position:.2f} 秒后停止（脚本听不到声音，只确认音频按时送出）")
         choose(window.out_combo, quiet_out.name)
         click(window.reference_button)
         ok = wait(lambda: window.playing_tag == ("preview", "reference") and window.player.playing, 3)
-        click(window.cards["anon"])
+        pick(window, "anon")
         c.check("播放角色原声，换角色后停止以免错配", ok and window.playing_tag is None)
-        click(window.cards["taffy"])
-        for name in [i for i in ids if i != "taffy"] + ["original"]:
-            if name == "original":
-                click(window.original_button)
-            else:
-                click(window.cards[name].preview_button)
-            ok = wait(lambda: window.playing_tag == ("preview", name) and window.player.playing, 3)
-            pump(500)
-            if name != "original":
-                c.check(f"角色示例：{name}", ok and window.player.position > 0.2, f"输出到“{quiet_out.name}”")
+        click(window.reference_button)
+        ok = wait(lambda: window.playing_tag == ("preview", "reference") and window.player.playing, 3)
+        pump(500)
+        c.check("角色原声：千早爱音", ok and window.player.position > 0.2, f"输出到“{quiet_out.name}”")
         t0 = time.monotonic()
-        finished = wait(lambda: window.playing_tag is None, 10)
-        c.check("示例播完后自动复位", finished, f"original.wav 播放 {time.monotonic() - t0 + 0.5:.1f} 秒后结束")
+        finished = wait(lambda: window.playing_tag is None, 20)
+        c.check("角色原声播完后自动复位", finished, f"播完用了 {time.monotonic() - t0 + 0.5:.1f} 秒")
+        pick(window, "taffy")
         choose(window.out_combo, default_out.name)
 
     # ------------------------------------------------------------------ 原生文件对话框
@@ -339,19 +396,19 @@ def main(argv=None) -> int:
         shot(window, "04_stale_after_strength_change")
         window.strength_slider.setValue(100)
         c.check("改回原设置后结果恢复可用", window.current_result() is result and window.save_button.isEnabled())
-        click(window.cards["anon"])
+        pick(window, "anon")
         c.check("换角色后旧结果不能保存", window.current_result() is None and not window.save_button.isEnabled())
         click(window.convert_button)
         wait(lambda: window.converting_key is not None, 2)
-        click(window.cards["tomori"])  # 转换途中改设置
+        pick(window, "tomori")  # 转换途中改设置
         wait(lambda: window.converting_key is None, 180)
         anon_key = (window.input.serial, "anon", 100, "character")
         c.check("转换途中换角色：结果记在提交时的参数下", anon_key in window.results and window.current_result() is None
                 and not window.save_button.isEnabled(), window.status_label.text())
-        click(window.cards["anon"])
+        pick(window, "anon")
         c.check("回到千早爱音后可保存她的结果", window.current_result() is window.results.get(anon_key)
                 and window.save_button.isEnabled())
-        click(window.cards["taffy"])
+        pick(window, "taffy")
         c.check("回到永雏塔菲后仍是她的结果", window.current_result() is result)
         QFileDialog.getOpenFileName = staticmethod(lambda *a, **k: (str(ORIGINAL.with_name("tomori.wav")), ""))
         click(window.import_button)
@@ -430,7 +487,7 @@ def main(argv=None) -> int:
         choose(window.mic_combo, cable_in.name)
         choose(window.out_combo, default_out.name)
         window.strength_slider.setValue(100)
-        click(window.cards["taffy"])
+        pick(window, "taffy")
         pump(600)
         feed_cable(6)
         click(window.live_switch)
@@ -465,7 +522,7 @@ def main(argv=None) -> int:
                 window.convert_button.toolTip())
         shot(window, "06_live_on_air")
 
-        click(window.cards["anon"])
+        pick(window, "anon")
         wait(lambda: window.live is not None and window.live is not first and bool(window.live.hello), 8)
         second = window.live
         monitors.append(second)
@@ -543,7 +600,7 @@ def main(argv=None) -> int:
     if inputs:
         choose(window.mic_combo, (cable_in or inputs[0]).name)
     window.out_combo.setCurrentIndex(window.out_combo.count() - 1)
-    click(window.cards["taffy"].preview_button)
+    click(window.reference_button)
     c.check("模拟输出设备打不开：试听报错", window.playing_tag is None and "无法打开" in window.status_label.text(),
             window.status_label.text())
     if inputs:
@@ -574,7 +631,7 @@ def main(argv=None) -> int:
         click(window.live_switch)
         closing = window.live
         wait(lambda: closing is not None and bool(closing.hello), 8)
-        click(window.cards["taffy"].preview_button)
+        click(window.reference_button)
     t0 = time.monotonic()
     window.close()
     took = time.monotonic() - t0
@@ -603,7 +660,7 @@ def main(argv=None) -> int:
     offline.load_file(ORIGINAL)
     c.check("未连接后端：显示原因，转换和监听不可用，仍可导入和试听原声",
             not offline.backend_ok and "连接被拒绝" in offline.notice.text() and not offline.convert_button.isEnabled()
-            and not offline.live_switch.isEnabled() and not offline.cards and offline.input is not None
+            and not offline.live_switch.isEnabled() and not offline.voice_names and offline.input is not None
             and offline.convert_button.toolTip() == "后端未连接",
             offline.notice.text().replace("\n", " "))
     shot(offline, "08_backend_offline")
@@ -646,7 +703,7 @@ def main(argv=None) -> int:
         started = MainWindow(Config(alt_url, autostart=True, script=starter))
         started.show()
         t0 = time.monotonic()
-        ready = wait(lambda: started.backend_ok and bool(started.cards), 180)
+        ready = wait(lambda: started.backend_ok and bool(started.voice_names), 180)
         c.check("后端未运行时自动启动并等到 /api/health 就绪", ready and started.owned_backend is not None,
                 f"{time.monotonic() - t0:.1f} 秒；{started.status_label.text()}（脚本与 start-backend.cmd 的启动命令相同，端口改为 8766）")
         if ready:

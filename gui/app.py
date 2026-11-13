@@ -14,15 +14,14 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QSizePolicy, QSlider, QStackedWidget, QVBoxLayout, QWidget)
 
-from . import __version__, audio, theme
+from . import __version__, audio, catalog, theme
 from .backend import (CONTENT_TYPES, DEFAULT_URL, ROOT, START_SCRIPT, BackendClient, BackendError,
                       BackendLauncher, stop_process_tree)
 from .live import LiveMonitor
-from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCard,
+from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCarousel,
                       divider, label, make_icon, set_state)
 
 ASSETS = ROOT / "assets"
-PREVIEWS = ASSETS / "previews"
 MAX_RESULTS = 8
 MODE_NAMES = {"character": "音色优先", "call": "通话清晰"}
 
@@ -96,7 +95,10 @@ class MainWindow(QWidget):
         self.max_bytes = 24 * 1024 * 1024
         self.voices: list[dict] = []
         self.voice_id: str | None = None
-        self.cards: dict[str, VoiceCard] = {}
+        self.voice_names: dict[str, str] = {}          # 后端返回的角色 id → 中文名
+        self.categories: list[catalog.Category] = []
+        self.category_id: str | None = None           # 角色转盘当前显示的分类
+        self._last_voice: dict[str, str] = {}         # 每个分类上次选中的角色
         self.strength_pct = 100
         self.input: InputClip | None = None
         self.results: dict[tuple, ResultClip] = {}
@@ -154,18 +156,27 @@ class MainWindow(QWidget):
 
         top = QHBoxLayout()
         top.setSpacing(10)
+        chibi = QPixmap(str(ASSETS / catalog.voice_style("taffy").chibi)) if catalog.voice_style("taffy").chibi else QPixmap()
+        if not chibi.isNull():
+            self.mascot = QLabel()
+            ratio = self.devicePixelRatioF() or 1.0
+            scaled = chibi.scaled(int(40 * ratio), int(40 * ratio), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled.setDevicePixelRatio(ratio)
+            self.mascot.setPixmap(scaled)
+            self.mascot.setToolTip("Q 版永雏塔菲")
+            top.addWidget(self.mascot, 0, Qt.AlignVCenter)
         top.addWidget(label("角色变声器", "appTitle"))
         top.addWidget(label(f"v{__version__} 内测", "version"), 0, Qt.AlignBottom)
         top.addStretch(1)
         self.lamp = label("STANDBY", "lamp")
         self.lamp.hide()
-        top.addWidget(self.lamp)
+        top.addWidget(self.lamp, 0, Qt.AlignVCenter)
         self.backend_pill = label("后端：检查中", "pill")
-        top.addWidget(self.backend_pill)
+        top.addWidget(self.backend_pill, 0, Qt.AlignVCenter)
         self.reconnect_button = QPushButton("重新连接")
         self.reconnect_button.setObjectName("ghost")
         self.reconnect_button.setToolTip("检查本地后端；没有运行时启动 start-backend.cmd")
-        top.addWidget(self.reconnect_button)
+        top.addWidget(self.reconnect_button, 0, Qt.AlignVCenter)
         root.addLayout(top)
 
         self.notice = QLabel()
@@ -188,10 +199,12 @@ class MainWindow(QWidget):
         root.addWidget(self.status_label)
 
     def _build_voice(self) -> QWidget:
-        """左栏：当前角色、角色切换和音色强度。"""
+        """左栏：当前角色、分类和角色转盘、音色强度与处理方式。"""
         card = Card()
         card.setFixedWidth(336)
-        self.hero = HeroArt(288)
+        card.body.setSpacing(10)
+        self.hero = HeroArt(250)
+        self.hero.setMinimumSize(150, 150)
         card.body.addWidget(self.hero, 1)
         names = QVBoxLayout()
         names.setSpacing(0)
@@ -202,14 +215,16 @@ class MainWindow(QWidget):
         self.hero_caption.setAlignment(Qt.AlignCenter)
         names.addWidget(self.hero_caption)
         card.body.addLayout(names)
-        self.cards_row = QHBoxLayout()
-        self.cards_row.setSpacing(4)
-        self.cards_placeholder = label("连接后端后，这里显示 /api/voices 返回的角色。")
-        self.cards_placeholder.setWordWrap(True)
-        self.cards_placeholder.setAlignment(Qt.AlignCenter)
-        self.cards_placeholder.setMinimumHeight(110)
-        self.cards_row.addWidget(self.cards_placeholder)
-        card.body.addLayout(self.cards_row)
+        self.category_bar = Segmented()
+        self.category_bar.setAccessibleName("角色分类")
+        card.body.addWidget(self.category_bar, 0, Qt.AlignHCenter)
+        self.carousel = VoiceCarousel()
+        self.carousel.setToolTip("点两侧的三角或旁边的角色切换；也可以用键盘左右键")
+        card.body.addWidget(self.carousel)
+        self.voices_placeholder = label("连接后端后，这里显示 /api/voices 返回的角色。")
+        self.voices_placeholder.setWordWrap(True)
+        self.voices_placeholder.setAlignment(Qt.AlignCenter)
+        card.body.addWidget(self.voices_placeholder)
         card.body.addWidget(divider())
         strength = QHBoxLayout()
         strength.addWidget(label("音色强度", "sectionLabel"))
@@ -226,25 +241,20 @@ class MainWindow(QWidget):
         self.strength_slider.setAccessibleName("音色强度")
         self.strength_slider.setToolTip("0% 是原声，100% 最接近角色")
         card.body.addWidget(self.strength_slider)
+        bottom = QHBoxLayout()
+        bottom.setSpacing(8)
         self.voice_mode = ConsoleCombo()
         for mode, name in MODE_NAMES.items():
             self.voice_mode.addItem(name, mode)
+        self.voice_mode.setMinimumContentsLength(6)
         self.voice_mode.setAccessibleName("处理方式")
-        self.voice_mode.setToolTip("音色优先加强角色模型检索；通话清晰降低检索比例、加强发音保护。下方角色标注显示实际加载的模型。")
-        card.body.addWidget(self.voice_mode)
-        examples = QHBoxLayout()
-        self.original_button = QPushButton("输入示例")
-        self.original_button.setObjectName("ghost")
-        self.original_button.setIconSize(QSize(11, 11))
-        self.original_button.setIcon(make_icon("play", theme.SKY, 11))
-        self.original_button.setToolTip("播放 assets/previews/original.wav，三位角色的示例都由这句话转换而来")
-        self.original_button.setEnabled((PREVIEWS / "original.wav").is_file())
-        examples.addWidget(self.original_button)
+        self.voice_mode.setToolTip("音色优先加强角色模型检索；通话清晰降低检索比例、加强发音保护。角色名下方显示实际加载的模型。")
+        bottom.addWidget(self.voice_mode, 1)
         self.reference_button = QPushButton("角色原声")
-        self.reference_button.setObjectName("ghost")
-        self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来与变声示例对照")
-        examples.addWidget(self.reference_button)
-        card.body.addLayout(examples)
+        self.reference_button.setIconSize(QSize(11, 11))
+        self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来对照变声效果")
+        bottom.addWidget(self.reference_button)
+        card.body.addLayout(bottom)
         return card
 
     def _build_work(self) -> QWidget:
@@ -459,8 +469,9 @@ class MainWindow(QWidget):
         self.reconnect_button.clicked.connect(self.connect_backend)
         self.tab_buttons["live"].clicked.connect(lambda: self.show_tab("live"))
         self.tab_buttons["file"].clicked.connect(lambda: self.show_tab("file"))
-        self.original_button.clicked.connect(lambda: self.toggle_preview("original"))
         self.reference_button.clicked.connect(lambda: self.toggle_preview("reference"))
+        self.carousel.chosen.connect(self.select_voice)
+        self.category_bar.currentIndexChanged.connect(self._on_category_changed)
         self.mic_combo.currentIndexChanged.connect(self._on_device_changed)
         self.out_combo.currentIndexChanged.connect(self._on_device_changed)
         self.route_mode.currentIndexChanged.connect(self._route_changed)
@@ -559,7 +570,7 @@ class MainWindow(QWidget):
         playing_ab = self.playing_tag is not None and self.playing_tag[0] in ("input", "result")
         self.play_button.setEnabled(playing_ab or (has_out and self.input is not None))
         self.play_button.setText("停止" if playing_ab else "播放")
-        self.play_button.setIcon(make_icon("stop" if playing_ab else "play", theme.CREAM, 14))
+        self.play_button.setIcon(make_icon("stop" if playing_ab else "play", theme.TEXT, 14))
         self.seek_slider.setEnabled(self.input is not None)
         self.save_button.setEnabled(result is not None)
         self.save_button.setToolTip("" if result is not None else "只有与当前输入、角色、强度对应的结果才能保存")
@@ -719,21 +730,18 @@ class MainWindow(QWidget):
 
     def _on_voices_loaded(self, voices: list) -> None:
         self.voices = voices
-        while self.cards_row.count():
-            item = self.cards_row.takeAt(0)
-            if item.widget() is not None:
-                item.widget().hide()
-                item.widget().deleteLater()
-        self.cards = {}
-        for voice in voices:
-            card = VoiceCard(voice["id"], voice["name"], self._pixmap(voice["id"]),
-                             (PREVIEWS / f"{voice['id']}.wav").is_file())
-            card.chosen.connect(self.select_voice)
-            card.preview_requested.connect(self.toggle_preview)
-            self.cards_row.addWidget(card, 1)
-            self.cards[voice["id"]] = card
-        ids = [v["id"] for v in voices]
+        self.voice_names = {v["id"]: v["name"] for v in voices}
+        ids = list(self.voice_names)
+        self.categories = catalog.categories_for(ids)
+        self.category_id = None
+        self.category_bar.blockSignals(True)
+        self.category_bar.clear()
+        for category in self.categories:
+            self.category_bar.addItem(category.name, category.id)
+        self.category_bar.blockSignals(False)
+        self.voices_placeholder.setVisible(not ids)
         if not ids:
+            self.carousel.set_items([], None)
             self._on_voices_failed("后端返回了空的角色列表。")
             return
         target = self.voice_id if self.voice_id in ids else "taffy" if "taffy" in ids else ids[0]
@@ -741,12 +749,29 @@ class MainWindow(QWidget):
         self.select_voice(target)
 
     # ---- 角色 -----------------------------------------------------------
+    def _category_of(self, voice_id: str) -> catalog.Category | None:
+        return next((c for c in self.categories if voice_id in c.voices), None)
+
+    def _carousel_items(self, category: catalog.Category) -> list[dict]:
+        return [{"id": v, "name": self.voice_names.get(v, v), "style": catalog.voice_style(v),
+                 "pixmap": self._pixmap(v)} for v in category.voices]
+
+    def _on_category_changed(self, index: int) -> None:
+        """切换分类：转盘换成这个分类的角色，并选回这个分类上次用的角色。"""
+        if not 0 <= index < len(self.categories):
+            return
+        category = self.categories[index]
+        if self.voice_id in category.voices:
+            return
+        self.select_voice(self._last_voice.get(category.id, category.voices[0]))
+
     def _show_voice(self, voice_id: str | None) -> None:
         self.voice_mode.setEnabled(voice_id is not None)
         self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
         style = theme.voice_style(voice_id or "taffy")
         self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
         self.live_switch.set_color(style.color)
+        self.reference_button.setIcon(make_icon("play", style.color, 11))
         if voice_id is None:
             self.hero_name.setText("…")
             self.hero_caption.setText("正在读取角色列表")
@@ -754,15 +779,24 @@ class MainWindow(QWidget):
             self.hero_name.setText(self._voice_name(voice_id))
             self.hero_caption.setText(self.voice_models.get(voice_id, voice_id.upper()))
         self.hero_caption.setStyleSheet(f"color: {style.color};")
-        for card_id, card in self.cards.items():
-            card.set_active(card_id == voice_id)
 
     def select_voice(self, voice_id: str) -> None:
-        if voice_id == self.voice_id or voice_id not in self.cards:
+        if voice_id == self.voice_id or voice_id not in self.voice_names:
             return
         if self.playing_tag == ("preview", "reference"):
             self.stop_playback()
         self.voice_id = voice_id
+        category = self._category_of(voice_id)
+        if category is not None:
+            self._last_voice[category.id] = voice_id
+            if category.id != self.category_id:
+                self.category_id = category.id
+                self.carousel.set_items(self._carousel_items(category), voice_id)
+                self.category_bar.blockSignals(True)
+                self.category_bar.setCurrentIndex(self.categories.index(category))
+                self.category_bar.blockSignals(False)
+            else:
+                self.carousel.set_current(voice_id)
         self._show_voice(voice_id)
         self._refresh()
         if self.live is not None:
@@ -1022,31 +1056,28 @@ class MainWindow(QWidget):
             self._refresh()
 
     def _sync_preview_buttons(self) -> None:
-        current = self.playing_tag[1] if self.playing_tag is not None and self.playing_tag[0] == "preview" else None
-        for voice_id, card in self.cards.items():
-            card.set_previewing(voice_id == current)
-        playing_original = current == "original"
-        self.original_button.setText("停止" if playing_original else "输入示例")
-        self.original_button.setIcon(make_icon("stop" if playing_original else "play", theme.SKY, 12))
-        self.reference_button.setText("停止" if current == "reference" else "角色原声")
+        playing = self.playing_tag == ("preview", "reference")
+        self.reference_button.setText("停止" if playing else "角色原声")
+        color = theme.voice_style(self.voice_id or "taffy").color
+        self.reference_button.setIcon(make_icon("stop" if playing else "play", color, 11))
 
-    def toggle_preview(self, name: str) -> None:
-        """播放输入、转换结果或已核实出处的角色原始录音。"""
+    def toggle_preview(self, name: str = "reference") -> None:
+        """播放当前角色已核实出处的原始配音或直播录音；再点一次停止。"""
         if self.playing_tag == ("preview", name):
             self.stop_playback()
             return
-        filename = f"{name}-call" if name in self.cards and self.current_mode() == "call" else name
-        path = ASSETS / "references" / f"{self.voice_id}.wav" if name == "reference" else PREVIEWS / f"{filename}.wav"
+        if self.voice_id is None:
+            return
+        path = ASSETS / "references" / f"{self.voice_id}.wav"
         try:
             samples, rate = sf.read(str(path), dtype="float32", always_2d=True)
         except Exception as exc:
-            self.set_status(f"无法读取示例 {path.name}：{exc}", "error")
+            self.set_status(f"无法读取角色原声 {path.name}：{exc}", "error")
             return
         self.stop_playback()
-        label = ("输入示例" if name == "original" else f"{self._voice_name(self.voice_id)} 的角色原声"
-                 if name == "reference" else f"{self._voice_name(name)} 的变声示例")
         if self._play(("preview", name), samples.mean(axis=1), rate):
-            self.set_status(f"正在播放{label}（{path.name}）→ {self._device(self.out_combo).name}")
+            self.set_status(f"正在播放{self._voice_name(self.voice_id)}的角色原声（{path.name}）"
+                            f"→ {self._device(self.out_combo).name}")
 
     def _ab_clip(self, which: str):
         if which == "result":

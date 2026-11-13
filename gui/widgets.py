@@ -1,12 +1,14 @@
-"""自绘控件：角色主视觉、角色头像、变声开关、录音键、电平条。尺寸都用逻辑像素，随系统缩放。"""
+"""自绘控件：角色主视觉、角色转盘、变声开关、录音键、电平条。尺寸都用逻辑像素，随系统缩放。"""
 from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap, QRadialGradient
-from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QFrame, QHBoxLayout, QLabel,
-                               QPushButton, QSizePolicy, QVBoxLayout, QWidget)
+from PySide6.QtCore import QEasingCurve, QPointF, QRectF, QSize, Qt, QTimer, QVariantAnimation, Signal
+from PySide6.QtGui import (QColor, QIcon, QImage, QLinearGradient, QPainter, QPainterPath, QPen, QPixmap,
+                           QRadialGradient)
+from PySide6.QtWidgets import (QAbstractButton, QButtonGroup, QComboBox, QFrame, QGraphicsBlurEffect,
+                               QGraphicsPixmapItem, QGraphicsScene, QHBoxLayout, QLabel, QPushButton,
+                               QSizePolicy, QVBoxLayout, QWidget)
 
 from . import theme
 
@@ -103,7 +105,7 @@ def paint_voice_art(p: QPainter, clip: QPainterPath, rect: QRectF, style: theme.
         p.fillRect(rect, glow)
         side = rect.width() * 0.56
         art = QRectF(rect.center().x() - side / 2, rect.center().y() - side / 2, side, side)
-        ART_PAINTERS.get(style.art, paint_note)(p, art, QColor(theme.CREAM))
+        ART_PAINTERS.get(style.art, paint_note)(p, art, QColor(theme.WHITE))
     p.restore()
 
 
@@ -217,9 +219,22 @@ class Segmented(QWidget):
         self._row.addWidget(button)
         buttons = self._group.buttons()
         for index, item in enumerate(buttons):
-            item.setObjectName("segLeft" if index == 0 else "segRight" if index == len(buttons) - 1 else "segMiddle")
+            item.setObjectName("segSolo" if len(buttons) == 1 else "segLeft" if index == 0 else
+                               "segRight" if index == len(buttons) - 1 else "segMiddle")
+            item.style().unpolish(item)
+            item.style().polish(item)
         if len(buttons) == 1:
             button.setChecked(True)
+
+    def clear(self) -> None:
+        for button in self._group.buttons():
+            self._group.removeButton(button)
+            button.hide()
+            button.deleteLater()
+        self._data = []
+
+    def count(self) -> int:
+        return len(self._data)
 
     def currentIndex(self) -> int:
         return self._group.checkedId()
@@ -279,90 +294,246 @@ class HeroArt(QWidget):
         paint_voice_art(p, clip, rect, self._style, self._pixmap)
 
 
-class VoiceCard(QWidget):
-    """一位角色：圆形头像、名字，以及立即播放示例的按钮。"""
+def blurred(pixmap: QPixmap, radius: float) -> QPixmap:
+    """用 Qt 的模糊效果画一张模糊版本，给两侧没选中的角色用。"""
+    if pixmap is None or pixmap.isNull():
+        return pixmap
+    scene = QGraphicsScene()
+    item = QGraphicsPixmapItem(pixmap)
+    effect = QGraphicsBlurEffect()
+    effect.setBlurRadius(radius)
+    effect.setBlurHints(QGraphicsBlurEffect.QualityHint)
+    item.setGraphicsEffect(effect)
+    scene.addItem(item)
+    image = QImage(pixmap.size(), QImage.Format_ARGB32_Premultiplied)
+    image.fill(Qt.transparent)
+    painter = QPainter(image)
+    painter.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+    scene.render(painter, QRectF(image.rect()), QRectF(pixmap.rect()))
+    painter.end()
+    return QPixmap.fromImage(image)
 
-    chosen = Signal(str)
-    preview_requested = Signal(str)
-    THUMB = 62
 
-    def __init__(self, voice_id: str, name: str, pixmap: QPixmap | None, has_preview: bool, parent=None):
+class ArrowButton(QAbstractButton):
+    """左右切换角色用的三角形按钮。"""
+
+    def __init__(self, direction: int, parent=None):
         super().__init__(parent)
-        self.voice_id = voice_id
-        self.name = name
-        self.style_ = theme.voice_style(voice_id)
-        self._pixmap = pixmap
-        self._active = False
-        self._hover = False
+        self.direction = direction  # -1 向左，+1 向右
+        self.setFixedSize(26, 44)
         self.setCursor(Qt.PointingHandCursor)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setAccessibleName(f"角色 {name}")
         self.setAttribute(Qt.WA_Hover)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(4, self.THUMB + 12, 4, 0)
-        layout.setSpacing(2)
-        self.name_label = QLabel(name)
-        self.name_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.name_label)
-        self.preview_button = QPushButton("示例")
-        self.preview_button.setObjectName("ghost")
-        self.preview_button.setIconSize(QSize(11, 11))
-        self.preview_button.setCursor(Qt.PointingHandCursor)
-        self.preview_button.setEnabled(has_preview)
-        self.preview_button.setToolTip(f"播放 {name} 的示例" if has_preview else "assets/previews 下没有这位角色的示例")
-        self.preview_button.clicked.connect(lambda: self.preview_requested.emit(self.voice_id))
-        layout.addWidget(self.preview_button, 0, Qt.AlignHCenter)
-        self.set_previewing(False)
-        self._restyle()
-
-    def set_active(self, active: bool) -> None:
-        if active != self._active:
-            self._active = active
-            self._restyle()
-            self.update()
-
-    def set_previewing(self, playing: bool) -> None:
-        self.preview_button.setText("停止" if playing else "示例")
-        self.preview_button.setIcon(make_icon("stop" if playing else "play", self.style_.color, 11))
-
-    def _restyle(self) -> None:
-        color = theme.CREAM if self._active else theme.MUTED
-        self.name_label.setStyleSheet(f"color: {color}; font-weight: 700; font-size: 10pt;")
+        self.setAccessibleName("上一位角色" if direction < 0 else "下一位角色")
+        self.setToolTip(self.accessibleName())
 
     def paintEvent(self, event):
         p = QPainter(self)
-        p.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-        side = self.THUMB
-        rect = QRectF((self.width() - side) / 2, 6, side, side)
-        if self._active or self._hover or self.hasFocus():
-            ring = QColor(self.style_.color)
-            ring.setAlpha(255 if self._active else 120)
-            p.setPen(_pen(ring, 2.5))
-            p.setBrush(Qt.NoBrush)
-            p.drawEllipse(rect.adjusted(-4, -4, 4, 4))
-        clip = QPainterPath()
-        clip.addEllipse(rect)
-        paint_voice_art(p, clip, rect, self.style_, self._pixmap)
-        if not self._active:
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(14, 21, 48, 70))
-            p.drawEllipse(rect)
+        p.setRenderHint(QPainter.Antialiasing)
+        color = QColor(theme.SAKURA_DEEP if self.isEnabled() else theme.LINE)
+        if self.isEnabled() and not (self.underMouse() or self.hasFocus()):
+            color.setAlpha(170)
+        w, h = self.width(), self.height()
+        tip = 6 if self.direction < 0 else w - 6
+        back = w - 8 if self.direction < 0 else 8
+        path = QPainterPath()
+        path.moveTo(tip, h / 2)
+        path.lineTo(back, h / 2 - 11)
+        path.lineTo(back, h / 2 + 11)
+        path.closeSubpath()
+        p.setPen(_pen(color, 3))
+        p.setBrush(color)
+        p.drawPath(path)
 
-    def event(self, event):
-        if event.type() in (event.Type.HoverEnter, event.Type.HoverLeave):
-            self._hover = event.type() == event.Type.HoverEnter
+
+class VoiceStage(QWidget):
+    """角色转盘：选中的角色居中放大，前后两位缩小、虚化放在两侧，切换时平滑滑动。"""
+
+    chosen = Signal(str)
+    CENTER = 78
+    SIDE = 52
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._items: list[dict] = []
+        self._index = 0
+        self._offset = 0.0
+        self.setMinimumSize(220, self.CENTER + 34)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setCursor(Qt.PointingHandCursor)
+        self._animation = QVariantAnimation(self)
+        self._animation.setDuration(220)
+        self._animation.setEasingCurve(QEasingCurve.OutCubic)
+        self._animation.valueChanged.connect(self._on_offset)
+
+    def sizeHint(self) -> QSize:
+        return QSize(260, self.CENTER + 34)
+
+    def set_items(self, items: list[dict], current: str | None) -> None:
+        """items: [{id, name, style, pixmap}]。头像的清晰版和模糊版在这里预先做好。"""
+        self._animation.stop()
+        self._offset = 0.0
+        self._items = []
+        for item in items:
+            sharp = item["pixmap"]
+            if sharp is not None and not sharp.isNull():
+                side = min(sharp.width(), sharp.height())
+                sharp = sharp.copy((sharp.width() - side) // 2, (sharp.height() - side) // 2, side, side).scaled(
+                    self.CENTER * 3, self.CENTER * 3, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self._items.append({**item, "sharp": sharp, "soft": blurred(sharp, 7)})
+        ids = [i["id"] for i in self._items]
+        self._index = ids.index(current) if current in ids else 0
+        self.update()
+
+    def ids(self) -> list[str]:
+        return [item["id"] for item in self._items]
+
+    def current_id(self) -> str | None:
+        return self._items[self._index]["id"] if self._items else None
+
+    def set_current(self, voice_id: str, animate: bool = True) -> None:
+        ids = self.ids()
+        if voice_id not in ids:
+            return
+        index = ids.index(voice_id)
+        if index == self._index:
+            return
+        start = (index - self._index) + self._offset
+        self._index = index
+        if animate:
+            self._animation.stop()
+            self._animation.setStartValue(float(start))
+            self._animation.setEndValue(0.0)
+            self._animation.start()
+        else:
+            self._offset = 0.0
             self.update()
-        return super().event(event)
+
+    def _on_offset(self, value) -> None:
+        self._offset = float(value)
+        self.update()
+
+    def _slot(self, position: float) -> tuple[QRectF, float]:
+        """转盘上某个位置（0 在中间，±1 在两侧）对应的头像方框和清晰程度。"""
+        far = min(abs(position), 1.0)
+        size = self.CENTER + (self.SIDE - self.CENTER) * far
+        spacing = min(self.width() * 0.33, 96)
+        x = self.width() / 2 + position * spacing
+        top = 4 + (self.CENTER - size) / 2
+        return QRectF(x - size / 2, top, size, size), 1.0 - far
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform | QPainter.TextAntialiasing)
+        order = sorted(range(len(self._items)), key=lambda i: -abs(i - self._index + self._offset))
+        for i in order:  # 远的先画，中间的盖在上面
+            position = i - self._index + self._offset
+            if abs(position) > 1.6:
+                continue
+            item = self._items[i]
+            rect, sharpness = self._slot(position)
+            fade = max(0.0, 1.0 - max(0.0, abs(position) - 1.0) / 0.6)
+            p.save()
+            p.setOpacity((0.62 + 0.38 * sharpness) * fade)
+            clip = QPainterPath()
+            clip.addEllipse(rect)
+            p.setClipPath(clip)
+            if item["sharp"] is not None and not item["sharp"].isNull():
+                p.drawPixmap(rect, item["soft"], QRectF(item["soft"].rect()))
+                p.setOpacity((0.62 + 0.38 * sharpness) * fade * sharpness)
+                p.drawPixmap(rect, item["sharp"], QRectF(item["sharp"].rect()))
+            else:
+                paint_voice_art(p, clip, rect, item["style"], None)
+            p.restore()
+            p.save()
+            p.setOpacity(fade)
+            if sharpness > 0.5:
+                p.setPen(_pen(item["style"].color, 3))
+                p.setBrush(Qt.NoBrush)
+                p.drawEllipse(rect.adjusted(-3, -3, 3, 3))
+            else:
+                p.setPen(_pen(theme.LINE, 1.5))
+                p.setBrush(Qt.NoBrush)
+                p.drawEllipse(rect)
+            font = p.font()
+            font.setPointSizeF(10 if sharpness > 0.5 else 8.5)
+            font.setBold(sharpness > 0.5)
+            p.setFont(font)
+            p.setPen(QColor(theme.TEXT if sharpness > 0.5 else theme.MUTED))
+            text_rect = QRectF(rect.center().x() - 60, 4 + self.CENTER + 6, 120, 22)
+            p.drawText(text_rect, Qt.AlignHCenter | Qt.AlignTop, item["name"])
+            p.restore()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.chosen.emit(self.voice_id)
-        super().mousePressEvent(event)
+        if event.button() != Qt.LeftButton:
+            return
+        for i in range(len(self._items)):
+            position = i - self._index + self._offset
+            if abs(position) <= 1.05:
+                rect, _ = self._slot(position)
+                if rect.adjusted(-6, -6, 6, 28).contains(event.position()):
+                    self.chosen.emit(self._items[i]["id"])
+                    return
+
+
+class VoiceCarousel(QWidget):
+    """一个分类里的角色转盘：◀ 两侧虚化的角色 · 居中的当前角色 ▶。"""
+
+    chosen = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(2)
+        self.left = ArrowButton(-1)
+        self.right = ArrowButton(1)
+        self.stage = VoiceStage()
+        row.addWidget(self.left, 0, Qt.AlignTop)
+        row.addWidget(self.stage, 1)
+        row.addWidget(self.right, 0, Qt.AlignTop)
+        self.left.setContentsMargins(0, 0, 0, 0)
+        for arrow in (self.left, self.right):  # 三角形与中间头像垂直居中
+            arrow.setFixedHeight(VoiceStage.CENTER + 8)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setAccessibleName("角色切换")
+        self.left.clicked.connect(lambda: self.step(-1))
+        self.right.clicked.connect(lambda: self.step(1))
+        self.stage.chosen.connect(self.chosen)
+        self._sync_arrows()
+
+    def set_items(self, items: list[dict], current: str | None) -> None:
+        self.stage.set_items(items, current)
+        self._sync_arrows()
+
+    def set_current(self, voice_id: str, animate: bool = True) -> None:
+        self.stage.set_current(voice_id, animate)
+        self._sync_arrows()
+
+    def ids(self) -> list[str]:
+        return self.stage.ids()
+
+    def current_id(self) -> str | None:
+        return self.stage.current_id()
+
+    def step(self, direction: int) -> None:
+        ids, current = self.ids(), self.current_id()
+        if current is None:
+            return
+        index = ids.index(current) + direction
+        if 0 <= index < len(ids):
+            self.chosen.emit(ids[index])
+
+    def _sync_arrows(self) -> None:
+        ids, current = self.ids(), self.current_id()
+        index = ids.index(current) if current in ids else 0
+        self.left.setEnabled(index > 0)
+        self.right.setEnabled(index < len(ids) - 1)
 
     def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
-            self.chosen.emit(self.voice_id)
+        if event.key() == Qt.Key_Left:
+            self.step(-1)
+        elif event.key() == Qt.Key_Right:
+            self.step(1)
         else:
             super().keyPressEvent(event)
 
@@ -420,12 +591,12 @@ class LiveButton(_PulseButton):
             p.setBrush(Qt.NoBrush)
             p.drawEllipse(center, radius + 2 + 11 * self._phase, radius + 2 + 11 * self._phase)
         if on:
-            fill, ink, edge = self._color, QColor(theme.BACKGROUND), self._color
+            fill, ink, edge = self._color, QColor(theme.WHITE), self._color
         elif enabled:
-            fill, ink = QColor(theme.RAISED), QColor(theme.CREAM)
-            edge = self._color if self.underMouse() or self.hasFocus() else QColor(theme.LINE)
+            fill, ink = QColor(theme.WHITE), self._color
+            edge = self._color if self.underMouse() or self.hasFocus() else QColor(theme.SAKURA)
         else:
-            fill, ink, edge = QColor("#19224A"), QColor(theme.DIM), QColor("#19224A")
+            fill, ink, edge = QColor(theme.FIELD), QColor(theme.DIM), QColor(theme.LINE)
         p.setPen(_pen(edge, 2.5))
         p.setBrush(fill)
         p.drawEllipse(center, radius, radius)
@@ -453,9 +624,9 @@ class RecButton(_PulseButton):
             p.setPen(_pen(glow, 3))
             p.setBrush(Qt.NoBrush)
             p.drawEllipse(center, radius + 1 + 6 * self._phase, radius + 1 + 6 * self._phase)
-        edge = theme.CREAM if enabled and (self.underMouse() or self.hasFocus() or self.isChecked()) else theme.LINE
+        edge = theme.DANGER if enabled and (self.underMouse() or self.hasFocus() or self.isChecked()) else theme.LINE
         p.setPen(_pen(edge if enabled else theme.DIM, 2))
-        p.setBrush(QColor(theme.FIELD))
+        p.setBrush(QColor(theme.WHITE))
         p.drawEllipse(center, radius, radius)
         p.setPen(Qt.NoPen)
         p.setBrush(red)
