@@ -67,24 +67,33 @@ class SpeechDetector:
         self.context = np.zeros(64, np.float32)
         self.pending = np.empty(0, np.float32)
         self.history = np.zeros(history_samples, np.float32)
+        self.speech_history = np.zeros(history_samples, np.float32)
+        self.speaking = False
 
     def process(self, samples):
         data = np.concatenate((self.pending, samples))
         consumed = len(data) // 512 * 512
         levels = np.empty(consumed, np.float32)
+        speech = np.empty(consumed, np.float32)
         for i in range(0, consumed, 512):
             block = data[i:i+512]
             probability, self.state = self.model.run(None, {
                 "input": np.concatenate((self.context, block))[None],
                 "state": self.state, "sr": np.asarray(16000, dtype=np.int64)})
             levels[i:i+512] = probability.item()
+            # A probability is confidence, not an audio volume control. Open on
+            # speech, then keep quieter syllables until confidence really falls.
+            self.speaking = probability.item() >= (.12 if self.speaking else .35)
+            speech[i:i+512] = float(self.speaking)
             self.context = block[-64:]
         self.pending = data[consumed:]
         self.history = np.concatenate((self.history, levels))[-len(self.history):]
-        scores = np.pad(self.history[len(self.pending):], (0, len(self.pending)), mode="edge")
-        # Allow 96 ms on either side of detected speech for stops and fricatives.
-        scores = maximum_filter1d(scores, 3073)
-        return uniform_filter1d(np.clip((scores - .50) / .25, 0, 1), 160)
+        self.speech_history = np.concatenate((self.speech_history, speech))[-len(self.history):]
+        scores = np.pad(self.speech_history[len(self.pending):], (0, len(self.pending)), mode="edge")
+        # Keep the existing 96 ms pre-roll and retain 240 ms after speech for
+        # soft endings / gaps. This uses context, without adding playback delay.
+        scores = maximum_filter1d(scores, 5377, origin=1152)
+        return uniform_filter1d(scores, 160)
 
 
 class StreamingDenoiser:
@@ -140,7 +149,9 @@ def pitch_track(audio):
 
 def audio_gate(clean, activity, samples):
     rms = np.sqrt(np.maximum(uniform_filter1d(clean**2, 480), 0))
-    gate = np.clip((rms - 0.00025) / 0.0015, 0, 1) * activity
+    # GTCRN already removes background noise. The old full-gain threshold
+    # (.00175 RMS) erased quiet consonants even after VAD accepted the speech.
+    gate = np.clip((rms - 0.00005) / 0.0006, 0, 1) * activity
     return np.interp(np.arange(samples)*16000/RATE, np.arange(len(clean)), gate)
 
 
@@ -177,9 +188,8 @@ class CharacterModel:
         if self.strength == 0:
             return window.copy()
         clean, activity = self.denoiser.process(window, count)
-        if np.max(activity) < .005 or np.max(np.abs(clean)) < 0.0006:
+        if np.max(activity) < .005 or np.max(np.abs(clean)) < 0.0001:
             return np.zeros_like(window)
-        clean *= activity
         if self.reference is not None:
             rendered = self.reference.convert(clean, self.name)
             wet = np.zeros_like(window)

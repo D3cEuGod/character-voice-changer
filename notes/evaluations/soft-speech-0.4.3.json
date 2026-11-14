@@ -1,0 +1,701 @@
+{
+  "baseline": "b485a64",
+  "synthetic_input": "Windows Kangkang m2",
+  "default_soft_factor": 0.3,
+  "noise_rms": 0.0015,
+  "final": {
+    "metrics": [
+      {
+        "input": "normal",
+        "version": "before",
+        "voice": "tomori",
+        "onset_rms": 0.15805837512016296,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 7.2
+      },
+      {
+        "input": "normal",
+        "version": "before",
+        "voice": "taffy",
+        "onset_rms": 0.16761717200279236,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 4.24
+      },
+      {
+        "input": "normal",
+        "version": "before",
+        "voice": "anon",
+        "onset_rms": 0.177339568734169,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 5.52
+      },
+      {
+        "input": "normal",
+        "version": "after",
+        "voice": "tomori",
+        "onset_rms": 0.15794137120246887,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.99
+      },
+      {
+        "input": "normal",
+        "version": "after",
+        "voice": "taffy",
+        "onset_rms": 0.1646985113620758,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.99
+      },
+      {
+        "input": "normal",
+        "version": "after",
+        "voice": "anon",
+        "onset_rms": 0.17761991918087006,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.7
+      },
+      {
+        "input": "soft-onset",
+        "version": "before",
+        "voice": "tomori",
+        "onset_rms": 0.16040097177028656,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.87
+      },
+      {
+        "input": "soft-onset",
+        "version": "before",
+        "voice": "taffy",
+        "onset_rms": 0.17421986162662506,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.98
+      },
+      {
+        "input": "soft-onset",
+        "version": "before",
+        "voice": "anon",
+        "onset_rms": 0.17906692624092102,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.75
+      },
+      {
+        "input": "soft-onset",
+        "version": "after",
+        "voice": "tomori",
+        "onset_rms": 0.16389401257038116,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.01
+      },
+      {
+        "input": "soft-onset",
+        "version": "after",
+        "voice": "taffy",
+        "onset_rms": 0.1660548746585846,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.95
+      },
+      {
+        "input": "soft-onset",
+        "version": "after",
+        "voice": "anon",
+        "onset_rms": 0.183328315615654,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.81
+      },
+      {
+        "input": "quiet",
+        "version": "before",
+        "voice": "tomori",
+        "onset_rms": 0.15694564580917358,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.94
+      },
+      {
+        "input": "quiet",
+        "version": "before",
+        "voice": "taffy",
+        "onset_rms": 0.1738915890455246,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 2.99
+      },
+      {
+        "input": "quiet",
+        "version": "before",
+        "voice": "anon",
+        "onset_rms": 0.17899245023727417,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.58
+      },
+      {
+        "input": "quiet",
+        "version": "after",
+        "voice": "tomori",
+        "onset_rms": 0.16209544241428375,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.18
+      },
+      {
+        "input": "quiet",
+        "version": "after",
+        "voice": "taffy",
+        "onset_rms": 0.16309773921966553,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.17
+      },
+      {
+        "input": "quiet",
+        "version": "after",
+        "voice": "anon",
+        "onset_rms": 0.18277199566364288,
+        "pause_rms": 0.0,
+        "clipped_pct": 0.0,
+        "elapsed": 3.68
+      }
+    ],
+    "asr": [
+      {
+        "file": "normal-after-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 1,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-anon.wav",
+        "text": "你那边能听清楚我说话了我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 1,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-taffy.wav",
+        "text": "你那边能听清楚我说爸爸我登换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-tomori.wav",
+        "text": "你那天能听清楚我说话了我都换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-anon.wav",
+        "text": "你那天能听清楚我说话了我刚换了一个新的麦克多",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-taffy.wav",
+        "text": "你那天能听清楚我说爸爸我登换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 4,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-tomori.wav",
+        "text": "你那边能听清楚我说话了我都换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-taffy.wav",
+        "text": "你那边能听清楚我说话吗我能换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 1,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了你一个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的外特崩",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-tomori.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      }
+    ]
+  },
+  "noise": [
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "tomori",
+      "onset_rms": 0.00876687653362751,
+      "pause_rms": 0.0,
+      "output_rms": 0.0031257160007953644,
+      "peak": 0.07625827193260193,
+      "clipped_pct": 0.0,
+      "elapsed": 10.21
+    },
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "taffy",
+      "onset_rms": 0.030031027272343636,
+      "pause_rms": 0.0,
+      "output_rms": 0.010707172565162182,
+      "peak": 0.16302643716335297,
+      "clipped_pct": 0.0,
+      "elapsed": 4.85
+    },
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "anon",
+      "onset_rms": 0.07087508589029312,
+      "pause_rms": 0.0,
+      "output_rms": 0.025269588455557823,
+      "peak": 0.3703000843524933,
+      "clipped_pct": 0.0,
+      "elapsed": 11.51
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "tomori",
+      "onset_rms": 0.016161546111106873,
+      "pause_rms": 0.0,
+      "output_rms": 0.008441191166639328,
+      "peak": 0.13187174499034882,
+      "clipped_pct": 0.0,
+      "elapsed": 4.79
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "taffy",
+      "onset_rms": 0.020291917026042938,
+      "pause_rms": 0.0,
+      "output_rms": 0.009200270287692547,
+      "peak": 0.3080521523952484,
+      "clipped_pct": 0.0,
+      "elapsed": 5.37
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "anon",
+      "onset_rms": 0.02975173108279705,
+      "pause_rms": 0.0,
+      "output_rms": 0.011386233381927013,
+      "peak": 0.3191092312335968,
+      "clipped_pct": 0.0,
+      "elapsed": 11.69
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "tomori",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.83
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "taffy",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.79
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "anon",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.84
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "tomori",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.98
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "taffy",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.89
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "anon",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.85
+    }
+  ],
+  "rejected": {
+    "soft-speech-043": [
+      {
+        "file": "normal-after-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-anon.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 1,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-before-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-anon.wav",
+        "text": "吴大天娘青青你把招罢了莫当怪了我心的大不多",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 20,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-taffy.wav",
+        "text": "那天娘青青一个歌唱我能半领心的麦个公",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 18,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-tomori.wav",
+        "text": "那领不清的脉步风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 18,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-anon.wav",
+        "text": "那天咱轻听你把交伴牡但怪小心的大不多",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 20,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-taffy.wav",
+        "text": "那边能听听几个歌唱我的问有轻的麦奏公",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 15,
+        "chars": 22
+      },
+      {
+        "file": "quiet-before-tomori.wav",
+        "text": "恶心的脉不功",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 21,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-anon.wav",
+        "text": "你大天娘金清楚我说话吧我刚换了你个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 7,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-taffy.wav",
+        "text": "那爹娘听清楚我说话了我刚换了一个新的外克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 5,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-tomori.wav",
+        "text": "那边杨青清楚我说饭晚我刚换了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 7,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-anon.wav",
+        "text": "那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 1,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-taffy.wav",
+        "text": "那边能听清楚我说话了我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-before-tomori.wav",
+        "text": "那边人听清楚我说话吗我刚换了一个新的耐克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-input.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      }
+    ],
+    "soft-speech-043-normalized": [
+      {
+        "file": "normal-after-anon.wav",
+        "text": "你大天能听清楚我说话吗我刚换了一个新的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚换了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 3,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-anon.wav",
+        "text": "那天杨金青那把我败了不有新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 14,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-taffy.wav",
+        "text": "你那天杨青青你那朵多大了那咱惯冷清的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 16,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-tomori.wav",
+        "text": "那天娘青青怎么大了我当断了不轻的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 15,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-anon.wav",
+        "text": "你大天娘得清清楚我说话吧我刚换了你个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 7,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-taffy.wav",
+        "text": "你那天要听清楚我说话了我刚换了一个新的外壳风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 5,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-tomori.wav",
+        "text": "老天长得清清楚我说饭晚我刚换了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 9,
+        "chars": 22
+      }
+    ],
+    "soft-speech-043-blend": [
+      {
+        "file": "normal-after-anon.wav",
+        "text": "你那边能听清楚我说话吧我刚换了一个新的麦克多",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 2,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-taffy.wav",
+        "text": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 0,
+        "chars": 22
+      },
+      {
+        "file": "normal-after-tomori.wav",
+        "text": "你那天能听清楚我说话吗我刚会了一个新的耐克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 4,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-anon.wav",
+        "text": "那天凉逼鸡我播放了乌咚热心的麦克东",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 17,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-taffy.wav",
+        "text": "那天杨千新我播放了如能换领一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 12,
+        "chars": 22
+      },
+      {
+        "file": "quiet-after-tomori.wav",
+        "text": "那天能我播放我都会可听的外部风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 16,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-anon.wav",
+        "text": "那天娘金清楚我说话吧我刚换了一个新的麦克多",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 6,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-taffy.wav",
+        "text": "你那天要听清楚我说话了我能换了一个新的麦克风",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 4,
+        "chars": 22
+      },
+      {
+        "file": "soft-onset-after-tomori.wav",
+        "text": "那天娘金清楚我说话吧我刚会了一个新的耐克蹲",
+        "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+        "errors": 8,
+        "chars": 22
+      }
+    ]
+  }
+}

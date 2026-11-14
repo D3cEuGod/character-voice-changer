@@ -20,6 +20,7 @@ CLOSE_REASONS = {
 STALL_SECONDS = 3.0
 REPLY_SECONDS = 20.0
 BUSY_RETRY_SECONDS = 2.5
+REFRESH_QUIET_SECONDS = .6
 
 
 class LiveError(Exception):
@@ -69,6 +70,7 @@ class LiveMonitor(threading.Thread):
         self.samples_received = 0
         self.packet_samples: list[int] = []
         self._times: list[float] = []
+        self._quiet_samples = 0
         if restart_after_packets < 0:
             raise ValueError("自动刷新包数不能为负数。")
         self.restart_after_packets = restart_after_packets
@@ -175,7 +177,17 @@ class LiveMonitor(threading.Thread):
         started = time.perf_counter()
         ws.send(payload)
         self.frames_sent += 1
-        self._play(self._recv_audio(ws))
+        received = self._recv_audio(ws)
+        source = np.frombuffer(payload, dtype='<i2').astype(np.float32) / 32768
+        source_rms = float(np.sqrt(np.mean(source**2))) if source.size else 0
+        output_rms = float(np.sqrt(np.mean(received**2))) if received.size else 0
+        # A packet limit requests a refresh; finish the utterance first. Check
+        # both sides so the model's lookahead is not mistaken for a pause.
+        if source_rms < .003 and output_rms < .001:
+            self._quiet_samples += len(source)
+        else:
+            self._quiet_samples = 0
+        self._play(received)
         self._times.append(time.perf_counter() - started)
         del self._times[:-20]
         self._on_stats({
@@ -219,7 +231,8 @@ class LiveMonitor(threading.Thread):
                 payload = bytes(self._pending[:self._frame_bytes])
                 del self._pending[:self._frame_bytes]
                 self._exchange(ws, payload)
-                if self.restart_after_packets and self.frames_sent >= self.restart_after_packets:
+                if (self.restart_after_packets and self.frames_sent >= self.restart_after_packets
+                        and self._quiet_samples >= round(REFRESH_QUIET_SECONDS*rate)):
                     return True
         return False
 

@@ -5,7 +5,7 @@ import queue
 import sys
 import unittest
 import weakref
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -68,8 +68,12 @@ class WebSocket:
 
 
 class RefreshTests(unittest.TestCase):
-    def run_monitor(self, limit, stop_at=None, abort=False, fail_finish=False, prime=0):
+    def run_monitor(self, limit, stop_at=None, abort=False, fail_finish=False, prime=0, blocks=None):
         mic, speaker, ws = Mic(), Speaker(), WebSocket(fail_finish)
+        if blocks is not None:
+            mic.blocks = queue.Queue()
+            for block in blocks:
+                mic.blocks.put(block)
         stops, ticks = [], []
 
         def tick(stats):
@@ -80,6 +84,8 @@ class RefreshTests(unittest.TestCase):
         monitor = LiveMonitor('unused', mic, speaker, lambda _: None, tick,
                               lambda *args: stops.append(args), restart_after_packets=limit)
         monitor.frames_sent = prime
+        if blocks is None:
+            monitor._quiet_samples = 22050  # already silent before the tested boundary
         monitor._connect = lambda: ws
         monitor.run()
         self.assertEqual((mic.closed, speaker.closed, ws.closed), (1,1,1))
@@ -98,6 +104,17 @@ class RefreshTests(unittest.TestCase):
             self.assertEqual(len(ws.payloads), 2)
             self.assertEqual(m.frames_sent, limit)
             self.assertEqual(stops, [('refresh','')])
+
+    def test_limit_does_not_cut_utterance_and_waits_for_pause(self):
+        blocks = [np.full(2646, .05, np.float32)]*3 + [np.zeros(2646, np.float32)]*6
+        m, ws, stops, _ = self.run_monitor(3, blocks=blocks)
+        self.assertEqual(len(ws.payloads), 8)  # three voiced + 600 ms silence
+        self.assertEqual(stops, [('refresh','')])
+
+    def test_user_can_stop_while_refresh_waits_for_pause(self):
+        blocks = [np.full(2646, .05, np.float32)]*6
+        _, _, stops, _ = self.run_monitor(3, stop_at=4, blocks=blocks)
+        self.assertEqual(stops, [('user','')])
 
     def test_finished_monitor_has_no_callback_reference_cycle(self):
         monitor, _, _, _ = self.run_monitor(3)
@@ -137,13 +154,22 @@ class RefreshTests(unittest.TestCase):
 
     def window(self):
         w = Mock()
-        w.live, w._live_restart, w._live_auto_refreshes, w._closing = object(), False, 0, False
+        w.live, w._live_restart, w._live_auto_refreshes, w._closing = Mock(), False, 0, False
+        w.live.is_alive.return_value = False
+        w._live_resume_monitor = None
         w.live_switch.isChecked.return_value = True
         return w
 
-    def test_gui_refresh_preserves_running_switch(self):
+    @patch('gui.app.QTimer.singleShot')
+    def test_gui_refresh_waits_for_device_release(self, timer):
         w = self.window()
+        old = w.live
         MainWindow._on_live_stopped(w, w.live, 'refresh', '')
+        w._start_live.assert_not_called()
+        self.assertIs(w._live_resume_monitor, old)
+        self.assertEqual(timer.call_args.args[0], 250)
+        MainWindow._resume_live(w, old)
+        old.join.assert_called_once_with()
         w._start_live.assert_called_once_with()
         w.live_switch.setChecked.assert_not_called()
         self.assertEqual(w._live_auto_refreshes, 1)
@@ -164,12 +190,45 @@ class RefreshTests(unittest.TestCase):
         self.assertIs(w.live, current)
         w._start_live.assert_not_called()
 
-    def test_gui_manual_voice_change_still_restarts(self):
+    @patch('gui.app.QTimer.singleShot')
+    def test_gui_manual_voice_change_still_restarts(self, timer):
         w = self.window()
+        old = w.live
         w._live_restart = True
         MainWindow._on_live_stopped(w, w.live, 'user', '')
+        MainWindow._resume_live(w, old)
         w._start_live.assert_called_once_with()
         self.assertEqual(w._live_auto_refreshes, 0)
+
+    @patch('gui.app.QTimer.singleShot')
+    def test_old_worker_must_finish_before_reopen(self, timer):
+        w = self.window()
+        old = w.live
+        MainWindow._on_live_stopped(w, old, 'refresh', '')
+        old.is_alive.return_value = True
+        MainWindow._resume_live(w, old)
+        old.join.assert_not_called()
+        w._start_live.assert_not_called()
+        self.assertEqual(timer.call_args.args[0], 25)
+
+    @patch('gui.app.QTimer.singleShot')
+    def test_stop_during_device_settle_cancels_pending_restart(self, timer):
+        w = self.window()
+        old = w.live
+        MainWindow._on_live_stopped(w, old, 'refresh', '')
+        MainWindow._on_live_toggled(w, False)
+        self.assertIsNone(w._live_resume_monitor)
+        MainWindow._resume_live(w, old)
+        w._start_live.assert_not_called()
+
+    @patch('gui.app.QTimer.singleShot')
+    def test_exit_during_device_settle_cancels_pending_restart(self, timer):
+        w = self.window()
+        old = w.live
+        MainWindow._on_live_stopped(w, old, 'refresh', '')
+        w._closing = True
+        MainWindow._resume_live(w, old)
+        w._start_live.assert_not_called()
 
 
 if __name__ == '__main__':

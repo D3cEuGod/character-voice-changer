@@ -218,11 +218,14 @@ def main(argv=None) -> int:
     cable_in = cable_out = None
     for mic in inputs:
         # VB-CABLE 是 Discord 用的麦克风：往里播测试音频，通话里的人会听到。除非明确允许，不拿它当测试线。
-        if "cable" in mic.name.casefold() and not args.allow_vb_cable:
+        if "cable" in mic.name.casefold() and (not args.allow_vb_cable
+                or default_out and "cable" in default_out.name.casefold()):
             continue
         inner = mic.name[mic.name.find("(") + 1:mic.name.rfind(")")] if "(" in mic.name else mic.name
         partner = next((o for o in outputs if inner and inner in o.name and not o.is_default), None)
-        if partner is not None and loops_back(mic, partner):
+        # A conversion test must use a different virtual pair as its source;
+        # using the target cable as both microphone and output would feed back.
+        if partner is not None and partner != default_out and loops_back(mic, partner):
             cable_in, cable_out = mic, partner
             break
     print("虚拟音频线：", f"{cable_out.name} → {cable_in.name}" if cable_in else "没有找到")
@@ -546,7 +549,8 @@ def main(argv=None) -> int:
             kept = out_dir / "live_monitor_taffy.wav"
             sf.write(str(kept), monitored, first.speaker.rate, subtype="PCM_16")
             rms = float(np.sqrt(np.mean(monitored ** 2)))
-            c.check("监听回包是有声音的连续音频", len(monitored) / first.speaker.rate > 2.5 and rms > 0.01,
+            expected_seconds = (18*first.hello['frame_samples']-first.hello.get('lookahead_samples',1024))/22050
+            c.check("监听回包是有声音的连续音频", len(monitored) / first.speaker.rate > .9*expected_seconds and rms > 0.01,
                     f"第一段监听送去播放的 {len(monitored) / first.speaker.rate:.1f} 秒音频已另存为 {kept}，"
                     f"RMS {rms:.3f}，可以回听")
         window.strength_slider.setValue(60)
@@ -577,9 +581,17 @@ def main(argv=None) -> int:
         settings = (window.voice_id, window.strength_pct, window.current_mode(), window.current_pitch(),
                     window._device(window.mic_combo).name, window._device(window.out_combo).name)
         before_refreshes = window._live_auto_refreshes
+        pair = audio.discord_pair(inputs, outputs)
+        refresh_capture = (audio.Recorder(pair[1], 90) if pair and pair[0] == default_out
+                           and args.allow_vb_cable else None)
+        if refresh_capture:
+            refresh_capture.start()
         try:
             click(window.live_switch)
             old_live = window.live
+            # Only the first session expires. Leave enough speech in the new
+            # session to verify actual output rather than a successful hello.
+            window.config.live_restart_packets = 0
             renewed = wait(lambda: window.live is not None and window.live is not old_live
                            and bool(window.live.hello), 15)
             new_live = window.live
@@ -593,7 +605,24 @@ def main(argv=None) -> int:
                     f"测试阈值 12 包；自动刷新 {window._live_auto_refreshes-before_refreshes} 次；"
                     "窗口和后端保持运行，旧采集和播放流已释放")
             if new_live is not None:
-                wait(enough(new_live, 3), 8)
+                levels = {"in": 0.0, "out": 0.0}
+                capture_start = refresh_capture.seconds if refresh_capture else 0
+                flowing = wait(enough(new_live, 20), 12)
+                c.check("自动刷新后继续输出有声回包",
+                        flowing and levels["in"] > .02 and levels["out"] > .02,
+                        f"输入 {levels['in']:.3f}；输出 {levels['out']:.3f}；{new_live.frames_sent} 包")
+                if refresh_capture:
+                    captured = refresh_capture.stop()
+                    rate = refresh_capture.rate
+                    post_refresh = captured[round((capture_start+.7)*rate):]
+                    rms = float(np.sqrt(np.mean(post_refresh**2))) if len(post_refresh) else 0
+                    sf.write(str(out_dir/'after-refresh-virtual-mic.wav'), post_refresh, rate)
+                    c.check("自动刷新后的真实虚拟麦克风有声音",
+                            len(post_refresh) > rate and rms > .003,
+                            f"连续跨重开录回；新连接后丢开前 0.7 秒旧尾音；RMS {rms:.4f}；"
+                            f"{len(post_refresh)/rate:.2f} 秒合成测试语音；"
+                            f"新连接时 {capture_start:.2f} 秒，总采集 {len(captured)/rate:.2f} 秒")
+                    refresh_capture = None
             click(window.live_switch)
             stopped = wait(lambda: window.live is None, 8)
             pump(500)
@@ -601,6 +630,8 @@ def main(argv=None) -> int:
                     stopped and window.live is None and not window.live_switch.isChecked()
                     and window._live_auto_refreshes == before_refreshes+1)
         finally:
+            if refresh_capture:
+                refresh_capture.stop()
             if window.live_switch.isChecked():
                 click(window.live_switch)
             wait(lambda: window.live is None, 8)

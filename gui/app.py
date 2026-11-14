@@ -27,6 +27,7 @@ MODE_NAMES = {"character": "音色优先", "call": "通话清晰"}
 # PortAudio 报这些错时，多半是窗口打开后 Windows 的设备编号变了（显示器音频唤醒、装驱动、改默认设备）。
 STALE_DEVICE_ERRORS = ("-9996", "-9985", "-9986", "Invalid device", "Device unavailable",
                        "Error querying device")
+LIVE_DEVICE_SETTLE_MS = 250
 
 
 @dataclass
@@ -125,6 +126,7 @@ class MainWindow(QWidget):
         self._convert_started = 0.0
         self._rec_started = 0.0
         self._live_restart = False
+        self._live_resume_monitor = None
         self._live_stats: dict = {}
         self._live_auto_refreshes = 0
         self._closing = False
@@ -549,7 +551,7 @@ class MainWindow(QWidget):
         """按当前状态统一设置各控件是否可用，以及结果与当前设置的对应关系。"""
         result = self.current_result()
         recording = self.recorder is not None
-        live_on = self.live is not None
+        live_on = self.live is not None or self._live_resume_monitor is not None
         converting = self.converting_key is not None
         has_mic = self._device(self.mic_combo) is not None
         has_out = self._device(self.out_combo) is not None
@@ -1228,6 +1230,13 @@ class MainWindow(QWidget):
 
     # ---- 麦克风监听 -------------------------------------------------------
     def _on_live_toggled(self, checked: bool) -> None:
+        if self._live_resume_monitor is not None:
+            if not checked:
+                self._live_resume_monitor = None
+                self.live_status.setText("监听已关闭，已取消自动重开。")
+                self.set_status("监听已关闭。")
+                self._refresh()
+            return
         if checked and self.live is None:
             self._start_live()
         elif checked:
@@ -1325,7 +1334,7 @@ class MainWindow(QWidget):
         self._live_stats = stats
         limit = monitor.restart_after_packets
         if limit and stats["frames"] >= limit and not self._live_restart and self.live_switch.isChecked():
-            self.live_title.setText("正在自动刷新实时变声…")
+            self.live_title.setText("等待说话停顿后自动刷新…")
         speaker = monitor.speaker
         # 估算本机链路，包含采集、前瞻、重采样和断流后增加的缓冲；不含手机网络与 Discord。
         frame_ms = monitor.hello["frame_samples"] / monitor.hello["sample_rate"] * 1000
@@ -1351,7 +1360,12 @@ class MainWindow(QWidget):
         if (restart and kind == "user" or kind == "refresh") and self.live_switch.isChecked() and not self._closing:
             if kind == "refresh":
                 self._live_auto_refreshes += 1
-            self._start_live()
+            # The stopped signal arrives before Thread.run() has returned.
+            # Give native WASAPI teardown time to finish before reopening it;
+            # the running switch remains a cancellable request to resume.
+            self._live_resume_monitor = monitor
+            self.live_title.setText("正在释放设备，稍后重新变声…")
+            QTimer.singleShot(LIVE_DEVICE_SETTLE_MS, lambda: self._resume_live(monitor))
             return
         self.live_switch.setChecked(False)
         if kind == "error":
@@ -1361,6 +1375,19 @@ class MainWindow(QWidget):
             self.live_status.setText("监听已关闭，麦克风和输出设备已释放。")
             self.set_status("监听已关闭。")
         self._refresh()
+
+    def _resume_live(self, monitor) -> None:
+        if self._live_resume_monitor is not monitor:
+            return
+        if self._closing or not self.live_switch.isChecked():
+            self._live_resume_monitor = None
+            return
+        if monitor.is_alive():
+            QTimer.singleShot(25, lambda: self._resume_live(monitor))
+            return
+        monitor.join()
+        self._live_resume_monitor = None
+        self._start_live()
 
     # ---- 定时刷新 ---------------------------------------------------------
     def _tick(self) -> None:
@@ -1389,6 +1416,7 @@ class MainWindow(QWidget):
     def closeEvent(self, event) -> None:
         """关闭窗口：停止播放和录音，结束监听并释放设备，停掉由本程序启动的后端。"""
         self._closing = True
+        self._live_resume_monitor = None
         self._tick_timer.stop()
         self._health_timer.stop()
         self._strength_timer.stop()

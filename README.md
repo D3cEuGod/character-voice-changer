@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.4.2
+- Versioned releases with a changelog; current internal beta is 0.4.3
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.4.2`（内测版）
+当前版本：`0.4.3`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -147,7 +147,7 @@ Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=se
 1. 在界面底部的“麦克风”里选原声输入。如果用手机，通过 WO Mic 接入时这里选 `Microphone (WO Mic Device)`；WO Mic Client 保持已连接，并取消“设置 → 本地播放”。
 2. 选角色，在“实时变声”页选“Discord 通话”，点一下大圆键。
 3. 界面会显示 Discord 该选的输入设备名。在 Discord 的“用户设置 → 语音与视频 → 输入设备”里选它。安装 VB-CABLE 后选 `CABLE Output (VB-Audio Virtual Cable)`，Steam 为备用。Discord 的输出设备继续用耳机。
-4. 用 Discord 自带的麦克风测试说一句话确认。
+4. 在 Discord 的 Input Profile 里选择 **Studio**（无额外音频处理），避免 Voice Isolation / Krisp 再次切掉变声结果。旧界面没有此选项时，检查噪声抑制和输入灵敏度。然后用麦克风测试或让朋友确认句首和轻声。
 
 WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续选 WO Mic 会绕过变声器。也可以使用 VB-CABLE，不限于 Steam。
 
@@ -159,7 +159,9 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 默认每发出 3,000 个实时音频包自动重开一次实时变声。VB-CABLE 的 120 ms 包约每 6 分钟触发，Steam 的 200 ms 包约每 10 分钟触发；静音包也计数。刷新会释放并重开采集、播放和 WebSocket 会话，重置降噪、音高跟踪、重采样和播放缓冲，保留角色、强度、处理方式和设备。窗口、后端进程和已经加载的模型继续运行。刷新时会有短暂停顿；这是针对长时间退化的缓解措施，尚未确认退化的唯一原因。
 
-状态行显示“本轮包数”和“自动刷新次数”。手动停止、设备错误或退出时不会自动重开。可从 PowerShell 在项目目录里运行：
+0.4.3 起，达到包数后会先等待输入与输出同时安静至少 600 ms，避免当场切断正在说的一句话；持续说话或噪声偏高时会推迟。完整收尾、关闭设备后，还会等待旧线程退出并留出 250 ms 的设备释放间隔，再走正常启动流程。刷新仍有短暂停顿，在释放期间开始说的新一句仍可能丢失，不能当作无缝切换。
+
+状态行显示“本轮包数”和“自动刷新次数”。手动停止、设备错误或退出时不会自动重开，等待重开期间也可点停止取消。可从 PowerShell 在项目目录里运行：
 
 ```powershell
 .\start-gui.cmd --live-restart-packets 5000
@@ -171,7 +173,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ## 当前状态
 
-0.4.2 将三个女性角色的 GUI 默认档统一为自动音域再 +4，移除原声 +4 选项和试听段。沿用 0.4.0 的会话自动刷新、启动缓存，以及 120 ms VB-CABLE 稳定包长。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
+0.4.3 改善轻声门控，调整自动刷新收尾并补测刷新后的实际虚拟麦克风音频；保留三个女性角色的自动音域再 +4 默认值、启动缓存和 120 ms VB-CABLE 包长。结果与限制见 [0.4.3 记录](notes/soft-speech-refresh-0.4.3.md)。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
