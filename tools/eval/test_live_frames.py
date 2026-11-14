@@ -12,7 +12,7 @@ from backend.live import LiveVoice
 class Identity:
     context_samples, strength = 22050, 0
 
-    def __init__(self,*args):
+    def __init__(self,*args,**kwargs):
         pass
 
     def render(self,window,count):

@@ -46,8 +46,8 @@ def blend(old, new):
 
 class LiveVoice:
     """Keep acoustic context and a short lookahead at packet edges."""
-    def __init__(self, voice_id, strength, lookahead=OVERLAP, mode="character"):
-        self.model = CharacterModel(voice_id, strength, mode)
+    def __init__(self, voice_id, strength, lookahead=OVERLAP, mode="character", *, pitch_shift=None, pitch_offset=0):
+        self.model = CharacterModel(voice_id, strength, mode, pitch_shift=pitch_shift, pitch_offset=pitch_offset)
         self.lookahead = lookahead
         self.history = np.zeros(self.model.context_samples, np.float32)
         self.tail = np.empty(0, np.float32)

@@ -110,11 +110,12 @@ def refine_timbre(samples, voice_id, strength, source=None):
     return np.clip(result[:len(samples)], -1, 1)
 
 
-def convert(samples, voice_id, strength, mode="character"):
+def convert(samples, voice_id, strength, mode="character", *, pitch_shift=None, pitch_offset=0):
     if strength == 0:
         return samples
     from .live import LiveVoice, SHORT_FRAME, SPEECH_LOOKAHEAD
-    voice = LiveVoice(voice_id, strength, SPEECH_LOOKAHEAD, mode)
+    voice = LiveVoice(voice_id, strength, SPEECH_LOOKAHEAD, mode,
+                      pitch_shift=pitch_shift, pitch_offset=pitch_offset)
     padded = np.pad(samples, (0, (-len(samples)) % SHORT_FRAME))
     parts = [voice.process(frame) for frame in padded.reshape(-1, SHORT_FRAME)]
     parts.append(voice.flush())

@@ -79,6 +79,8 @@ def main(argv=None) -> int:
                         help="自动重开实时变声的包数，默认 3000；0 关闭自动刷新")
     parser.add_argument("--live-packet-ms", type=int, choices=(100,120), default=120,
                         help="VB-CABLE 包长；默认稳定档 120，100 为实验低延迟档")
+    parser.add_argument("--pitch-preset", choices=("model", "fixed4", "auto4"), default="fixed4",
+                        help="音高：model 模型默认，fixed4 原声升 4 半音，auto4 自动音域再升 4")
     args = parser.parse_args(argv)
 
     sys.excepthook = _log_exception
@@ -86,7 +88,7 @@ def main(argv=None) -> int:
     from .app import Config, MainWindow
 
     window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script),
-                               args.live_restart_packets, args.live_packet_ms))
+                               args.live_restart_packets, args.live_packet_ms, args.pitch_preset))
     available = app.primaryScreen().availableGeometry()
     window.resize(min(1060, available.width() - 40), min(700, available.height() - 60))
     set_window_relaunch(int(window.winId()))  # 在窗口显示之前写入，任务栏按这些信息建立图标

@@ -84,6 +84,7 @@ def health():
             "provider": provider,
             "sample_rate": engine.RATE,
             "live_packet_ms": [80, 100, 120, 200],
+            "pitch_control": True,
             "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES}
 
 
@@ -92,8 +93,9 @@ def voices():
     return [{"id": key, "name": name} for key, name in engine.VOICES.items()]
 
 
-def process(data, voice_id, strength, mode="character"):
-    return engine.wav_bytes(engine.convert(engine.decode(data), voice_id, strength, mode))
+def process(data, voice_id, strength, mode="character", pitch_shift=None, pitch_offset=0):
+    return engine.wav_bytes(engine.convert(engine.decode(data), voice_id, strength, mode,
+                                           pitch_shift=pitch_shift, pitch_offset=pitch_offset))
 
 
 @app.post("/api/convert", response_class=Response, responses={
@@ -104,7 +106,9 @@ def process(data, voice_id, strength, mode="character"):
 }}})
 async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"],
                   strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
-                  mode: Literal["character", "call"] = "character"):
+                  mode: Literal["character", "call"] = "character",
+                  pitch_shift: Annotated[float | None, Query(ge=-24, le=24, allow_inf_nan=False)] = None,
+                  pitch_offset: Annotated[float, Query(ge=-24, le=24, allow_inf_nan=False)] = 0):
     lock = request.app.state.busy
     if lock.locked():
         raise HTTPException(429, "正在处理另一段音频，请稍后重试。")
@@ -115,7 +119,7 @@ async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"]
                 raise HTTPException(413, "音频文件超过 24 MiB。")
             data.extend(chunk)
         try:
-            wav = await run_in_threadpool(process, data, voice_id, strength, mode)
+            wav = await run_in_threadpool(process, data, voice_id, strength, mode, pitch_shift, pitch_offset)
         except engine.AudioError as exc:
             raise HTTPException(422, str(exc)) from exc
         except Exception as exc:
@@ -132,7 +136,9 @@ async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
                strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
                low_latency: bool = False, speech_context: bool = False,
                packet_ms: PacketMs = PacketMs.standard,
-               mode: Literal["character", "call"] = "character"):
+               mode: Literal["character", "call"] = "character",
+               pitch_shift: Annotated[float | None, Query(ge=-24, le=24, allow_inf_nan=False)] = None,
+               pitch_offset: Annotated[float, Query(ge=-24, le=24, allow_inf_nan=False)] = 0):
     if ws.headers.get("origin") not in (None, "http://localhost:5173", "http://127.0.0.1:5173"):
         await ws.close(code=1008)
         return
@@ -143,11 +149,13 @@ async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
         return
     async with lock:
         lookahead = SPEECH_LOOKAHEAD if speech_context else OVERLAP
-        session = LiveVoice(voice_id, strength, lookahead, mode)
+        session = LiveVoice(voice_id, strength, lookahead, mode,
+                            pitch_shift=pitch_shift, pitch_offset=pitch_offset)
         frame_size = SHORT_FRAME if low_latency else FRAME
         if low_latency and session.model.reference is None:
             frame_size = {80: FAST_FRAME, 100: BALANCED_FRAME, 120: REALTIME_FRAME, 200: SHORT_FRAME}[packet_ms]
         hello = {"sample_rate": engine.RATE, "frame_samples": frame_size, "format": "s16le"}
+        hello.update(pitch_shift=pitch_shift, pitch_offset=pitch_offset)
         if speech_context:
             hello["lookahead_samples"] = lookahead
         await ws.send_json(hello)

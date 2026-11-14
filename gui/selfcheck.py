@@ -345,8 +345,14 @@ def main(argv=None) -> int:
             window.status_label.text())
     c.check("转换期间监听开关不可用", live_blocked)
     if result is not None:
-        c.check("结果与生成参数关联", result.key == (window.input.serial, "taffy", 100, "character") and window.ab == "result"
+        c.check("结果与生成参数关联", result.key == (window.input.serial, "taffy", 100, "character", window.current_pitch()) and window.ab == "result"
                 and window.result_tag.property("state") == "fresh", window.result_tag.text())
+        original_pitch = window.current_pitch()
+        window.pitch_combo.setCurrentIndex(window.pitch_combo.findData("model"))
+        c.check("切换音高后旧结果不能试听保存", original_pitch == "fixed4"
+                and window.current_result() is None and not window.save_button.isEnabled())
+        window.pitch_combo.setCurrentIndex(window.pitch_combo.findData(original_pitch))
+        c.check("切回音高后恢复对应结果", window.current_result() is result and window.save_button.isEnabled())
         window.voice_mode.setCurrentIndex(window.voice_mode.findData("call"))
         c.check("切换处理方式后旧结果不能试听保存", window.current_result() is None
                 and not window.save_button.isEnabled())
@@ -402,7 +408,7 @@ def main(argv=None) -> int:
         wait(lambda: window.converting_key is not None, 2)
         pick(window, "tomori")  # 转换途中改设置
         wait(lambda: window.converting_key is None, 180)
-        anon_key = (window.input.serial, "anon", 100, "character")
+        anon_key = (window.input.serial, "anon", 100, "character", window.current_pitch())
         c.check("转换途中换角色：结果记在提交时的参数下", anon_key in window.results and window.current_result() is None
                 and not window.save_button.isEnabled(), window.status_label.text())
         pick(window, "anon")
@@ -515,6 +521,10 @@ def main(argv=None) -> int:
         flowing = connected and wait(enough(first, 18), 15)
         c.check("监听：连接 /api/live 并持续收发", flowing and window.lamp.text() == "ON AIR",
                 f"{first.hello}；{window.live_status.text()}".replace("\n", "；") if first else "没有启动")
+        c.check("实时连接带上所选音高且后端确认", first is not None
+                and first.pitch_preset == window.current_pitch()
+                and first.hello.get("pitch_shift") == 4 and first.hello.get("pitch_offset") == 0,
+                first.url if first else "没有启动")
         c.check("监听：输入和输出都有信号", levels["in"] > 0.02 and levels["out"] > 0.02,
                 f"输入峰值 {levels['in']:.2f}，输出峰值 {levels['out']:.2f}；麦克风“{cable_in.name}”的信号是脚本"
                 f"播进“{cable_out.name}”的 original.wav，输出到“{default_out.name}”（脚本听不到声音，只确认音频按时送出）")
@@ -562,7 +572,7 @@ def main(argv=None) -> int:
         previous_limit = window.config.live_restart_packets
         window.config.live_restart_packets = 12
         feed_cable(4)
-        settings = (window.voice_id, window.strength_pct, window.current_mode(),
+        settings = (window.voice_id, window.strength_pct, window.current_mode(), window.current_pitch(),
                     window._device(window.mic_combo).name, window._device(window.out_combo).name)
         before_refreshes = window._live_auto_refreshes
         try:
@@ -571,7 +581,7 @@ def main(argv=None) -> int:
             renewed = wait(lambda: window.live is not None and window.live is not old_live
                            and bool(window.live.hello), 15)
             new_live = window.live
-            same = (window.voice_id, window.strength_pct, window.current_mode(),
+            same = (window.voice_id, window.strength_pct, window.current_mode(), window.current_pitch(),
                     window._device(window.mic_combo).name, window._device(window.out_combo).name)
             c.check("实时变声按包数自动重开且保留设置",
                     renewed and settings == same and window.live_switch.isChecked()

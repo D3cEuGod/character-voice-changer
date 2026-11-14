@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayo
 
 from . import __version__, audio, catalog, theme
 from .backend import (CONTENT_TYPES, DEFAULT_URL, ROOT, START_SCRIPT, BackendClient, BackendError,
-                      BackendLauncher, stop_process_tree)
+                      BackendLauncher, stop_process_tree, PITCH_PRESETS)
 from .live import LiveMonitor
 from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCarousel,
                       divider, label, make_icon, set_state)
@@ -36,6 +36,7 @@ class Config:
     script: Path = START_SCRIPT
     live_restart_packets: int = 3000
     live_packet_ms: int = 120
+    pitch_preset: str = "fixed4"
 
 
 @dataclass
@@ -54,7 +55,7 @@ class InputClip:
 
 @dataclass
 class ResultClip:
-    key: tuple            # (输入序号, voice_id, 强度百分比, 处理方式)
+    key: tuple            # (输入序号, voice_id, 强度百分比, 处理方式, 音高预设)
     wav: bytes            # 后端返回的 WAV，另存时原样写出
     samples: np.ndarray
     rate: int
@@ -97,6 +98,7 @@ class MainWindow(QWidget):
         self.reference_voices = set()
         self.voice_models = {}
         self.live_packet_options = {120, 200}
+        self.pitch_supported = False
         self.max_seconds = 60.0
         self.max_bytes = 24 * 1024 * 1024
         self.voices: list[dict] = []
@@ -262,6 +264,16 @@ class MainWindow(QWidget):
         self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来对照变声效果")
         bottom.addWidget(self.reference_button)
         card.body.addLayout(bottom)
+        pitch_row = QHBoxLayout()
+        pitch_row.addWidget(label("音高", "sectionLabel"))
+        self.pitch_combo = ConsoleCombo()
+        for preset, (name, _, _) in PITCH_PRESETS.items():
+            self.pitch_combo.addItem(name, preset)
+        self.pitch_combo.setCurrentIndex(self.pitch_combo.findData(self.config.pitch_preset))
+        self.pitch_combo.setAccessibleName("音高")
+        self.pitch_combo.setToolTip("原声 +4：麦克风音高升 4 个半音，不自动匹配音域。自动音域再 +4：先按角色音域调整，再升 4 个半音。模型默认恢复原设置。")
+        pitch_row.addWidget(self.pitch_combo, 1)
+        card.body.addLayout(pitch_row)
         return card
 
     def _build_work(self) -> QWidget:
@@ -487,6 +499,7 @@ class MainWindow(QWidget):
         self.import_button.clicked.connect(self.import_dialog)
         self.strength_slider.valueChanged.connect(self._on_strength_changed)
         self.voice_mode.currentIndexChanged.connect(self._on_voice_mode_changed)
+        self.pitch_combo.currentIndexChanged.connect(self._on_voice_mode_changed)
         self.convert_button.clicked.connect(self.convert)
         self.seg_input.clicked.connect(lambda: self.set_ab("input"))
         self.seg_result.clicked.connect(lambda: self.set_ab("result"))
@@ -514,10 +527,15 @@ class MainWindow(QWidget):
     def current_key(self) -> tuple | None:
         if self.input is None or self.voice_id is None:
             return None
-        return (self.input.serial, self.voice_id, self.strength_pct, self.current_mode())
+        return (self.input.serial, self.voice_id, self.strength_pct, self.current_mode(), self.current_pitch())
 
     def current_mode(self) -> str:
         return self.voice_mode.currentData()
+
+    def current_pitch(self) -> str:
+        if not self.pitch_supported or self.voice_id in self.reference_voices:
+            return "model"
+        return self.pitch_combo.currentData()
 
     def current_result(self) -> ResultClip | None:
         key = self.current_key()
@@ -603,7 +621,7 @@ class MainWindow(QWidget):
     def _update_result_tag(self, result: ResultClip | None) -> None:
         key = self.current_key()
         if result is not None:
-            text = (f"当前结果：{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · 来源「{result.input_label}」"
+            text = (f"当前结果：{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · {PITCH_PRESETS[result.key[4]][0]} · 来源「{result.input_label}」"
                     f" · {len(result.samples) / result.rate:.2f} 秒，可试听和保存")
             state = "fresh"
         elif self.input is None:
@@ -613,7 +631,7 @@ class MainWindow(QWidget):
         else:
             others = [r for r in self.results.values() if r.key[0] == self.input.serial]
             if others:
-                listed = "、".join(f"{r.voice_name} {r.key[2]}% {MODE_NAMES[r.key[3]]}"
+                listed = "、".join(f"{r.voice_name} {r.key[2]}% {MODE_NAMES[r.key[3]]} {PITCH_PRESETS[r.key[4]][0]}"
                                   for r in sorted(others, key=lambda r: r.created))
                 text = (f"当前设置（{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}%）还没有结果。"
                         f"已有结果属于：{listed}。改回对应设置可继续试听和保存，或重新变声。")
@@ -659,6 +677,9 @@ class MainWindow(QWidget):
         self.reference_voices = set(health.get("reference_voices", ("tomori", "taffy") if self.reference_engine else ()))
         self.voice_models = health.get("voice_models", {})
         self.live_packet_options = set(health.get("live_packet_ms", (120, 200)))
+        self.pitch_supported = bool(health.get("pitch_control"))
+        if not self.pitch_supported:
+            self.pitch_combo.setCurrentIndex(self.pitch_combo.findData("model"))
         self._set_backend(True)
         if health.get("reference_error"):
             self.notice.setText(f"音色优先暂时使用兼容引擎：{health['reference_error']}")
@@ -775,6 +796,7 @@ class MainWindow(QWidget):
 
     def _show_voice(self, voice_id: str | None) -> None:
         self.voice_mode.setEnabled(voice_id is not None)
+        self.pitch_combo.setEnabled(voice_id is not None and self.pitch_supported and voice_id not in self.reference_voices)
         self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
         style = theme.voice_style(voice_id or "taffy")
         self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
@@ -1021,7 +1043,7 @@ class MainWindow(QWidget):
         def work():
             started = time.perf_counter()
             try:
-                wav = self.client.convert(clip.data, clip.content_type, voice_id, strength, mode=key[3])
+                wav = self.client.convert(clip.data, clip.content_type, voice_id, strength, mode=key[3], pitch_preset=key[4])
             except BackendError as exc:
                 self._emit(self.bridge.convert_failed, key, str(exc))
                 return
@@ -1056,7 +1078,7 @@ class MainWindow(QWidget):
         while len(self.results) > MAX_RESULTS:
             oldest = min(self.results.values(), key=lambda r: r.created)
             del self.results[oldest.key]
-        described = f"{result.voice_name} · 强度 {key[2]}% · {MODE_NAMES[key[3]]}"
+        described = f"{result.voice_name} · 强度 {key[2]}% · {MODE_NAMES[key[3]]} · {PITCH_PRESETS[key[4]][0]}"
         if key == self.current_key():
             was_playing = self.playing_tag is not None and self.playing_tag[0] == "input"
             self.ab = "result"
@@ -1181,7 +1203,7 @@ class MainWindow(QWidget):
             return
         stem = Path(result.input_label).stem.replace(":", "-").replace(" ", "_") or "voice"
         mode_suffix = f"_{result.key[3]}" if result.key[1] == "taffy" else ""
-        default = str(Path(self._last_dir) / f"{stem}_{result.key[1]}_{result.key[2]}{mode_suffix}.wav")
+        default = str(Path(self._last_dir) / f"{stem}_{result.key[1]}_{result.key[2]}{mode_suffix}_{result.key[4]}.wav")
         path, _ = QFileDialog.getSaveFileName(self, "另存为 WAV", default, "WAV 音频 (*.wav)")
         if path:
             self.save_result(Path(path))
@@ -1201,7 +1223,7 @@ class MainWindow(QWidget):
             self.set_status(f"保存失败：{exc}", "error")
             return False
         self._last_dir = str(path.parent)
-        self.set_status(f"已保存 {path}（{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · 来源「{result.input_label}」）", "ok")
+        self.set_status(f"已保存 {path}（{result.voice_name} · 强度 {result.key[2]}% · {MODE_NAMES[result.key[3]]} · {PITCH_PRESETS[result.key[4]][0]} · 来源「{result.input_label}」）", "ok")
         return True
 
     # ---- 麦克风监听 -------------------------------------------------------
@@ -1264,7 +1286,9 @@ class MainWindow(QWidget):
             packet_ms = self.config.live_packet_ms
         if packet_ms not in self.live_packet_options:
             packet_ms = 120 if 120 in self.live_packet_options else 200
-        url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode(), packet_ms=packet_ms)
+        pitch_preset = self.current_pitch()
+        url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode(),
+                                   packet_ms=packet_ms, pitch_preset=pitch_preset)
         monitor = LiveMonitor(
             url, mic, speaker,
             on_connected=lambda hello: self._emit(self.bridge.live_connected, monitor, hello),
@@ -1272,6 +1296,7 @@ class MainWindow(QWidget):
             on_stopped=lambda kind, message: self._emit(self.bridge.live_stopped, monitor, kind, message),
             restart_after_packets=self.config.live_restart_packets)
         monitor.label = f"{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}% · {MODE_NAMES[self.current_mode()]}"
+        monitor.pitch_preset = pitch_preset
         self.live = monitor
         self._live_stats = {}
         self.live_title.setText("正在连接…")
@@ -1311,7 +1336,7 @@ class MainWindow(QWidget):
                  + stats.get("resampler_delay_ms", 0)) / 1000
         self.live_status.setText(
             f"{monitor.mic.name} → {speaker.name}\n"
-            f"延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒"
+            f"{PITCH_PRESETS[monitor.pitch_preset][0]} · 延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒"
             f" · 本轮 {min(stats['frames'],limit) if limit else stats['frames']}"
             f"{f'/{limit}' if limit else ''} 包 · 自动刷新 {self._live_auto_refreshes} 次"
             f" · 丢弃输入 {stats['mic_dropped']} 块 · 播放断流 {stats['underruns']} 次")

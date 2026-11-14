@@ -7,6 +7,28 @@ from scipy.signal.windows import hann
 
 from .engine import load_graph
 
+
+def transpose_f0(f0, strength, register, target_hz, shift=None, offset=0):
+    """Fixed semitones override automatic register matching; offset adds to either.
+
+    Zero (unvoiced) bins stay zero. All changes are applied before the RVC
+    vocoder, without changing the speech duration or transposing the waveform.
+    """
+    changed = False
+    if shift is not None:
+        f0 *= 2 ** (shift * strength / 12)
+        changed = True
+    elif register is not None:
+        ratio = np.clip(target_hz / np.exp(register), .7, 3.2)
+        f0 *= ratio ** strength
+        changed = True
+    if offset:
+        f0 *= 2 ** (offset * strength / 12)
+        changed = True
+    if changed:
+        np.minimum(f0, 650, out=f0)
+    return f0
+
 WINDOW = hann(1024, sym=False).astype(np.float32)
 CENTS = np.pad(20 * np.arange(360) + 1997.3794084376191, (4, 4))
 

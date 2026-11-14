@@ -11,7 +11,7 @@ from scipy.signal import butter, resample_poly, sosfilt
 from scipy.signal.windows import hann
 
 from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
-from .pitch import pitch_track as rmvpe_pitch
+from .pitch import pitch_track as rmvpe_pitch, transpose_f0
 from . import reference, local_rvc
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
@@ -145,11 +145,12 @@ def audio_gate(clean, activity, samples):
 
 
 class CharacterModel:
-    def __init__(self, name, strength, mode="character"):
+    def __init__(self, name, strength, mode="character", *, pitch_shift=None, pitch_offset=0):
         self.name = name
         self.strength = strength
         self.local = local_rvc.profile(name)
         self.mode = mode
+        self.pitch_shift, self.pitch_offset = pitch_shift, pitch_offset
         self.fidelity = name == "taffy" and mode == "character"
         self.anon_fidelity = name == "anon" and mode == "character"
         self.reference = (reference.client() if os.environ.get("VOICE_REFERENCE_ENGINE") == "seed" and strength and mode == "character"
@@ -193,14 +194,11 @@ class CharacterModel:
             median = np.log(float(np.median(voiced)))
             decay = .92 ** (count / (RATE * .2))
             self.register = median if self.register is None else decay*self.register + (1-decay)*median
-        if self.local is not None and self.local.semitones is not None:
-            f0 *= 2 ** (self.local.semitones * self.strength / 12)
-            np.minimum(f0, 650, out=f0)
-        elif self.register is not None:
-            target = self.local.target_hz if self.local is not None else REGISTER[self.name]
-            ratio = np.clip(target / np.exp(self.register), .7, 3.2)
-            f0 *= ratio ** self.strength
-            np.minimum(f0, 650, out=f0)
+        shift = self.pitch_shift
+        if shift is None and self.local is not None:
+            shift = self.local.semitones
+        target = self.local.target_hz if self.local is not None else REGISTER[self.name]
+        transpose_f0(f0, self.strength, self.register, target, shift, self.pitch_offset)
         if self.name == "taffy" and self.local is None:
             units = graph("hubert_soft").run(None, {"audio": clean[None, None]})[0]
             inputs = {"units": units.repeat(2, axis=1).transpose(0, 2, 1), "f0": f0[None]}

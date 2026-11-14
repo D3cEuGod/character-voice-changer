@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.4.0
+- Versioned releases with a changelog; current internal beta is 0.4.1
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.4.0`（内测版）
+当前版本：`0.4.1`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -98,6 +98,20 @@ All images are captures of the running app on Windows 11, taken while the self-c
 后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，三位角色的实际音频预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
 三位角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
+
+### 音高 +4 试用与试听
+
+0.4.1 按用户要求，让 GUI 的三个角色先用“原声 +4 半音”。左栏的“音高”可在以下三档切换，实时和文件变声都生效；切档后旧文件结果不会被当成新档位的结果，实时会话会自动重连，周期刷新也会保留所选档位。
+
+| 档位 | 做法 | 原声中位音高 150 Hz 时，以塔菲为例 |
+| --- | --- | --- |
+| 模型默认 | 使用原有模型配置；本机三位均为自动匹配角色音域 | 约 429 Hz |
+| 原声 +4 半音 | 原声频率乘 `2^(4/12)`，替代自动音域匹配 | 约 189 Hz |
+| 自动音域再 +4 | 原有自动音域匹配后再升 4 个半音 | 约 541 Hz |
+
+所以“固定 +4”可能比原来的自动档更低，并非一定更尖；“自动再 +4”则更高，也可能过尖。保留原有 650 Hz 上限和音色强度对移调量的缩放；表中是 100% 强度的简化例子，真实说话还会保留起伏。更高不代表更像角色，需要用自己的麦克风试听选择。命令行 `start-gui.cmd --pitch-preset model` 可按原设置启动，`auto4` 启用自动后再升调。
+
+用同一段现有回归集的**合成男声**生成了 [灯](assets/pitch-comparisons/tomori.wav)、[塔菲](assets/pitch-comparisons/taffy.wav)、[爱音](assets/pitch-comparisons/anon.wav) 三份对照，顺序均为“模型默认 → 原声 +4 → 自动音域再 +4”，各段间隔 0.6 秒。[原始输入](assets/pitch-comparisons/input-male.wav) 与 [时间段 / 参数 / 校验值](assets/pitch-comparisons/manifest.json) 一并保存。这些对照使用文件接口的 200 ms 包，不代表端到端延迟或真人听感结论。详见 [0.4.1 记录](notes/pitch-trial-0.4.1.md)。
 
 本机已导入的模型如下，清单与 SHA-256 见 [安装记录](notes/installed-rvc-models.json)：
 
@@ -158,7 +172,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ## 当前状态
 
-0.4.0 增加按包数自动刷新实时会话并优化后端启动，默认沿用 0.2.1 的 120 ms VB-CABLE 稳定档和三套角色专用 RVC。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，上次延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，本次的启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
+0.4.1 增加三种音高档和同输入对照，GUI 暂以原声 +4 试用。沿用 0.4.0 的会话自动刷新、启动缓存，以及 120 ms VB-CABLE 稳定包长。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
@@ -242,7 +256,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 一包音频经过的步骤：
 
 1. GTCRN 连续降噪，Silero VAD 判断是否在说话。
-2. RMVPE 跟踪音高，按角色目标音域或固定半音数调整。
+2. RMVPE 跟踪音高，按所选档位使用固定半音、原有角色目标音域，或在模型设置后再升调。
 3. ContentVec 第 12 层提取 768 维发音特征，检索本角色索引的 8 个近邻，以距离平方的倒数加权。
 4. 在特征域保护清辅音，再由本角色的 RVC v2 模型生成波形。100% 强度时不会把说话人的原始有声波形混回来，也不会再经过另一个音色转换模型。
 5. 语音门控、SOLA 对齐、分频交叉淡化与最终限幅，再发送有 104 毫秒前瞻的音频。
@@ -279,6 +293,8 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 | `POST /api/convert?voice_id=taffy&strength=1` | 请求体直接放音频文件字节。成功返回 `audio/wav`，22,050 Hz 单声道 PCM16 |
 
 `voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。三位角色都支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
+
+RVC 音高参数同样适用于两个接口：`pitch_shift=4` 固定原声升 4 半音，替代模型的自动音域匹配；`pitch_offset=4` 在模型配置调整之后再升 4 半音。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。GUI 的默认试用档不会改变旧 API 调用的默认行为。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
 
 错误用 HTTP 状态码和 JSON 的 `detail` 表示。413 是文件过大，422 是音频或参数无效，429 是引擎正忙，500 是推理失败。一次只处理一个转换任务或一个实时会话。
 

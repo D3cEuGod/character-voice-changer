@@ -16,6 +16,22 @@ ROOT = Path(__file__).resolve().parents[1]
 START_SCRIPT = ROOT / "start-backend.cmd"
 
 CONTENT_TYPES = {".wav": "audio/wav", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".ogg": "audio/ogg"}
+PITCH_PRESETS = {
+    "model": ("模型默认", None, 0),
+    "fixed4": ("原声 +4 半音", 4, 0),
+    "auto4": ("自动音域再 +4", None, 4),
+}
+
+
+def pitch_query(preset):
+    _, shift, offset = PITCH_PRESETS[preset]
+    query = {}
+    if shift is not None:
+        query['pitch_shift'] = shift
+    if offset:
+        query['pitch_offset'] = offset
+    return query
+
 STATUS_HINTS = {
     413: "文件过大",
     422: "音频或参数无效",
@@ -110,16 +126,19 @@ class BackendClient:
             raise BackendError("GET /api/voices 返回的角色列表格式不对。") from exc
 
     def convert(self, data: bytes, content_type: str, voice_id: str, strength: float,
-                timeout: float = 600.0, *, mode: str = "character") -> bytes:
-        query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "mode": mode})
+                timeout: float = 600.0, *, mode: str = "character", pitch_preset: str = "model") -> bytes:
+        query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "mode": mode,
+                           **pitch_query(pitch_preset)})
         return self._request("POST", f"/api/convert?{query}", body=data,
                              headers={"Content-Type": content_type}, timeout=timeout)
 
-    def live_url(self, voice_id: str, strength: float, mode: str = "character", *, packet_ms: int = 200) -> str:
+    def live_url(self, voice_id: str, strength: float, mode: str = "character", *, packet_ms: int = 200,
+                 pitch_preset: str = "model") -> str:
         if packet_ms not in (80, 100, 120, 200):
             raise ValueError("实时音频包只支持 80、100、120 或 200 毫秒。")
         query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "low_latency": "true",
-                           "speech_context": "true", "mode": mode, "packet_ms": packet_ms})
+                           "speech_context": "true", "mode": mode, "packet_ms": packet_ms,
+                           **pitch_query(pitch_preset)})
         return f"ws://{self.host}:{self.port}/api/live?{query}"
 
 

@@ -1,0 +1,195 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.4.1",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng \u00b7 RVC v2 40k",
+      "taffy": "mygf-tf \u00b7 RVC v2 40k",
+      "anon": "Anon_v2 \u00b7 RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "live_packet_ms": [
+      80,
+      100,
+      120,
+      200
+    ],
+    "pitch_control": true,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "presets": [
+    {
+      "voice": "tomori",
+      "preset": "model",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "tomori",
+      "preset": "fixed4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": 4.0,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "tomori",
+      "preset": "auto4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 4.0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "taffy",
+      "preset": "model",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "taffy",
+      "preset": "fixed4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": 4.0,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "taffy",
+      "preset": "auto4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 4.0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "anon",
+      "preset": "model",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "anon",
+      "preset": "fixed4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": 4.0,
+        "pitch_offset": 0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    },
+    {
+      "voice": "anon",
+      "preset": "auto4",
+      "hello": {
+        "sample_rate": 22050,
+        "frame_samples": 2646,
+        "format": "s16le",
+        "pitch_shift": null,
+        "pitch_offset": 4.0,
+        "lookahead_samples": 2304
+      },
+      "samples_preserved": true
+    }
+  ],
+  "invalid": [
+    {
+      "parameter": "pitch_shift",
+      "value": "25",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_shift",
+      "value": "-25",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_shift",
+      "value": "nan",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_shift",
+      "value": "inf",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_offset",
+      "value": "25",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_offset",
+      "value": "-25",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_offset",
+      "value": "nan",
+      "http": 422,
+      "websocket": 403
+    },
+    {
+      "parameter": "pitch_offset",
+      "value": "inf",
+      "http": 422,
+      "websocket": 403
+    }
+  ]
+}

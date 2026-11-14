@@ -1,0 +1,85 @@
+[PASS] 启动：后端就绪 — 复用已运行的后端；已连接 http://127.0.0.1:8766 · RVC v2 · 复用已在运行的后端
+[PASS] 角色列表来自 GET /api/voices — tomori=高松灯、taffy=永雏塔菲、anon=千早爱音
+[PASS] 默认选中永雏塔菲，主视觉是头像 — 头像 511×512
+麦克风： ['Microphone (WO Mic Device)', 'CABLE Output (VB-Audio Virtual Cable)', 'Microphone (Steam Streaming Microphone)']
+输出设备： ['24G4 (NVIDIA High Definition Audio)', 'CABLE In 16ch (VB-Audio Virtual Cable)', 'CABLE Input (VB-Audio Virtual Cable)', 'Speakers (Steam Streaming Microphone)', 'Speakers (Steam Streaming Speakers)']
+试听和监听输出： Speakers (Steam Streaming Speakers)
+虚拟音频线： Speakers (Steam Streaming Microphone) → Microphone (Steam Streaming Microphone)
+[PASS] 设备下拉框显示系统报告的完整名称 — 3 个麦克风，5 个输出设备
+[PASS] 角色按分类显示：MyGO 一类，V圈一类 — MyGO!!!!!: tomori、anon；V圈: taffy
+[PASS] 默认分类是永雏塔菲所在的 V圈，转盘只显示这一类
+[PASS] 切到 MyGO 分类：转盘换成灯和爱音，选中灯居中 — 高松灯
+[PASS] 点右侧三角切到爱音，灯移到左侧 — 千早爱音
+[PASS] 键盘左键切回灯
+[PASS] 点转盘侧边虚化的爱音也能切换
+[PASS] 切走再切回 MyGO 时选回上次用的爱音
+[PASS] 切换角色：高松灯 — deng · RVC v2 40k
+[PASS] 角色原声与处理方式：高松灯
+[PASS] 切换角色：永雏塔菲 — mygf-tf · RVC v2 40k
+[PASS] 角色原声与处理方式：永雏塔菲
+[PASS] 切换角色：千早爱音 — Anon_v2 · RVC v2 40k
+[PASS] 角色原声与处理方式：千早爱音
+[PASS] 示例按钮已经去掉
+[PASS] 角色原声：点一下立即播放，再点停止 — taffy 的原声在“Speakers (Steam Streaming Speakers)”上播了 1.10 秒后停止（脚本听不到声音，只确认音频按时送出）
+[PASS] 播放角色原声，换角色后停止以免错配
+[PASS] 角色原声：千早爱音 — 输出到“24G4 (NVIDIA High Definition Audio)”
+[PASS] 角色原声播完后自动复位 — 播完用了 4.9 秒
+[PASS] 原生“导入音频”对话框能打开并取消 — 对话框由脚本发送关闭消息，未选择文件
+[PASS] 导入 WAV — 当前输入：original.wav · 4.03 秒 · 22050 Hz（文件对话框的返回值由脚本代填）
+[PASS] 导入后还没有结果：结果试听和保存不可用
+[PASS] 提交 POST /api/convert 并拿到结果 — 变声完成：永雏塔菲 · 强度 100% · 音色优先 · 原声 +4 半音，用时 1.4 秒。可以试听并另存为 WAV。
+[PASS] 转换期间监听开关不可用
+[PASS] 结果与生成参数关联 — 当前结果：永雏塔菲 · 强度 100% · 音色优先 · 原声 +4 半音 · 来源「original.wav」 · 4.03 秒，可试听和保存
+[PASS] 切换音高后旧结果不能试听保存
+[PASS] 切回音高后恢复对应结果
+[PASS] 切换处理方式后旧结果不能试听保存
+[PASS] 切回原处理方式恢复对应结果
+[PASS] 试听结果并在播放中切换 原声 / 结果 — 在“Speakers (Steam Streaming Speakers)”上播放；1.19 秒处切到原声，位置保持，再切回结果播完（脚本听不到声音，只确认音频按时送出）
+[PASS] 另存为 WAV — .run\selfcheck-pitch\selfcheck_original_taffy_100.wav：22050 Hz，1 声道，PCM_16，4.03 秒，177908 字节
+[PASS] 改强度后旧结果不能试听或保存 — 当前设置（永雏塔菲 · 强度 60%）还没有结果。已有结果属于：永雏塔菲 100% 音色优先 原声 +4 半音。改回对应设置可继续试听和保存，或重新变声。
+[PASS] 改回原设置后结果恢复可用
+[PASS] 换角色后旧结果不能保存
+[PASS] 转换途中换角色：结果记在提交时的参数下 — 变声完成：千早爱音 · 强度 100% · 音色优先 · 原声 +4 半音（用时 1.5 秒）。当前设置已经改过，改回这组设置即可试听和保存。
+[PASS] 回到千早爱音后可保存她的结果
+[PASS] 回到永雏塔菲后仍是她的结果
+[PASS] 换输入后旧输入的结果全部作废 — 这段输入还没有结果，点“开始变声”。
+[PASS] 拒绝无效文件 not_audio.wav — not_audio.wav：无法解码音频，请重新录制或导出为 WAV。
+[PASS] 拒绝无效文件 too_short.wav — too_short.wav：音频长度须在 0.35 至 60 秒之间（这段是 0.10 秒）。
+[PASS] 拒绝无效文件 too_big.wav — too_big.wav：文件有 24.0 MiB，超过后端上限 24 MiB。
+[PASS] 后端 422（无法解码） — 音频或参数无效（HTTP 422）：无法解码音频，请重新录制或导出为 WAV。
+[PASS] 后端 422（角色不存在，detail 为数组） — 音频或参数无效（HTTP 422）：voice_id: Input should be 'tomori', 'taffy' or 'anon'
+[PASS] 录音 — 当前输入：录音 00:34:08 · 2.47 秒 · 44100 Hz；峰值 0.59；麦克风“Microphone (Steam Streaming Microphone)”的信号是脚本播进“Speakers (Steam Streaming Microphone)”的 original.wav
+[PASS] 过短的录音被丢弃，不替换当前输入 — 录音只有 0.19 秒，至少需要 0.35 秒，没有替换当前输入。
+[PASS] 录音提交转换 — 变声完成：永雏塔菲 · 强度 100% · 音色优先 · 原声 +4 半音，用时 0.8 秒。可以试听并另存为 WAV。
+[PASS] 监听：连接 /api/live 并持续收发 — {'sample_rate': 22050, 'frame_samples': 4410, 'format': 's16le', 'pitch_shift': 4.0, 'pitch_offset': 0, 'lookahead_samples': 2304}；Microphone (Steam Streaming Microphone) → Speakers (Steam Streaming Speakers)；原声 +4 半音 · 延迟约 0.8 秒 · 每包处理 58 毫秒 · 本轮 17/3000 包 · 自动刷新 0 次 · 丢弃输入 0 块 · 播放断流 0 次
+[PASS] 实时连接带上所选音高且后端确认 — ws://127.0.0.1:8766/api/live?voice_id=taffy&strength=1.00&low_latency=true&speech_context=true&mode=character&packet_ms=200&pitch_shift=4
+[PASS] 监听：输入和输出都有信号 — 输入峰值 0.57，输出峰值 0.44；麦克风“Microphone (Steam Streaming Microphone)”的信号是脚本播进“Speakers (Steam Streaming Microphone)”的 original.wav，输出到“Speakers (Steam Streaming Speakers)”（脚本听不到声音，只确认音频按时送出）
+[PASS] 监听时文件转换和录音被禁用 — 监听占用着同一个引擎，关闭监听后才能转换文件
+[PASS] 监听中切换角色会重新连接 — ws://127.0.0.1:8766/api/live?voice_id=anon&strength=1.00&low_latency=true&speech_context=true&mode=character&packet_ms=200&pitch_shift=4；旧会话已结束并释放设备
+[PASS] 监听回包是有声音的连续音频 — 第一段监听送去播放的 3.7 秒音频已另存为 .run\selfcheck-pitch\live_monitor_taffy.wav，RMS 0.051，可以回听
+[PASS] 监听中改强度会重新连接 — ws://127.0.0.1:8766/api/live?voice_id=anon&strength=0.60&low_latency=true&speech_context=true&mode=character&packet_ms=200&pitch_shift=4
+[PASS] 关闭监听：按协议收尾并释放麦克风和输出流 — 最后一个会话送 5 帧，回包样本数 [2106, 4410, 4410]…[4410, 2304]，丢弃输入 0 块，播放断流 0 次
+[PASS] 实时音频样本数与协商帧长一致
+[PASS] 关闭监听后恢复文件转换 — 监听已关闭，麦克风和输出设备已释放。
+[PASS] 实时变声按包数自动重开且保留设置 — 测试阈值 12 包；自动刷新 1 次；窗口和后端保持运行，旧采集和播放流已释放
+[PASS] 自动刷新后手动停止不会自行重开
+[PASS] 模拟麦克风掉线：监听停止并释放输出流 — 监听已停止：麦克风“Microphone (Steam Streaming Microphone)”已断开或不可用，监听已停止。（模拟：脚本关闭了采集流）
+[PASS] 引擎被占用时监听报 1013 并复位 — 监听已停止：引擎正忙（1013）：后端正在处理另一段转换或另一个监听，请稍后再开。（模拟：另一个监听会话占着引擎）
+[PASS] 引擎被占用时文件转换报 429 — 转换失败：引擎正忙（HTTP 429）：正在处理另一段音频，请稍后重试。
+[PASS] 模拟麦克风打不开：录音报错并复位 — “已拔出的设备（模拟）”已经不在系统的设备列表里（可能被拔出或停用）。设备列表已刷新，请重新选择。
+[PASS] 模拟麦克风打不开：监听报错并复位 — 监听没有打开：“已拔出的设备（模拟）”已经不在系统的设备列表里（可能被拔出或停用）。设备列表已刷新，请重新选择。
+[PASS] 模拟输出设备打不开：试听报错 — “已拔出的设备（模拟）”已经不在系统的设备列表里（可能被拔出或停用）。设备列表已刷新，请重新选择。
+[PASS] 模拟输出设备打不开：监听报错并释放麦克风 — 监听没有打开：“已拔出的设备（模拟）”已经不在系统的设备列表里（可能被拔出或停用）。设备列表已刷新，请重新选择。
+[PASS] 模拟没有任何设备：录音、试听、监听不可用并有提示 — 没有找到麦克风，可以导入音频文件；监听开关提示：没有找到麦克风
+[PASS] 刷新设备后恢复 — 设备列表已刷新：3 个麦克风，5 个输出设备。
+[PASS] 关闭窗口：停止播放，结束监听，释放设备 — 关闭用时 0.03 秒；关闭时监听和示例播放都在进行
+[PASS] 关闭窗口后，复用的后端保持运行
+[PASS] 未连接后端：显示原因，转换和监听不可用，仍可导入和试听原声 — 后端未连接：无法连接 http://127.0.0.1:8799（连接超时）。 已关闭自动启动，请先运行 start-backend.cmd。 点右上角“重新连接”会再检查一次，并在需要时启动 start-backend.cmd。
+[PASS] 启动脚本失败：显示退出码和脚本输出 — 后端未连接：failing-backend.cmd 已退出（退出码 3），后端没有就绪。 脚本最后的输出： Simulated failure: model file is missing 点右上角“重新连接”会再检查一次，并在需要时启动 start-backend.cmd。（模拟脚本）
+[PASS] 启动脚本不存在：显示路径 — 后端未连接：无法连接 http://127.0.0.1:8799（连接超时）。 找不到启动脚本：C:\Users\Jason\AppData\Local\Temp\voice-gui-selfcheck-c2y_b2x5\missing.cmd 点右上角“重新连接”会再检查一次，并在需要时启动 start-backend.cmd。
+[SKIP] 自动启动后端 — 已用 --skip-autostart 跳过
+
+结果和截图在 .run\selfcheck-pitch
+
+合计：75 项通过，0 项失败，1 项跳过
+  SKIP: 自动启动后端 — 已用 --skip-autostart 跳过
