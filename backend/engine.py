@@ -2,6 +2,7 @@ from functools import lru_cache
 from io import BytesIO
 from math import gcd
 from pathlib import Path
+import os
 
 import numpy as np
 import onnxruntime as ort
@@ -45,14 +46,17 @@ def decode(data):
 
 
 def load_graph(filename, *, gpu=True):
+    from .graph_cache import load
     options = ort.SessionOptions()
+    options.log_severity_level = 3
+    options.add_session_config_entry('session.intra_op.allow_spinning', os.environ.get('VOICE_ORT_SPINNING','0'))
     options.intra_op_num_threads = 4 if gpu else 1
     options.inter_op_num_threads = 1
     providers = ["CPUExecutionProvider"]
     if gpu and "DmlExecutionProvider" in ort.get_available_providers():
         options.enable_mem_pattern = False
         providers.insert(0, "DmlExecutionProvider")
-    return ort.InferenceSession(str(ROOT / "models" / filename), options, providers=providers)
+    return load(ROOT / "models" / filename, options, providers)
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,99 @@
+[
+  {
+    "graph": "silero_vad_16k_op15",
+    "input_shapes": {
+      "input": [
+        1,
+        576
+      ],
+      "state": [
+        2,
+        1,
+        128
+      ],
+      "sr": []
+    },
+    "max_abs_error": [
+      0.0,
+      0.0
+    ],
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "passed": true
+  },
+  {
+    "graph": "gtcrn_simple",
+    "input_shapes": {
+      "mix": [
+        1,
+        257,
+        1,
+        2
+      ],
+      "conv_cache": [
+        2,
+        1,
+        16,
+        16,
+        33
+      ],
+      "tra_cache": [
+        2,
+        3,
+        1,
+        1,
+        16
+      ],
+      "inter_cache": [
+        2,
+        1,
+        33,
+        16
+      ]
+    },
+    "max_abs_error": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "passed": true
+  },
+  {
+    "graph": "rmvpe",
+    "input_shapes": {
+      "input": [
+        1,
+        128,
+        128
+      ]
+    },
+    "max_abs_error": [
+      0.0
+    ],
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "passed": true
+  },
+  {
+    "graph": "contentvec_768l12",
+    "input_shapes": {
+      "input_values": [
+        1,
+        16080
+      ],
+      "attention_mask": [
+        1,
+        16080
+      ]
+    },
+    "max_abs_error": [
+      0.0
+    ],
+    "atol": 0.0001,
+    "rtol": 0.0001,
+    "passed": true
+  }
+]

@@ -131,7 +131,7 @@ def main():
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--slack", type=float)
     parser.add_argument("--device-latency", type=float)
-    parser.add_argument("--packet-ms", type=int, choices=(120, 200), default=200)
+    parser.add_argument("--packet-ms", type=int, choices=(80, 100, 120, 200), default=200)
     parser.add_argument("--input-rate", type=int, default=22050)
     parser.add_argument("--backend-url", default="http://127.0.0.1:8765")
     args = parser.parse_args()

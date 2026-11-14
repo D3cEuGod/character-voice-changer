@@ -8,15 +8,15 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 
 - Three dedicated RVC v2 40k voices, with matched retrieval indexes and RMVPE pitch extraction
 - Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
-- Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE
+- Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE and a session refresh every 3,000 packets
 - Discord output through a virtual microphone (Steam Streaming Microphone or VB-CABLE), or local monitoring
 - Streaming noise suppression (GTCRN) and voice activity detection (Silero VAD), silent during pauses
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
-- Desktop GUI that starts and stops the backend by itself
+- Desktop GUI that starts and stops the backend by itself; unchanged model checks and compatible optimized graphs are cached locally
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.3.1
+- Versioned releases with a changelog; current internal beta is 0.4.0
 
 ## Tech Stack
 
@@ -87,13 +87,15 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.3.1`（内测版）
+当前版本：`0.4.0`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
 1. 克隆仓库，双击 `start-gui.cmd`。
 2. 首次启动会建立虚拟环境并安装依赖。已安装三套本地角色模型时，只准备 ContentVec、RMVPE、GTCRN 和 VAD 等必要推理图。没有本地模型时会准备原来的兼容声线（约 2 GB 权重及导出环境）；这与本次导入的新声线有区别。权重均校验 SHA-256。
 3. 窗口右上角显示“后端：已连接”后即可使用。之后可以离线运行。
+
+后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，三位角色的实际音频预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
 三位角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
 
@@ -136,13 +138,27 @@ Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=se
 
 WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续选 WO Mic 会绕过变声器。也可以使用 VB-CABLE，不限于 Steam。
 
-如果朋友先听到原声、约一秒后又听到变声，先确认 WO Mic 的“本地播放”已关闭，并检查 Windows 的麦克风“侦听此设备”是否开启。本机这次关闭 WO Mic 本地播放后，朋友确认重复声音消失。软件音色强度保持 100% 时，本地 RVC 路径仅输出转换波形；降低强度会按比例混入原声。变声链路本身仍有约一秒延迟。
+如果朋友先听到原声、约一秒后又听到变声，先确认 WO Mic 的“本地播放”已关闭，并检查 Windows 的麦克风“侦听此设备”是否开启。本机这次关闭 WO Mic 本地播放后，朋友确认重复声音消失。软件音色强度保持 100% 时，本地 RVC 路径仅输出转换波形；降低强度会按比例混入原声。本机 VB-CABLE 测试延迟约 0.7 秒，还需叠加 WO Mic 和 Discord 的延迟。
 
 项目目录已保存 [VB-CABLE 官方原版安装包与安装说明](third_party/installers/vb-cable/README.md)。软件优先使用 VB-CABLE，Steam 为备用。驱动需要独立以管理员安装并重启；安装器请从纯英文临时目录运行。
 
+### 长时间通话与实验延迟档
+
+默认每发出 3,000 个实时音频包自动重开一次实时变声。VB-CABLE 的 120 ms 包约每 6 分钟触发，Steam 的 200 ms 包约每 10 分钟触发；静音包也计数。刷新会释放并重开采集、播放和 WebSocket 会话，重置降噪、音高跟踪、重采样和播放缓冲，保留角色、强度、处理方式和设备。窗口、后端进程和已经加载的模型继续运行。刷新时会有短暂停顿；这是针对长时间退化的缓解措施，尚未确认退化的唯一原因。
+
+状态行显示“本轮包数”和“自动刷新次数”。手动停止、设备错误或退出时不会自动重开。可从 PowerShell 在项目目录里运行：
+
+```powershell
+.\start-gui.cmd --live-restart-packets 5000
+.\start-gui.cmd --live-restart-packets 0
+.\start-gui.cmd --live-packet-ms 100
+```
+
+上面分别是改成 5,000 包、关闭自动刷新，以及启用实验 100 ms 包。普通双击仍是 3,000 包和稳定的 120 ms。100 ms 档仅影响 VB-CABLE 的普通 RVC 路径；短句本机回录约 0.63 秒，但爱音的带噪长句出现一次断流，因此未作为默认。完整前瞻和模型权重不变，Steam、文件变声与 Seed-VC 保留原包长。
+
 ## 当前状态
 
-0.2.1 延续三套角色专用 RVC，缩短 VB-CABLE 的实时音频包和播放缓冲，仍属于内测。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，本次改动见 [延迟测试记录](notes/latency-0.2.1.md)。
+0.4.0 增加按包数自动刷新实时会话并优化后端启动，默认沿用 0.2.1 的 120 ms VB-CABLE 稳定档和三套角色专用 RVC。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，上次延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，本次的启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
@@ -168,6 +184,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 - `prepare_voices.py`，从固定版本的参考录音重建三个音色向量
 - `tools/import_rvc.py`，验证、导出并安装用户 RVC 模型
 - `backend/local_rvc.py`，读取本地模型配置并校验文件
+- `tools/model_integrity.py`、`backend/graph_cache.py`，模型校验缓存和本机推理图优化缓存
 - `third_party/rvc/`，RVC 的 MIT 许可证和集成说明
 - `setup_reference_engine.py`、`backend/reference_worker.py`，可选的 Seed-VC 对照实现
 - `third_party/seed_vc/`，Seed-VC 的 GPL v3 许可证和版本说明
@@ -197,9 +214,10 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ### 实时变声
 
-- 麦克风输入连续重采样到 22,050 Hz，每 200 毫秒送一包
+- 麦克风输入连续重采样到 22,050 Hz；VB-CABLE 默认每 120 毫秒送一包，Steam 为 200 毫秒
 - 输出发往 Discord 用的虚拟麦克风，或从耳机监听
 - 说话时切换角色或强度会自动重连
+- 默认每 3,000 包自动刷新实时会话，不重启程序或重载模型
 - 停顿时输出静音，不会把底噪变成角色的声音
 - 界面显示延迟、每包处理时间、丢弃的输入和播放断流次数
 
@@ -277,11 +295,11 @@ curl.exe --fail-with-body "http://127.0.0.1:8765/api/convert?voice_id=taffy&stre
 ```
 
 1. 把采集到的音频连续重采样为 22,050 Hz 单声道，每凑齐 `frame_samples` 个小端 PCM16 样本发一条二进制消息。
-2. 每发一包收到一条二进制 PCM16 回包。首包少 `lookahead_samples` 个样本（此例为 342 个），后续每包 2,646 个，按顺序播放。
-3. 正常停止时，把不足一包的输入补零发出，再发文本 `finish`，读回最后 2,304 个样本和关闭帧。中途取消可以直接断开。
+2. 每发一包收到一条二进制 PCM16 回包。累计输入不足前瞻时，回包是空二进制消息；累计输出长度始终为 `max(0, 累计输入样本数 - lookahead_samples)`。此例首包为 342 个样本，后续每包 2,646 个，按顺序播放。
+3. 正常停止时，把不足一包的输入补零发出，再发文本 `finish`，读回剩余样本（此例为 2,304 个）和关闭帧。输入总长不足前瞻时，尾包返回全部输入样本；无输入时为空。中途取消可以直接断开。
 4. 关闭码 1013 是引擎正忙，1003 是包长度不对，1001 是超过 30 秒没有收到音频，1008 是来源不被允许。切换角色或强度需要重新连接。
 
-`packet_ms` 支持 120 和 200，省略时保留旧客户端的 200 毫秒 / 4,410 样本；实验 Seed-VC 保留 200 毫秒。省略 `low_latency` 时每包 8,192 个样本，省略 `speech_context` 时前瞻为 1,024 个样本。以握手里的 `frame_samples` 为准。
+`packet_ms` 支持 80、100、120 和 200，省略时保留旧客户端的 200 毫秒 / 4,410 样本；80 和 100 为实验包长，GUI 只开放 100 的可选档。`GET /api/health` 的 `live_packet_ms` 列出支持值，GUI 连接旧后端时回退到兼容包长。实验 Seed-VC 保留 200 毫秒。省略 `low_latency` 时每包 8,192 个样本，省略 `speech_context` 时前瞻为 1,024 个样本。以握手里的 `frame_samples` 为准。
 
 ## 评测
 

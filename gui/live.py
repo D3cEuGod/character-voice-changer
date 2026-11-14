@@ -50,10 +50,12 @@ class LiveMonitor(threading.Thread):
     mic 提供 rate / name / blocks(有限队列) / level / dropped / active / close()；
     speaker 提供 rate / name / write() / active / close()。两者都由界面线程先打开并启动。
     回调在本线程里调用：on_connected(hello)、on_stats(dict)、on_stopped(kind, message)，
-    kind 为 "user"（正常停止）或 "error"。无论怎样结束，都会关闭麦克风和输出流。
+    kind 为 "user"（正常停止）、"refresh"（到期重开）或 "error"。
+    无论怎样结束，都会关闭麦克风和输出流。
     """
 
-    def __init__(self, url: str, mic, speaker, on_connected, on_stats, on_stopped):
+    def __init__(self, url: str, mic, speaker, on_connected, on_stats, on_stopped,
+                 *, restart_after_packets: int = 0):
         super().__init__(daemon=True, name="live-monitor")
         self.url = url
         self.mic = mic
@@ -67,6 +69,9 @@ class LiveMonitor(threading.Thread):
         self.samples_received = 0
         self.packet_samples: list[int] = []
         self._times: list[float] = []
+        if restart_after_packets < 0:
+            raise ValueError("自动刷新包数不能为负数。")
+        self.restart_after_packets = restart_after_packets
 
     def request_stop(self, abort: bool = False) -> None:
         """abort=False 按协议补零并发送 finish；abort=True 直接断开。"""
@@ -91,9 +96,11 @@ class LiveMonitor(threading.Thread):
                         raise
             self.hello = hello
             self._on_connected(hello)
-            self._pump(ws, hello)
+            refresh = self._pump(ws, hello)
             if not self._abort:
                 self._finish(ws)
+            if refresh and not self._stop_event.is_set():
+                kind = "refresh"
         except _Aborted:
             pass
         except LiveError as exc:
@@ -110,7 +117,12 @@ class LiveMonitor(threading.Thread):
                         closer()
                     except Exception:
                         pass
-            self._on_stopped(kind, message)
+            try:
+                self._on_stopped(kind, message)
+            finally:
+                # GUI callbacks capture this monitor. Break the cycle so closed
+                # device buffers are freed after every periodic refresh.
+                self._on_connected = self._on_stats = self._on_stopped = None
 
     def _connect(self):
         try:
@@ -178,7 +190,7 @@ class LiveMonitor(threading.Thread):
                 + (self._out_resampler.delay() / self.speaker.rate if self._out_resampler is not None else 0)),
         })
 
-    def _pump(self, ws, hello: dict) -> None:
+    def _pump(self, ws, hello: dict) -> bool:
         rate, frame = int(hello["sample_rate"]), int(hello["frame_samples"])
         self._frame_bytes = frame * 2
         self._in_resampler = (soxr.ResampleStream(self.mic.rate, rate, 1, dtype="float32")
@@ -207,6 +219,9 @@ class LiveMonitor(threading.Thread):
                 payload = bytes(self._pending[:self._frame_bytes])
                 del self._pending[:self._frame_bytes]
                 self._exchange(ws, payload)
+                if self.restart_after_packets and self.frames_sent >= self.restart_after_packets:
+                    return True
+        return False
 
     def _finish(self, ws) -> None:
         """正常停止：不足一帧的尾巴补零发送，再发 finish，读完末尾 PCM 和关闭帧。"""

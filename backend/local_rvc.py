@@ -1,11 +1,12 @@
 """Verified, user-installed RVC v2 speakers. Weights are never unpickled by the server."""
 from dataclasses import dataclass
 from functools import lru_cache
-import hashlib
 import json
 from pathlib import Path
 
-from .engine import ROOT, load_graph
+from tools.model_integrity import verified
+
+ROOT = Path(__file__).resolve().parents[1]
 
 DIRECTORY = ROOT / "models/local-rvc"
 REGISTRY = DIRECTORY / "profiles.json"
@@ -28,9 +29,8 @@ def verified_file(relative, expected):
     path = (DIRECTORY / relative).resolve()
     if not path.is_relative_to(DIRECTORY.resolve()) or not path.is_file():
         raise ValueError(f"Installed RVC file is missing or outside its directory: {relative}")
-    with path.open("rb") as stream:
-        if hashlib.file_digest(stream, "sha256").hexdigest() != expected:
-            raise ValueError(f"Installed RVC file failed its SHA-256 check: {relative}")
+    if not verified(path, expected):
+        raise ValueError(f"Installed RVC file failed its SHA-256 check: {relative}")
     return path
 
 
@@ -59,4 +59,5 @@ def profile(voice):
 
 @lru_cache(maxsize=3)
 def graph(voice):
+    from .engine import load_graph
     return load_graph(profile(voice).graph)

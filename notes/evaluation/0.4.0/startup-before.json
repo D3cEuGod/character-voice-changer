@@ -1,0 +1,51 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.3.1",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng \u00b7 RVC v2 40k",
+      "taffy": "mygf-tf \u00b7 RVC v2 40k",
+      "anon": "Anon_v2 \u00b7 RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "owned": true,
+  "seconds": 18.716,
+  "events": [
+    {
+      "s": 0.001,
+      "message": "\u6b63\u5728\u68c0\u67e5\u672c\u5730\u540e\u7aef\u2026"
+    },
+    {
+      "s": 2.043,
+      "message": "\u540e\u7aef\u672a\u8fd0\u884c\uff0c\u6b63\u5728\u542f\u52a8 start-benchmark-before.cmd\u2026"
+    },
+    {
+      "s": 10.522,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Started server process [28908]"
+    },
+    {
+      "s": 10.522,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Waiting for application startup."
+    },
+    {
+      "s": 18.356,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Application startup complete."
+    },
+    {
+      "s": 18.356,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Uvicorn running on http://127.0.0.1:8766 (Press CTRL+C to quit)"
+    },
+    {
+      "s": 18.715,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     127.0.0.1:51205 - \"GET /api/health HTTP/1.1\" 200 OK"
+    }
+  ]
+}

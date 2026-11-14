@@ -558,6 +558,43 @@ def main(argv=None) -> int:
                 and window.lamp.text() == "STANDBY", window.live_status.text())
         feeder.stop()
 
+        # Shorten only this test's threshold; production keeps 3000 packets.
+        previous_limit = window.config.live_restart_packets
+        window.config.live_restart_packets = 12
+        feed_cable(4)
+        settings = (window.voice_id, window.strength_pct, window.current_mode(),
+                    window._device(window.mic_combo).name, window._device(window.out_combo).name)
+        before_refreshes = window._live_auto_refreshes
+        try:
+            click(window.live_switch)
+            old_live = window.live
+            renewed = wait(lambda: window.live is not None and window.live is not old_live
+                           and bool(window.live.hello), 15)
+            new_live = window.live
+            same = (window.voice_id, window.strength_pct, window.current_mode(),
+                    window._device(window.mic_combo).name, window._device(window.out_combo).name)
+            c.check("实时变声按包数自动重开且保留设置",
+                    renewed and settings == same and window.live_switch.isChecked()
+                    and window._live_auto_refreshes == before_refreshes+1
+                    and wait(lambda: not old_live.is_alive(), 2)
+                    and not old_live.mic.active and not old_live.speaker.active,
+                    f"测试阈值 12 包；自动刷新 {window._live_auto_refreshes-before_refreshes} 次；"
+                    "窗口和后端保持运行，旧采集和播放流已释放")
+            if new_live is not None:
+                wait(enough(new_live, 3), 8)
+            click(window.live_switch)
+            stopped = wait(lambda: window.live is None, 8)
+            pump(500)
+            c.check("自动刷新后手动停止不会自行重开",
+                    stopped and window.live is None and not window.live_switch.isChecked()
+                    and window._live_auto_refreshes == before_refreshes+1)
+        finally:
+            if window.live_switch.isChecked():
+                click(window.live_switch)
+            wait(lambda: window.live is None, 8)
+            window.config.live_restart_packets = previous_limit
+            feeder.stop()
+
         # 模拟：监听途中麦克风被拔出（直接关掉采集流）
         feed_cable(3)
         click(window.live_switch)
@@ -665,7 +702,8 @@ def main(argv=None) -> int:
     wait(lambda: offline.notice.isVisible(), 10)
     offline.load_file(ORIGINAL)
     c.check("未连接后端：显示原因，转换和监听不可用，仍可导入和试听原声",
-            not offline.backend_ok and "连接被拒绝" in offline.notice.text() and not offline.convert_button.isEnabled()
+            not offline.backend_ok and any(reason in offline.notice.text() for reason in ("连接被拒绝", "连接超时"))
+            and not offline.convert_button.isEnabled()
             and not offline.live_switch.isEnabled() and not offline.voice_names and offline.input is not None
             and offline.convert_button.toolTip() == "后端未连接",
             offline.notice.text().replace("\n", " "))

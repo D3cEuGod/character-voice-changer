@@ -7,7 +7,7 @@ if not exist ".venv\Scripts\python.exe" (
     py -3.13 -m venv .venv
     if errorlevel 1 goto :failed
 )
-".venv\Scripts\python.exe" -m pip show onnxruntime >nul 2>&1
+".venv\Scripts\python.exe" -c "from importlib.metadata import distribution; distribution('onnxruntime')" >nul 2>&1
 if not errorlevel 1 (
     ".venv\Scripts\python.exe" -m pip uninstall -y onnxruntime onnxruntime-directml
     if errorlevel 1 goto :failed

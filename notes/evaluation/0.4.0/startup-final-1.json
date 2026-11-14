@@ -1,0 +1,89 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.4.0",
+    "engine": "RVC v2",
+    "reference_engine": false,
+    "reference_error": "",
+    "reference_voices": [],
+    "voice_models": {
+      "tomori": "deng \u00b7 RVC v2 40k",
+      "taffy": "mygf-tf \u00b7 RVC v2 40k",
+      "anon": "Anon_v2 \u00b7 RVC v2 40k"
+    },
+    "provider": "DmlExecutionProvider",
+    "sample_rate": 22050,
+    "live_packet_ms": [
+      80,
+      100,
+      120,
+      200
+    ],
+    "max_seconds": 60,
+    "max_bytes": 25165824
+  },
+  "owned": true,
+  "seconds": 7.332,
+  "events": [
+    {
+      "s": 0.001,
+      "message": "\u6b63\u5728\u68c0\u67e5\u672c\u5730\u540e\u7aef\u2026"
+    },
+    {
+      "s": 0.114,
+      "message": "\u540e\u7aef\u672a\u8fd0\u884c\uff0c\u6b63\u5728\u542f\u52a8 start-benchmark-final-1.cmd\u2026"
+    },
+    {
+      "s": 2.344,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Started server process [29036]"
+    },
+    {
+      "s": 2.344,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Waiting for application startup."
+    },
+    {
+      "s": 2.388,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded gtcrn_simple.onnx from local cache in 0.04 s"
+    },
+    {
+      "s": 2.398,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded silero_vad_16k_op15.onnx from local cache in 0.05 s"
+    },
+    {
+      "s": 3.049,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded contentvec_768l12.onnx from local cache in 0.66 s"
+    },
+    {
+      "s": 4.107,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded tomori-bec64752639c/voice.onnx in 1.06 s"
+    },
+    {
+      "s": 4.484,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded rmvpe.onnx from local cache in 2.09 s"
+    },
+    {
+      "s": 5.244,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded taffy-044fa3e8ee7f/voice.onnx in 0.76 s"
+    },
+    {
+      "s": 6.043,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Loaded anon-493ff6c8d9be/voice.onnx in 0.80 s"
+    },
+    {
+      "s": 6.331,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Models prepared in 3.99 s"
+    },
+    {
+      "s": 7.092,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Application startup complete."
+    },
+    {
+      "s": 7.092,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     Uvicorn running on http://127.0.0.1:8766 (Press CTRL+C to quit)"
+    },
+    {
+      "s": 7.332,
+      "message": "\u540e\u7aef\u542f\u52a8\u4e2d\uff1aINFO:     127.0.0.1:50998 - \"GET /api/health HTTP/1.1\" 200 OK"
+    }
+  ]
+}

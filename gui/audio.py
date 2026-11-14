@@ -271,14 +271,15 @@ class MicStream:
 
     @property
     def active(self) -> bool:
-        return bool(self._stream.active)
+        return self._stream is not None and bool(self._stream.active)
 
     @property
     def latency(self) -> float:
-        return float(self._stream.latency)
+        return float(self._stream.latency) if self._stream is not None else 0.0
 
     def close(self) -> None:
-        _close_stream(self._stream)
+        stream, self._stream = self._stream, None
+        _close_stream(stream)
 
 
 class AudioFifo:
@@ -438,10 +439,11 @@ class SpeakerStream:
 
     @property
     def active(self) -> bool:
-        return bool(self._stream.active)
+        return self._stream is not None and bool(self._stream.active)
 
     def close(self) -> None:
-        _close_stream(self._stream)
+        stream, self._stream = self._stream, None
+        _close_stream(stream)
 
 
 def probe_file(data: bytes, max_seconds: float) -> tuple[np.ndarray, int]:

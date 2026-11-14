@@ -34,6 +34,8 @@ class Config:
     backend_url: str = DEFAULT_URL
     autostart: bool = True
     script: Path = START_SCRIPT
+    live_restart_packets: int = 3000
+    live_packet_ms: int = 120
 
 
 @dataclass
@@ -94,6 +96,7 @@ class MainWindow(QWidget):
         self.reference_engine = False
         self.reference_voices = set()
         self.voice_models = {}
+        self.live_packet_options = {120, 200}
         self.max_seconds = 60.0
         self.max_bytes = 24 * 1024 * 1024
         self.voices: list[dict] = []
@@ -121,6 +124,7 @@ class MainWindow(QWidget):
         self._rec_started = 0.0
         self._live_restart = False
         self._live_stats: dict = {}
+        self._live_auto_refreshes = 0
         self._closing = False
         self._last_dir = str(ROOT)
         self._avatars: dict[str, QPixmap | None] = {}
@@ -654,6 +658,7 @@ class MainWindow(QWidget):
         self.reference_engine = bool(health.get("reference_engine"))
         self.reference_voices = set(health.get("reference_voices", ("tomori", "taffy") if self.reference_engine else ()))
         self.voice_models = health.get("voice_models", {})
+        self.live_packet_options = set(health.get("live_packet_ms", (120, 200)))
         self._set_backend(True)
         if health.get("reference_error"):
             self.notice.setText(f"音色优先暂时使用兼容引擎：{health['reference_error']}")
@@ -1255,12 +1260,17 @@ class MainWindow(QWidget):
             self._refresh()
             return
         packet_ms = audio.live_packet_ms(self.voice_id in self.reference_voices, speaker.name)
+        if packet_ms == 120:
+            packet_ms = self.config.live_packet_ms
+        if packet_ms not in self.live_packet_options:
+            packet_ms = 120 if 120 in self.live_packet_options else 200
         url = self.client.live_url(self.voice_id, self.strength_pct / 100, self.current_mode(), packet_ms=packet_ms)
         monitor = LiveMonitor(
             url, mic, speaker,
             on_connected=lambda hello: self._emit(self.bridge.live_connected, monitor, hello),
             on_stats=lambda stats: self._emit(self.bridge.live_stats, monitor, stats),
-            on_stopped=lambda kind, message: self._emit(self.bridge.live_stopped, monitor, kind, message))
+            on_stopped=lambda kind, message: self._emit(self.bridge.live_stopped, monitor, kind, message),
+            restart_after_packets=self.config.live_restart_packets)
         monitor.label = f"{self._voice_name(self.voice_id)} · 强度 {self.strength_pct}% · {MODE_NAMES[self.current_mode()]}"
         self.live = monitor
         self._live_stats = {}
@@ -1288,6 +1298,9 @@ class MainWindow(QWidget):
         if monitor is not self.live:
             return
         self._live_stats = stats
+        limit = monitor.restart_after_packets
+        if limit and stats["frames"] >= limit and not self._live_restart and self.live_switch.isChecked():
+            self.live_title.setText("正在自动刷新实时变声…")
         speaker = monitor.speaker
         # 估算本机链路，包含采集、前瞻、重采样和断流后增加的缓冲；不含手机网络与 Discord。
         frame_ms = monitor.hello["frame_samples"] / monitor.hello["sample_rate"] * 1000
@@ -1298,7 +1311,9 @@ class MainWindow(QWidget):
                  + stats.get("resampler_delay_ms", 0)) / 1000
         self.live_status.setText(
             f"{monitor.mic.name} → {speaker.name}\n"
-            f"延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒 · 已送 {stats['frames']} 包"
+            f"延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒"
+            f" · 本轮 {min(stats['frames'],limit) if limit else stats['frames']}"
+            f"{f'/{limit}' if limit else ''} 包 · 自动刷新 {self._live_auto_refreshes} 次"
             f" · 丢弃输入 {stats['mic_dropped']} 块 · 播放断流 {stats['underruns']} 次")
 
     def _on_live_stopped(self, monitor, kind: str, message: str) -> None:
@@ -1308,7 +1323,9 @@ class MainWindow(QWidget):
         restart, self._live_restart = self._live_restart, False
         self.live_in_meter.reset()
         self.live_out_meter.reset()
-        if restart and kind == "user" and self.live_switch.isChecked() and not self._closing:
+        if (restart and kind == "user" or kind == "refresh") and self.live_switch.isChecked() and not self._closing:
+            if kind == "refresh":
+                self._live_auto_refreshes += 1
             self._start_live()
             return
         self.live_switch.setChecked(False)

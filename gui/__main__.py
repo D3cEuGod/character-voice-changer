@@ -75,13 +75,18 @@ def main(argv=None) -> int:
                         help=f"后端地址，默认 {DEFAULT_URL}")
     parser.add_argument("--no-autostart", action="store_true", help="后端未运行时不自动启动")
     parser.add_argument("--backend-script", default=str(START_SCRIPT), help="启动后端用的脚本")
+    parser.add_argument("--live-restart-packets", type=int, choices=(0, 3000, 5000), default=3000,
+                        help="自动重开实时变声的包数，默认 3000；0 关闭自动刷新")
+    parser.add_argument("--live-packet-ms", type=int, choices=(100,120), default=120,
+                        help="VB-CABLE 包长；默认稳定档 120，100 为实验低延迟档")
     args = parser.parse_args(argv)
 
     sys.excepthook = _log_exception
     app = create_app()
     from .app import Config, MainWindow
 
-    window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script)))
+    window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script),
+                               args.live_restart_packets, args.live_packet_ms))
     available = app.primaryScreen().availableGeometry()
     window.resize(min(1060, available.width() - 40), min(700, available.height() - 60))
     set_window_relaunch(int(window.winId()))  # 在窗口显示之前写入，任务栏按这些信息建立图标

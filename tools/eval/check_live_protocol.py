@@ -20,7 +20,7 @@ def main():
     client = BackendClient(args.backend_url)
     rows = []
     for voice in ('tomori', 'taffy', 'anon'):
-        for packet in (120, 200):
+        for packet in (80, 100, 120, 200):
             with connect(client.live_url(voice, 1, packet_ms=packet), proxy=None, compression=None) as ws:
                 hello = json.loads(ws.recv())
                 frame, tail = hello['frame_samples'], hello['lookahead_samples']
@@ -33,7 +33,9 @@ def main():
                     sizes.append(len(reply)//2)
                 ws.send('finish')
                 sizes.append(len(ws.recv())//2)
-                assert sizes == [frame-tail, frame, frame, tail], (hello, sizes)
+                produced = [max(0,i*frame-tail) for i in range(4)]
+                expected = [produced[i+1]-produced[i] for i in range(3)] + [min(3*frame,tail)]
+                assert sizes == expected, (hello, sizes)
                 assert sum(sizes) == 3*frame, 'Tail truncated or duplicated'
                 rows.append({'voice': voice, 'packet_ms': packet, 'reply_samples': sizes})
     url = client.live_url('tomori', 1).replace('&packet_ms=200', '')

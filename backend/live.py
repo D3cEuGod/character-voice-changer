@@ -7,6 +7,8 @@ from .character import CharacterModel
 FRAME = 8192
 SHORT_FRAME = 4410
 REALTIME_FRAME = 2646  # 120 ms; preserves the full 104 ms speech lookahead.
+FAST_FRAME = 1764  # 80 ms; the first two packets share the same speech lookahead.
+BALANCED_FRAME = 2205  # 100 ms; more inference headroom than 80 ms.
 OVERLAP = 1024
 SPEECH_LOOKAHEAD = 2304
 JOIN = 320
@@ -50,13 +52,22 @@ class LiveVoice:
         self.history = np.zeros(self.model.context_samples, np.float32)
         self.tail = np.empty(0, np.float32)
         self.sent = np.zeros(SPLIT_PAD, np.float32)  # the samples emitted just before the tail
+        self.received = 0
+        self.emitted = 0
+        self.finished = False
 
     def process(self, frame):
+        if self.finished:
+            raise RuntimeError("Live session has already finished")
         count = len(frame)
         self.history[:-count] = self.history[count:]
         self.history[-count:] = frame
+        self.received += count
         rendered = self.model.render(self.history, count)
-        start = len(self.history)-count-(self.lookahead if self.tail.size else 0)
+        output_count = max(0, self.received-self.lookahead)-self.emitted
+        if not output_count:
+            return np.empty(0, np.float32)
+        start = len(self.history)-self.lookahead-output_count
         end = len(self.history)-self.lookahead
         shift = 0
         if self.tail.size and self.model.strength > 0:
@@ -77,6 +88,7 @@ class LiveVoice:
         if self.model.strength > 0:
             np.clip(result, -.99, .99, out=result)
         self.sent = result[-SPLIT_PAD:].copy()
+        self.emitted += len(result)
         # Keep nominal duration even when the best join lies a few samples later.
         self.tail = rendered[end+shift:].copy()
         if len(self.tail) < self.lookahead:
@@ -88,11 +100,13 @@ class LiveVoice:
         return pcm(self.process(frame))
 
     def flush(self):
-        if not self.tail.size:
-            return self.tail.copy()
+        if self.finished or not self.received:
+            return np.empty(0, np.float32)
+        remaining = self.received-self.emitted
         # Supply real lookahead to the denoiser and vocoder for the last syllable.
-        last = self.process(np.zeros(SHORT_FRAME, np.float32))[:self.lookahead]
+        last = self.process(np.zeros(SHORT_FRAME, np.float32))[:remaining]
         self.tail = np.empty(0, np.float32)
+        self.finished = True
         return last
 
     def finish(self):

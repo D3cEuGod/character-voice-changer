@@ -8,7 +8,7 @@ import sys
 import tempfile
 from urllib.request import urlopen
 
-from tools.svc_phase import correct_cached_phase
+from tools.model_integrity import verified
 
 ROOT = Path(__file__).resolve().parent
 MODELS = ROOT / "models"
@@ -59,7 +59,7 @@ def digest(path):
 
 
 def fetch(path, url, expected):
-    if path.is_file() and digest(path) == expected:
+    if verified(path, expected):
         return
     print(f"Downloading {path.name} ...", flush=True)
     with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".part", delete=False) as tmp:
@@ -70,6 +70,7 @@ def fetch(path, url, expected):
         if digest(part) != expected:
             raise RuntimeError(f"SHA-256 mismatch for {path.name}")
         part.replace(path)
+        verified(path, expected)
     finally:
         part.unlink(missing_ok=True)
 
@@ -113,6 +114,7 @@ def main():
             fetch(MODELS / file, *source)
     if fully_local:
         return
+    from tools.svc_phase import correct_cached_phase
     outputs = {"tomori": ["tomori_rvc"], "anon": ["anon_rvc"], "taffy": ["taffy_svc", "hubert_soft"]}
     missing = [role for role, graphs in outputs.items()
                if any(not (MODELS / (name + ".onnx")).is_file() for name in graphs)]

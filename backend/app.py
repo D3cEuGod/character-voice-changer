@@ -2,7 +2,10 @@ import asyncio
 import logging
 import numpy as np
 from contextlib import asynccontextmanager
+from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
+from functools import partial
+import time
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
@@ -10,19 +13,35 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__, engine, reference, local_rvc
-from .character import graph
-from .live import FRAME, SHORT_FRAME, REALTIME_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
+from .character import graph, voice_index
+from .pitch import model as pitch_model
+from .live import FRAME, SHORT_FRAME, REALTIME_FRAME, FAST_FRAME, BALANCED_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
 
 MAX_BYTES = 24 * 1024 * 1024
 
 
 class PacketMs(IntEnum):
+    fast = 80
+    balanced = 100
     realtime = 120
     standard = 200
 
 
 @asynccontextmanager
 async def lifespan(app):
+    started = time.perf_counter()
+    if all(local_rvc.profile(v) is not None for v in engine.VOICES):
+        # Only independent session creation / index reads are parallel. Warmup
+        # stays serial: DirectML forbids concurrent Run calls on one shared graph.
+        loads = [partial(graph, name) for name in
+                 ('gtcrn_simple', 'silero_vad_16k_op15', 'contentvec_768l12')]
+        loads += [pitch_model]
+        loads += [partial(local_rvc.graph, v) for v in engine.VOICES]
+        loads += [partial(voice_index, v) for v in engine.VOICES]
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix='model-load') as pool:
+            for result in pool.map(lambda load: load(), loads):
+                pass
+        logging.getLogger('uvicorn.error').info('Models prepared in %.2f s', time.perf_counter()-started)
     sample = engine.decode((engine.ROOT / "assets/previews/original.wav").read_bytes())
     warmup = np.pad(sample, (0, (-len(sample)) % SHORT_FRAME)).reshape(-1, SHORT_FRAME)
     for voice_id in engine.VOICES:
@@ -64,6 +83,7 @@ def health():
             "reference_voices": sorted(references), "voice_models": models,
             "provider": provider,
             "sample_rate": engine.RATE,
+            "live_packet_ms": [80, 100, 120, 200],
             "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES}
 
 
@@ -125,8 +145,8 @@ async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
         lookahead = SPEECH_LOOKAHEAD if speech_context else OVERLAP
         session = LiveVoice(voice_id, strength, lookahead, mode)
         frame_size = SHORT_FRAME if low_latency else FRAME
-        if low_latency and packet_ms == 120 and session.model.reference is None:
-            frame_size = REALTIME_FRAME
+        if low_latency and session.model.reference is None:
+            frame_size = {80: FAST_FRAME, 100: BALANCED_FRAME, 120: REALTIME_FRAME, 200: SHORT_FRAME}[packet_ms]
         hello = {"sample_rate": engine.RATE, "frame_samples": frame_size, "format": "s16le"}
         if speech_context:
             hello["lookahead_samples"] = lookahead

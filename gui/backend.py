@@ -59,10 +59,15 @@ class BackendClient:
         self.port = parts.port or 80
 
     def _request(self, method: str, path: str, body: bytes | None = None,
-                 headers: dict | None = None, timeout: float = 5.0) -> bytes:
+                 headers: dict | None = None, timeout: float = 5.0,
+                 connect_timeout: float | None = None) -> bytes:
         # http.client 不读系统代理设置，本机回环地址不会被代理软件接管。
-        connection = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+        connection = http.client.HTTPConnection(self.host, self.port,
+                                                timeout=timeout if connect_timeout is None else connect_timeout)
         try:
+            if connect_timeout is not None:
+                connection.connect()
+                connection.sock.settimeout(timeout)
             connection.request(method, path, body=body, headers=headers or {})
             response = connection.getresponse()
             data = response.read()
@@ -70,6 +75,8 @@ class BackendClient:
         except ConnectionRefusedError as exc:
             raise BackendError(f"无法连接 {self.base_url}（连接被拒绝），后端没有在运行。") from exc
         except TimeoutError as exc:
+            if connect_timeout is not None and connection.sock is None:
+                raise BackendError(f"无法连接 {self.base_url}（连接超时）。") from exc
             raise BackendError(f"后端 {self.base_url} 在 {timeout:g} 秒内没有响应。") from exc
         except (OSError, http.client.HTTPException) as exc:
             raise BackendError(f"与后端 {self.base_url} 通信失败：{exc}") from exc
@@ -81,9 +88,10 @@ class BackendClient:
             raise BackendError(f"{hint}（HTTP {status}）{'：' + detail if detail else ''}", status)
         return data
 
-    def health(self, timeout: float = 4.0) -> dict:
-        # Windows 上连接没人监听的本机端口要等约 2 秒才报“连接被拒绝”，超时要比它长才能给出准确原因。
-        data = self._request("GET", "/api/health", timeout=timeout)
+    def health(self, timeout: float = 4.0, *, connect_timeout: float | None = None) -> dict:
+        # Startup probes use a short connect timeout; an established connection
+        # still gets the full HTTP response timeout.
+        data = self._request("GET", "/api/health", timeout=timeout, connect_timeout=connect_timeout)
         try:
             info = json.loads(data.decode("utf-8"))
             if info.get("status") != "ok":
@@ -108,8 +116,8 @@ class BackendClient:
                              headers={"Content-Type": content_type}, timeout=timeout)
 
     def live_url(self, voice_id: str, strength: float, mode: str = "character", *, packet_ms: int = 200) -> str:
-        if packet_ms not in (120, 200):
-            raise ValueError("实时音频包只支持 120 或 200 毫秒。")
+        if packet_ms not in (80, 100, 120, 200):
+            raise ValueError("实时音频包只支持 80、100、120 或 200 毫秒。")
         query = urlencode({"voice_id": voice_id, "strength": f"{strength:.2f}", "low_latency": "true",
                            "speech_context": "true", "mode": mode, "packet_ms": packet_ms})
         return f"ws://{self.host}:{self.port}/api/live?{query}"
@@ -139,7 +147,7 @@ class BackendLauncher(threading.Thread):
     def run(self) -> None:
         self._on_progress("正在检查本地后端…")
         try:
-            self._on_ready(self.client.health(), False)
+            self._on_ready(self.client.health(connect_timeout=.1), False)
             return
         except BackendError as exc:
             first_error = str(exc)
@@ -164,10 +172,10 @@ class BackendLauncher(threading.Thread):
 
         deadline = time.monotonic() + self.wait_seconds
         while time.monotonic() < deadline:
-            if self._cancel.wait(0.5):
+            if self._cancel.wait(0.1):
                 return
             try:
-                health = self.client.health(timeout=1.5)
+                health = self.client.health(timeout=1.5, connect_timeout=.1)
             except BackendError:
                 code = self.process.poll()
                 if code is not None:
