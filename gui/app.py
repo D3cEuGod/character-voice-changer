@@ -36,7 +36,7 @@ class Config:
     script: Path = START_SCRIPT
     live_restart_packets: int = 3000
     live_packet_ms: int = 120
-    pitch_preset: str = "fixed4"
+    pitch_preset: str = "auto4"
 
 
 @dataclass
@@ -271,7 +271,7 @@ class MainWindow(QWidget):
             self.pitch_combo.addItem(name, preset)
         self.pitch_combo.setCurrentIndex(self.pitch_combo.findData(self.config.pitch_preset))
         self.pitch_combo.setAccessibleName("音高")
-        self.pitch_combo.setToolTip("原声 +4：麦克风音高升 4 个半音，不自动匹配音域。自动音域再 +4：先按角色音域调整，再升 4 个半音。模型默认恢复原设置。")
+        self.pitch_combo.setToolTip("默认先按角色音域自动调整，再升 4 个半音；模型默认恢复原设置。")
         pitch_row.addWidget(self.pitch_combo, 1)
         card.body.addLayout(pitch_row)
         return card

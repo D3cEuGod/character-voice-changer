@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.4.1
+- Versioned releases with a changelog; current internal beta is 0.4.2
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.4.1`（内测版）
+当前版本：`0.4.2`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -101,17 +101,16 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ### 音高 +4 试用与试听
 
-0.4.1 按用户要求，让 GUI 的三个角色先用“原声 +4 半音”。左栏的“音高”可在以下三档切换，实时和文件变声都生效；切档后旧文件结果不会被当成新档位的结果，实时会话会自动重连，周期刷新也会保留所选档位。
+0.4.2 按用户选定的效果，让 GUI 的高松灯、永雏塔菲和千早爱音都默认使用“自动音域再 +4”。左栏只保留以下两档，“原声 +4”已从界面和启动参数中移除。实时和文件变声都生效；切档后旧文件结果不会被当成新档位的结果，实时会话会自动重连，周期刷新也会保留所选档位。
 
 | 档位 | 做法 | 原声中位音高 150 Hz 时，以塔菲为例 |
 | --- | --- | --- |
 | 模型默认 | 使用原有模型配置；本机三位均为自动匹配角色音域 | 约 429 Hz |
-| 原声 +4 半音 | 原声频率乘 `2^(4/12)`，替代自动音域匹配 | 约 189 Hz |
 | 自动音域再 +4 | 原有自动音域匹配后再升 4 个半音 | 约 541 Hz |
 
-所以“固定 +4”可能比原来的自动档更低，并非一定更尖；“自动再 +4”则更高，也可能过尖。保留原有 650 Hz 上限和音色强度对移调量的缩放；表中是 100% 强度的简化例子，真实说话还会保留起伏。更高不代表更像角色，需要用自己的麦克风试听选择。命令行 `start-gui.cmd --pitch-preset model` 可按原设置启动，`auto4` 启用自动后再升调。
+保留原有 650 Hz 上限和音色强度对移调量的缩放；表中是 100% 强度的简化例子，真实说话还会保留起伏。自动再 +4 会更高，但音高本身不等于角色相似度。普通双击即可使用这档；命令行 `start-gui.cmd --pitch-preset model` 可按原设置启动。
 
-用同一段现有回归集的**合成男声**生成了 [灯](assets/pitch-comparisons/tomori.wav)、[塔菲](assets/pitch-comparisons/taffy.wav)、[爱音](assets/pitch-comparisons/anon.wav) 三份对照，顺序均为“模型默认 → 原声 +4 → 自动音域再 +4”，各段间隔 0.6 秒。[原始输入](assets/pitch-comparisons/input-male.wav) 与 [时间段 / 参数 / 校验值](assets/pitch-comparisons/manifest.json) 一并保存。这些对照使用文件接口的 200 ms 包，不代表端到端延迟或真人听感结论。详见 [0.4.1 记录](notes/pitch-trial-0.4.1.md)。
+用同一段现有回归集的**合成男声**生成了 [灯](assets/pitch-comparisons/tomori.wav)、[塔菲](assets/pitch-comparisons/taffy.wav)、[爱音](assets/pitch-comparisons/anon.wav) 三份对照，顺序均为“模型默认 → 自动音域再 +4”，两段间隔 0.6 秒，已删除原声 +4 的试听段。[原始输入](assets/pitch-comparisons/input-male.wav) 与 [时间段 / 参数 / 校验值](assets/pitch-comparisons/manifest.json) 一并保存。这些对照使用文件接口的 200 ms 包，不代表端到端延迟或真人听感结论。详见 [0.4.2 记录](notes/auto-pitch-default-0.4.2.md)。
 
 本机已导入的模型如下，清单与 SHA-256 见 [安装记录](notes/installed-rvc-models.json)：
 
@@ -172,7 +171,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ## 当前状态
 
-0.4.1 增加三种音高档和同输入对照，GUI 暂以原声 +4 试用。沿用 0.4.0 的会话自动刷新、启动缓存，以及 120 ms VB-CABLE 稳定包长。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
+0.4.2 将三个女性角色的 GUI 默认档统一为自动音域再 +4，移除原声 +4 选项和试听段。沿用 0.4.0 的会话自动刷新、启动缓存，以及 120 ms VB-CABLE 稳定包长。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动、自动刷新与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
@@ -294,7 +293,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 `voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。三位角色都支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
-RVC 音高参数同样适用于两个接口：`pitch_shift=4` 固定原声升 4 半音，替代模型的自动音域匹配；`pitch_offset=4` 在模型配置调整之后再升 4 半音。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。GUI 的默认试用档不会改变旧 API 调用的默认行为。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
+RVC 音高参数同样适用于两个接口：GUI 当前默认发送 `pitch_offset=4`，在模型配置调整之后再升 4 半音。低层接口仍支持通用 `pitch_shift` 固定移调，便于已有客户端和导入配置继续工作；不再提供专门的原声 +4 预设。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
 
 错误用 HTTP 状态码和 JSON 的 `detail` 表示。413 是文件过大，422 是音频或参数无效，429 是引擎正忙，500 是推理失败。一次只处理一个转换任务或一个实时会话。
 

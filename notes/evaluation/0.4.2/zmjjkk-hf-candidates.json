@@ -1,0 +1,865 @@
+[
+  {
+    "kind": "datasets",
+    "id": "Anneada/kangkang",
+    "pipeline_tag": null,
+    "tags": [
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes"
+    ],
+    "file_count": 1
+  },
+  {
+    "kind": "datasets",
+    "id": "KangKang625/ELAIPBench",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:question-answering",
+      "task_categories:text-classification",
+      "task_categories:text-retrieval",
+      "language:en",
+      "license:mit",
+      "size_categories:1K<n<10K",
+      "modality:document",
+      "region:us",
+      "academic",
+      "questions",
+      "evidence",
+      "papers"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "dataset_info.json",
+      "elabench.jsonl",
+      "papers.zip"
+    ],
+    "file_count": 5
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/dataset_4_20261101_131817",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/my_dataset_20261101_125904",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/my_dataset_2_20261101_130622",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:n<1K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/my_dataset_3_20261101_130936",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/my_dataset_5_20261101_132546",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkang245/my_datasetset_6_20261101_133248",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:robotics",
+      "license:apache-2.0",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:timeseries",
+      "modality:video",
+      "library:datasets",
+      "library:pandas",
+      "library:polars",
+      "library:mlcroissant",
+      "library:lerobot",
+      "region:us",
+      "LeRobot",
+      "robotics",
+      "lerobot",
+      "LeLab"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/chunk-000/file-000.parquet",
+      "meta/episodes/chunk-000/file-000.parquet",
+      "meta/info.json",
+      "meta/stats.json",
+      "meta/tasks.parquet",
+      "videos/observation.images.top/chunk-000/file-000.mp4",
+      "videos/observation.images.wrist/chunk-000/file-000.mp4"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkangchen/a-share-qlib-context-600809",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:time-series-forecasting",
+      "license:other",
+      "size_categories:1K<n<10K",
+      "format:parquet",
+      "modality:tabular",
+      "modality:text",
+      "library:datasets",
+      "library:dask",
+      "library:polars",
+      "library:mlcroissant",
+      "region:us",
+      "finance",
+      "a-share",
+      "qlib",
+      "investment-data"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "data/benchmark_daily/year=2025/month=01/benchmark_code=000300.SH/202501.parquet",
+      "data/benchmark_daily/year=2025/month=02/benchmark_code=000300.SH/202502.parquet",
+      "data/benchmark_daily/year=2025/month=03/benchmark_code=000300.SH/202503.parquet",
+      "data/benchmark_daily/year=2025/month=04/benchmark_code=000300.SH/202504.parquet",
+      "data/benchmark_daily/year=2025/month=05/benchmark_code=000300.SH/202505.parquet",
+      "data/benchmark_daily/year=2025/month=06/benchmark_code=000300.SH/202506.parquet",
+      "data/benchmark_daily/year=2025/month=07/benchmark_code=000300.SH/202507.parquet",
+      "data/benchmark_daily/year=2025/month=08/benchmark_code=000300.SH/202508.parquet",
+      "data/benchmark_daily/year=2025/month=09/benchmark_code=000300.SH/202509.parquet",
+      "data/benchmark_daily/year=2025/month=10/benchmark_code=000300.SH/202510.parquet",
+      "data/benchmark_daily/year=2025/month=11/benchmark_code=000300.SH/202511.parquet",
+      "data/benchmark_daily/year=2025/month=12/benchmark_code=000300.SH/202512.parquet",
+      "data/benchmark_daily/year=2026/month=01/benchmark_code=000300.SH/202601.parquet",
+      "data/benchmark_daily/year=2026/month=02/benchmark_code=000300.SH/202602.parquet",
+      "data/benchmark_daily/year=2026/month=03/benchmark_code=000300.SH/202603.parquet",
+      "data/benchmark_daily/year=2026/month=04/benchmark_code=000300.SH/202604.parquet",
+      "data/outcome_targets/year=2025/month=01/ts_code=600809.SH/202501.parquet",
+      "data/outcome_targets/year=2025/month=02/ts_code=600809.SH/202502.parquet",
+      "data/outcome_targets/year=2025/month=03/ts_code=600809.SH/202503.parquet",
+      "data/outcome_targets/year=2025/month=04/ts_code=600809.SH/202504.parquet",
+      "data/outcome_targets/year=2025/month=05/ts_code=600809.SH/202505.parquet",
+      "data/outcome_targets/year=2025/month=06/ts_code=600809.SH/202506.parquet",
+      "data/outcome_targets/year=2025/month=07/ts_code=600809.SH/202507.parquet",
+      "data/outcome_targets/year=2025/month=08/ts_code=600809.SH/202508.parquet",
+      "data/outcome_targets/year=2025/month=09/ts_code=600809.SH/202509.parquet",
+      "data/outcome_targets/year=2025/month=10/ts_code=600809.SH/202510.parquet",
+      "data/outcome_targets/year=2025/month=11/ts_code=600809.SH/202511.parquet",
+      "data/outcome_targets/year=2025/month=12/ts_code=600809.SH/202512.parquet",
+      "data/outcome_targets/year=2026/month=01/ts_code=600809.SH/202601.parquet",
+      "data/outcome_targets/year=2026/month=02/ts_code=600809.SH/202602.parquet",
+      "data/outcome_targets/year=2026/month=03/ts_code=600809.SH/202603.parquet",
+      "data/outcome_targets/year=2026/month=04/ts_code=600809.SH/202604.parquet",
+      "data/qlib_daily/year=2025/month=01/ts_code=600809.SH/202501.parquet",
+      "data/qlib_daily/year=2025/month=02/ts_code=600809.SH/202502.parquet",
+      "data/qlib_daily/year=2025/month=03/ts_code=600809.SH/202503.parquet",
+      "data/qlib_daily/year=2025/month=04/ts_code=600809.SH/202504.parquet",
+      "data/qlib_daily/year=2025/month=05/ts_code=600809.SH/202505.parquet",
+      "data/qlib_daily/year=2025/month=06/ts_code=600809.SH/202506.parquet",
+      "data/qlib_daily/year=2025/month=07/ts_code=600809.SH/202507.parquet",
+      "data/qlib_daily/year=2025/month=08/ts_code=600809.SH/202508.parquet",
+      "data/qlib_daily/year=2025/month=09/ts_code=600809.SH/202509.parquet",
+      "data/qlib_daily/year=2025/month=10/ts_code=600809.SH/202510.parquet",
+      "data/qlib_daily/year=2025/month=11/ts_code=600809.SH/202511.parquet",
+      "data/qlib_daily/year=2025/month=12/ts_code=600809.SH/202512.parquet",
+      "data/qlib_daily/year=2026/month=01/ts_code=600809.SH/202601.parquet",
+      "data/qlib_daily/year=2026/month=02/ts_code=600809.SH/202602.parquet",
+      "data/qlib_daily/year=2026/month=03/ts_code=600809.SH/202603.parquet",
+      "data/qlib_daily/year=2026/month=04/ts_code=600809.SH/202604.parquet",
+      "data/qlib_factors_daily/year=2025/month=01/ts_code=600809.SH/202501.parquet",
+      "data/qlib_factors_daily/year=2025/month=02/ts_code=600809.SH/202502.parquet",
+      "data/qlib_factors_daily/year=2025/month=03/ts_code=600809.SH/202503.parquet",
+      "data/qlib_factors_daily/year=2025/month=04/ts_code=600809.SH/202504.parquet",
+      "data/qlib_factors_daily/year=2025/month=05/ts_code=600809.SH/202505.parquet",
+      "data/qlib_factors_daily/year=2025/month=06/ts_code=600809.SH/202506.parquet",
+      "data/qlib_factors_daily/year=2025/month=07/ts_code=600809.SH/202507.parquet",
+      "data/qlib_factors_daily/year=2025/month=08/ts_code=600809.SH/202508.parquet",
+      "data/qlib_factors_daily/year=2025/month=09/ts_code=600809.SH/202509.parquet",
+      "data/qlib_factors_daily/year=2025/month=10/ts_code=600809.SH/202510.parquet",
+      "data/qlib_factors_daily/year=2025/month=11/ts_code=600809.SH/202511.parquet",
+      "data/qlib_factors_daily/year=2025/month=12/ts_code=600809.SH/202512.parquet",
+      "data/qlib_factors_daily/year=2026/month=01/ts_code=600809.SH/202601.parquet",
+      "data/qlib_factors_daily/year=2026/month=02/ts_code=600809.SH/202602.parquet",
+      "data/qlib_factors_daily/year=2026/month=03/ts_code=600809.SH/202603.parquet",
+      "data/qlib_factors_daily/year=2026/month=04/ts_code=600809.SH/202604.parquet",
+      "manifest.json",
+      "schema/schema.json"
+    ],
+    "file_count": 68
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkangchen/cross-day-mainforce-600809",
+    "pipeline_tag": null,
+    "tags": [
+      "task_categories:time-series-forecasting",
+      "license:mit",
+      "region:us",
+      "finance",
+      "a-share",
+      "level-2",
+      "main-force",
+      "position-tracking"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "cluster_registry.parquet",
+      "entity_timeline.parquet",
+      "matches/match_pairs.parquet",
+      "reports/summary.json",
+      "scripts/inference.py",
+      "scripts/run_hf_jobs.py",
+      "scripts/run_hf_sandbox.sh",
+      "scripts/run_local_test.py",
+      "scripts/validate_with_moneyflow.py",
+      "signals/position_signal_daily.parquet",
+      "src/__init__.py",
+      "src/__pycache__/__init__.cpython-311.pyc",
+      "src/clustering/__init__.py",
+      "src/clustering/__pycache__/__init__.cpython-311.pyc",
+      "src/clustering/__pycache__/daily_cluster.cpython-311.pyc",
+      "src/clustering/daily_cluster.py",
+      "src/data/__init__.py",
+      "src/data/__pycache__/__init__.cpython-311.pyc",
+      "src/data/__pycache__/loader.cpython-311.pyc",
+      "src/data/loader.py",
+      "src/features/__init__.py",
+      "src/features/__pycache__/__init__.cpython-311.pyc",
+      "src/features/__pycache__/passive_orders.cpython-311.pyc",
+      "src/features/passive_orders.py",
+      "src/matching/__init__.py",
+      "src/matching/__pycache__/__init__.cpython-311.pyc",
+      "src/matching/__pycache__/cross_day_match.cpython-311.pyc",
+      "src/matching/cross_day_match.py",
+      "src/scripts/__init__.py",
+      "src/scripts/__pycache__/__init__.cpython-311.pyc",
+      "src/scripts/__pycache__/pipeline.cpython-311.pyc",
+      "src/scripts/pipeline.py",
+      "src/tracking/__init__.py",
+      "src/tracking/__pycache__/__init__.cpython-311.pyc",
+      "src/tracking/__pycache__/entity_tracker.cpython-311.pyc",
+      "src/tracking/entity_tracker.py",
+      "tracker_state.pkl"
+    ],
+    "file_count": 39
+  },
+  {
+    "kind": "datasets",
+    "id": "kangkangchen/sponsor-flow-600809",
+    "pipeline_tag": null,
+    "tags": [
+      "language:zh",
+      "region:us",
+      "finance",
+      "level-2",
+      "order-book",
+      "research",
+      "a-share"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "code/sponsor_flow_600809/.pytest_cache/.gitignore",
+      "code/sponsor_flow_600809/.pytest_cache/CACHEDIR.TAG",
+      "code/sponsor_flow_600809/.pytest_cache/README.md",
+      "code/sponsor_flow_600809/.pytest_cache/v/cache/lastfailed",
+      "code/sponsor_flow_600809/.pytest_cache/v/cache/nodeids",
+      "code/sponsor_flow_600809/README.md",
+      "code/sponsor_flow_600809/configs/default.yaml",
+      "code/sponsor_flow_600809/configs/model.yaml",
+      "code/sponsor_flow_600809/configs/rules.yaml",
+      "code/sponsor_flow_600809/pyproject.toml",
+      "code/sponsor_flow_600809/scripts/build_features.py",
+      "code/sponsor_flow_600809/scripts/build_review_app.py",
+      "code/sponsor_flow_600809/scripts/detect_regimes.py",
+      "code/sponsor_flow_600809/scripts/generate_daily_report.py",
+      "code/sponsor_flow_600809/scripts/hf_job_entry.py",
+      "code/sponsor_flow_600809/scripts/run_all.py",
+      "code/sponsor_flow_600809/scripts/run_full_hf.py",
+      "code/sponsor_flow_600809/scripts/run_rules.py",
+      "code/sponsor_flow_600809/scripts/train_states.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/__init__.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/data/align.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/data/hf_loader.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/data/schema.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/data/trading_sessions.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/data/validation.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/evaluation/event_study.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/evaluation/future_returns.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/evaluation/manual_review.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/evaluation/matched_control.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/evaluation/stability.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/cancel_features.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/daily_context.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/familiarity.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/lob_features.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/morning_behavior.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/normalization.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/order_features.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/trade_features.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/features/window_builder.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/models/clustering.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/models/hmm_state.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/models/regime_change.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/models/state_naming.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/pipelines/build_features.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/pipelines/detect_regime.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/pipelines/generate_report.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/pipelines/run_rules.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/pipelines/train_states.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/absorption.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/base.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/cancel_pressure.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/composite.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/iceberg.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/morning_fund_flow.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/startup.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/support_resistance.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/sweep.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/twap.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/rules/vwap.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/utils/io.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/utils/logging.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/utils/math.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/utils/time.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/visualization/familiarity_dashboard.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/visualization/intraday_plot.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/visualization/regime_plot.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/visualization/review_app.py",
+      "code/sponsor_flow_600809/src/sponsor_flow/visualization/state_timeline.py",
+      "code/sponsor_flow_600809/tests/conftest.py",
+      "code/sponsor_flow_600809/tests/test_features.py",
+      "code/sponsor_flow_600809/tests/test_generate_report.py",
+      "code/sponsor_flow_600809/tests/test_hf_loader.py",
+      "code/sponsor_flow_600809/tests/test_hmm_state.py",
+      "code/sponsor_flow_600809/tests/test_iceberg.py",
+      "code/sponsor_flow_600809/tests/test_morning_fund_flow.py",
+      "code/sponsor_flow_600809/tests/test_regime_change.py",
+      "code/sponsor_flow_600809/tests/test_review_app.py",
+      "code/sponsor_flow_600809/tests/test_run_full_hf.py"
+    ],
+    "file_count": 3468
+  },
+  {
+    "kind": "models",
+    "id": "kangkang/kangkang",
+    "pipeline_tag": null,
+    "tags": [
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes"
+    ],
+    "file_count": 1
+  },
+  {
+    "kind": "models",
+    "id": "kangkang1123/test",
+    "pipeline_tag": null,
+    "tags": [
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes"
+    ],
+    "file_count": 1
+  },
+  {
+    "kind": "models",
+    "id": "kangkang2026/theta",
+    "pipeline_tag": null,
+    "tags": [
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes"
+    ],
+    "file_count": 1
+  },
+  {
+    "kind": "models",
+    "id": "kangkang26/submission-model",
+    "pipeline_tag": null,
+    "tags": [
+      "safetensors",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "070000/pretrained_model/config.json",
+      "070000/pretrained_model/model.safetensors",
+      "070000/pretrained_model/policy_postprocessor.json",
+      "070000/pretrained_model/policy_postprocessor_step_0_unnormalizer_processor.safetensors",
+      "070000/pretrained_model/policy_preprocessor.json",
+      "070000/pretrained_model/policy_preprocessor_step_5_normalizer_processor.safetensors",
+      "070000/pretrained_model/train_config.json"
+    ],
+    "file_count": 8
+  },
+  {
+    "kind": "models",
+    "id": "kangkangchen/lob-pattern-net",
+    "pipeline_tag": null,
+    "tags": [
+      "LOBAlgoNet",
+      "finance",
+      "order-book",
+      "institutional-trading",
+      "algorithmic-trading",
+      "level-2",
+      "A-share",
+      "LOB",
+      "TWAP",
+      "VWAP",
+      "iceberg-orders",
+      "pytorch",
+      "arxiv:1808.03668",
+      "arxiv:2502.15757",
+      "arxiv:2409.07486",
+      "arxiv:2312.05827",
+      "arxiv:2002.08232",
+      "license:mit",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "algo_detector.py",
+      "config.json",
+      "data_processor.py",
+      "model.pt",
+      "model.py",
+      "norm_stats.npz"
+    ],
+    "file_count": 8
+  },
+  {
+    "kind": "models",
+    "id": "kangkangchen/ppo-LunarLander-v3",
+    "pipeline_tag": "reinforcement-learning",
+    "tags": [
+      "stable-baselines3",
+      "LunarLander-v3",
+      "deep-reinforcement-learning",
+      "reinforcement-learning",
+      "model-index",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "config.json",
+      "ppo-LunarLander-v3.zip",
+      "ppo-LunarLander-v3/_stable_baselines3_version",
+      "ppo-LunarLander-v3/data",
+      "ppo-LunarLander-v3/policy.optimizer.pth",
+      "ppo-LunarLander-v3/policy.pth",
+      "ppo-LunarLander-v3/pytorch_variables.pth",
+      "ppo-LunarLander-v3/system_info.txt",
+      "results.json"
+    ],
+    "file_count": 11
+  },
+  {
+    "kind": "models",
+    "id": "kangkangjacky/bert-finetuned-squad",
+    "pipeline_tag": "question-answering",
+    "tags": [
+      "transformers",
+      "pytorch",
+      "bert",
+      "question-answering",
+      "endpoints_compatible",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "added_tokens.json",
+      "config.json",
+      "pytorch_model.bin",
+      "special_tokens_map.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "training_args.bin",
+      "vocab.txt"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "models",
+    "id": "kangkangjacky/my_awesome_mind_model",
+    "pipeline_tag": "audio-classification",
+    "tags": [
+      "transformers",
+      "tensorboard",
+      "safetensors",
+      "wav2vec2",
+      "audio-classification",
+      "generated_from_trainer",
+      "dataset:minds14",
+      "base_model:facebook/wav2vec2-base",
+      "base_model:finetune:facebook/wav2vec2-base",
+      "license:apache-2.0",
+      "model-index",
+      "endpoints_compatible",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "config.json",
+      "model.safetensors",
+      "preprocessor_config.json",
+      "runs/Mar20_06-52-26_77215dec9dcf/events.out.tfevents.1710917547.77215dec9dcf.8965.0",
+      "training_args.bin"
+    ],
+    "file_count": 7
+  },
+  {
+    "kind": "models",
+    "id": "kangkangzi/test",
+    "pipeline_tag": null,
+    "tags": [
+      "zh",
+      "license:apache-2.0",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md"
+    ],
+    "file_count": 2
+  },
+  {
+    "kind": "models",
+    "id": "sake2323/zmjjkk-lora",
+    "pipeline_tag": null,
+    "tags": [
+      "license:other",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "config.yaml",
+      "flux_train_replicate.safetensors",
+      "optimizer.pt",
+      "samples/1724760627168__000000000_0.jpg",
+      "samples/1724761068016__000000250_0.jpg",
+      "samples/1724761507116__000000500_0.jpg",
+      "samples/1724761945313__000000750_0.jpg",
+      "samples/1724762382658__000001000_0.jpg"
+    ],
+    "file_count": 10
+  },
+  {
+    "kind": "models",
+    "id": "zmjjkk1122/zmjjkk",
+    "pipeline_tag": null,
+    "tags": [
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "Slime possession.safetensors",
+      "skinsuit_anima_233.safetensors"
+    ],
+    "file_count": 3
+  },
+  {
+    "kind": "spaces",
+    "id": "KangKang1111/Beauty-text2Image",
+    "pipeline_tag": null,
+    "tags": [
+      "gradio",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "app.py"
+    ],
+    "file_count": 3
+  },
+  {
+    "kind": "spaces",
+    "id": "KangKang1111/Beauty_OCR",
+    "pipeline_tag": null,
+    "tags": [
+      "gradio",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "app.py"
+    ],
+    "file_count": 3
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkang6497/face-dehighlight-static",
+    "pipeline_tag": null,
+    "tags": [
+      "static",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "index.html",
+      "style.css"
+    ],
+    "file_count": 4
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkangchen/mlintern-600809net",
+    "pipeline_tag": null,
+    "tags": [
+      "gradio",
+      "trackio",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "README.md",
+      "app.py",
+      "requirements.txt"
+    ],
+    "file_count": 4
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkangchen/sandbox-3b169b0d",
+    "pipeline_tag": null,
+    "tags": [
+      "docker",
+      "region:us"
+    ],
+    "files": [
+      ".claude/skills/hf-space-sandbox/SKILL.md",
+      ".claude/skills/hf-space-sandbox/scripts/example_uv_script.py",
+      ".claude/skills/hf-space-sandbox/scripts/sandbox.py",
+      ".gitattributes",
+      ".gitignore",
+      "Dockerfile",
+      "README.md",
+      "index.html",
+      "sandbox_server.py"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkangchen/sandbox-fdae94c1",
+    "pipeline_tag": null,
+    "tags": [
+      "docker",
+      "region:us"
+    ],
+    "files": [
+      ".claude/skills/hf-space-sandbox/SKILL.md",
+      ".claude/skills/hf-space-sandbox/scripts/example_uv_script.py",
+      ".claude/skills/hf-space-sandbox/scripts/sandbox.py",
+      ".gitattributes",
+      ".gitignore",
+      "Dockerfile",
+      "README.md",
+      "index.html",
+      "sandbox_server.py"
+    ],
+    "file_count": 9
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkangmake/malianpeng1956",
+    "pipeline_tag": null,
+    "tags": [
+      "docker",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "Dockerfile",
+      "README.md"
+    ],
+    "file_count": 3
+  },
+  {
+    "kind": "spaces",
+    "id": "kangkangs/geminibalance",
+    "pipeline_tag": null,
+    "tags": [
+      "docker",
+      "region:us"
+    ],
+    "files": [
+      ".gitattributes",
+      "Dockerfile",
+      "README.md"
+    ],
+    "file_count": 3
+  }
+]

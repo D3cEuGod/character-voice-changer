@@ -34,12 +34,13 @@ class PitchTests(unittest.TestCase):
 
     def test_client_presets_encode_the_two_different_operations(self):
         self.assertEqual(pitch_query('model'),{})
-        self.assertEqual(pitch_query('fixed4'),{'pitch_shift':4})
+        with self.assertRaises(KeyError):
+            pitch_query('fixed4')
         self.assertEqual(pitch_query('auto4'),{'pitch_offset':4})
         client = BackendClient()
-        for preset, key in (('fixed4','pitch_shift'),('auto4','pitch_offset')):
-            query = parse_qs(urlsplit(client.live_url('taffy',1,pitch_preset=preset)).query)
-            self.assertEqual(query[key],['4'])
+        query = parse_qs(urlsplit(client.live_url('taffy',1,pitch_preset='auto4')).query)
+        self.assertEqual(query['pitch_offset'],['4'])
+        self.assertNotIn('pitch_shift',query)
 
 
 if __name__ == '__main__':

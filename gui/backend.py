@@ -18,7 +18,6 @@ START_SCRIPT = ROOT / "start-backend.cmd"
 CONTENT_TYPES = {".wav": "audio/wav", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".ogg": "audio/ogg"}
 PITCH_PRESETS = {
     "model": ("模型默认", None, 0),
-    "fixed4": ("原声 +4 半音", 4, 0),
     "auto4": ("自动音域再 +4", None, 4),
 }
 

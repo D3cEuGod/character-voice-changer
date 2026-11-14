@@ -79,8 +79,8 @@ def main(argv=None) -> int:
                         help="自动重开实时变声的包数，默认 3000；0 关闭自动刷新")
     parser.add_argument("--live-packet-ms", type=int, choices=(100,120), default=120,
                         help="VB-CABLE 包长；默认稳定档 120，100 为实验低延迟档")
-    parser.add_argument("--pitch-preset", choices=("model", "fixed4", "auto4"), default="fixed4",
-                        help="音高：model 模型默认，fixed4 原声升 4 半音，auto4 自动音域再升 4")
+    parser.add_argument("--pitch-preset", choices=("model", "auto4"), default="auto4",
+                        help="音高：默认 auto4 自动音域再升 4，model 恢复模型默认")
     args = parser.parse_args(argv)
 
     sys.excepthook = _log_exception

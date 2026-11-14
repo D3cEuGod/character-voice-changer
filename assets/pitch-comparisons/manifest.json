@@ -1,8 +1,8 @@
 {
-  "created_utc": "2026-11-14T00:32:40.635583+00:00",
+  "created_utc": "2026-11-14T00:51:59.308155+00:00",
   "backend": {
     "status": "ok",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "engine": "RVC v2",
     "reference_engine": false,
     "reference_error": "",
@@ -36,7 +36,7 @@
     {
       "voice": "tomori",
       "file": "tomori.wav",
-      "sha256": "f1289093a0e3acb5e4a272eb68b7439415dd13e99e94ef0f97c188201cb3c357",
+      "sha256": "65d268fdb5f4ba8accce7dc622f5684f2a0287e28dc21877a84cb288e6eda480",
       "segments": [
         {
           "preset": "model",
@@ -45,32 +45,23 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "d7635077ba78e77ef4147c9d12d25823d79ba888fd56aabcdc6d9587dd4e7c1e"
-        },
-        {
-          "preset": "fixed4",
-          "name": "原声 +4 半音",
-          "pitch_shift": 4,
-          "pitch_offset": 0,
-          "start_s": 5.862,
-          "end_s": 11.124,
-          "result_sha256": "1e4fc7b0243115666b50f26cdf9ac5accb7a525379fc5d25f2e3dea0225810e1"
+          "result_sha256": "6b26384510d9a307959f7c0d368a2e1446fc2a0c9efecaa559b0c2bf4d4c1140"
         },
         {
           "preset": "auto4",
           "name": "自动音域再 +4",
           "pitch_shift": null,
           "pitch_offset": 4,
-          "start_s": 11.724,
-          "end_s": 16.986,
-          "result_sha256": "8d1a03786814b37acc1b720f32b9fd07d2b5008f84273adfa18345022568ac86"
+          "start_s": 5.862,
+          "end_s": 11.124,
+          "result_sha256": "15faca2bdf43bfd058296a32d8ed5042fd0c3e0f200cdfc6e21488ee635e97f8"
         }
       ]
     },
     {
       "voice": "taffy",
       "file": "taffy.wav",
-      "sha256": "81268b571336f63293f54fb265c87cbd9318adfb7f715603f41cf924bb255c23",
+      "sha256": "be22e67b82337c54228a478b568f721ab15a5fd4f843d79e755a72c99165e683",
       "segments": [
         {
           "preset": "model",
@@ -79,32 +70,23 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "45de5e99daff007f6577b82e5e5ab58f162ad259a0fd738e4b08505d7fdf342e"
-        },
-        {
-          "preset": "fixed4",
-          "name": "原声 +4 半音",
-          "pitch_shift": 4,
-          "pitch_offset": 0,
-          "start_s": 5.862,
-          "end_s": 11.124,
-          "result_sha256": "b9b44c74c55488f41659fd25646c02ce5007aa5a1fa8c7007ad532c2cbf1a182"
+          "result_sha256": "5086069c0efd90e129bab2d7aa09a262a52ecf255f23d474fe6300d7768bb037"
         },
         {
           "preset": "auto4",
           "name": "自动音域再 +4",
           "pitch_shift": null,
           "pitch_offset": 4,
-          "start_s": 11.724,
-          "end_s": 16.986,
-          "result_sha256": "b00d03c38f6bb8039945bb3e8c9a1e1ff84ecaa4aa5eb704481e0e094362943b"
+          "start_s": 5.862,
+          "end_s": 11.124,
+          "result_sha256": "5f88b3db175841fc2a55047429a268d86819ec91dc472f220587952e72d10e13"
         }
       ]
     },
     {
       "voice": "anon",
       "file": "anon.wav",
-      "sha256": "5fcc41291da570402c4233e88ead51c005dba12c5301587e9e9452446f439f51",
+      "sha256": "12ce3b3edd400f655c3d2b0f187a377bfdca30d8a0bc80c47f0ff2f27250416b",
       "segments": [
         {
           "preset": "model",
@@ -113,25 +95,16 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "507c9a2b0b1d45f46db7275bc2317cb7a931af3ec9019fd3bde4e55f5470f5c7"
-        },
-        {
-          "preset": "fixed4",
-          "name": "原声 +4 半音",
-          "pitch_shift": 4,
-          "pitch_offset": 0,
-          "start_s": 5.862,
-          "end_s": 11.124,
-          "result_sha256": "2bb5fc2f99f9ccc23f0180d28dd80ad6c198c811aeb489288156e575ac52f295"
+          "result_sha256": "1d738689a96a2c7959e8c3e02120a6d60523c88fc71ac6bd818b6a99a93a4b9a"
         },
         {
           "preset": "auto4",
           "name": "自动音域再 +4",
           "pitch_shift": null,
           "pitch_offset": 4,
-          "start_s": 11.724,
-          "end_s": 16.986,
-          "result_sha256": "5b6b98a1720b9af463790537d71891c9129fb65c79ce0680fb717f2aefc75efd"
+          "start_s": 5.862,
+          "end_s": 11.124,
+          "result_sha256": "a01be0f25594c926efeb8aee77147c34c8788655c4835cd958bed39196274a76"
         }
       ]
     }

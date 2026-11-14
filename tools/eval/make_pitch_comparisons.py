@@ -1,4 +1,4 @@
-"""Render the same male input through three RVC pitch presets, without audio playback."""
+"""Compare model-default pitch with the +4 automatic preset, without audio playback."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -17,7 +17,7 @@ from gui.backend import BackendClient, PITCH_PRESETS
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--backend-url', default='http://127.0.0.1:8766')
-    parser.add_argument('--input', type=Path, default=ROOT/'.run/evalset/m1.wav')
+    parser.add_argument('--input', type=Path, default=ROOT/'assets/pitch-comparisons/input-male.wav')
     parser.add_argument('--output', type=Path, default=ROOT/'assets/pitch-comparisons')
     args = parser.parse_args()
     client = BackendClient(args.backend_url)
@@ -47,7 +47,7 @@ def main():
         manifest['comparisons'].append({'voice':voice,'file':path.name,
                                         'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
                                         'segments':segments})
-        print(f'{voice}: model / fixed +4 / auto +4',flush=True)
+        print(f'{voice}: model / auto +4',flush=True)
     (args.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
 
 
