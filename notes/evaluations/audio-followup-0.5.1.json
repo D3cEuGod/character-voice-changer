@@ -1,0 +1,778 @@
+{
+  "version": "0.5.1",
+  "date": "2026-11-15",
+  "input_note": "Synthetic speech only; no user microphone recordings or transcripts.",
+  "loopback_parameters": {
+    "packet_ms": 120,
+    "pitch_preset": "auto2",
+    "input_rate": 48000,
+    "repeats": 5,
+    "source_seconds": 102.0
+  },
+  "inference_parity": [
+    {
+      "comparison": "torch/cpu",
+      "max_abs": 8.016824722290039e-06,
+      "rmse": 7.84947872034536e-07,
+      "snr_db": 98.6555404663086
+    },
+    {
+      "comparison": "cpu/dml",
+      "max_abs": 1.7657876014709473e-05,
+      "rmse": 1.295477318308258e-06,
+      "snr_db": 94.3037109375
+    }
+  ],
+  "stream_drift": [
+    {
+      "voice": "taffy",
+      "seconds": 90,
+      "voiced_frames": 49503,
+      "voiced_frames_outside_activity": 0,
+      "state": [
+        {
+          "seconds": 0.0,
+          "noise_rms": 0.0,
+          "source_register_hz": null
+        },
+        {
+          "seconds": 15.0,
+          "noise_rms": 4.0829427024561285e-05,
+          "source_register_hz": 163.28136508932434
+        },
+        {
+          "seconds": 30.0,
+          "noise_rms": 3.8125358007802506e-05,
+          "source_register_hz": 147.83202571433284
+        },
+        {
+          "seconds": 45.0,
+          "noise_rms": 4.29977326573399e-05,
+          "source_register_hz": 166.69415175812776
+        },
+        {
+          "seconds": 60.0,
+          "noise_rms": 3.8484025176375585e-05,
+          "source_register_hz": 157.76647700608123
+        },
+        {
+          "seconds": 75.0,
+          "noise_rms": 4.320999545745834e-05,
+          "source_register_hz": 147.7691983551631
+        }
+      ]
+    },
+    {
+      "voice": "tannhauser",
+      "seconds": 90,
+      "voiced_frames": 49503,
+      "voiced_frames_outside_activity": 0,
+      "state": [
+        {
+          "seconds": 0.0,
+          "noise_rms": 0.0,
+          "source_register_hz": null
+        },
+        {
+          "seconds": 15.0,
+          "noise_rms": 4.0829427024561285e-05,
+          "source_register_hz": 163.28136508932434
+        },
+        {
+          "seconds": 30.0,
+          "noise_rms": 3.8125358007802506e-05,
+          "source_register_hz": 147.83202571433284
+        },
+        {
+          "seconds": 45.0,
+          "noise_rms": 4.29977326573399e-05,
+          "source_register_hz": 166.69415175812776
+        },
+        {
+          "seconds": 60.0,
+          "noise_rms": 3.8484025176375585e-05,
+          "source_register_hz": 157.76647700608123
+        },
+        {
+          "seconds": 75.0,
+          "noise_rms": 4.320999545745834e-05,
+          "source_register_hz": 147.7691983551631
+        }
+      ]
+    }
+  ],
+  "retrieval_threads": [
+    {
+      "voice": "tomori",
+      "threads": 1,
+      "neighbors_match": true,
+      "p50_ms": 1.20674999197945,
+      "p95_ms": 1.7098850075853989,
+      "max_ms": 2.0007000130135566
+    },
+    {
+      "voice": "tomori",
+      "threads": 2,
+      "neighbors_match": true,
+      "p50_ms": 0.8771000138949603,
+      "p95_ms": 1.1482849891763174,
+      "max_ms": 1.4583999873138964
+    },
+    {
+      "voice": "tomori",
+      "threads": 4,
+      "neighbors_match": true,
+      "p50_ms": 1.0300499852746725,
+      "p95_ms": 1.2779499898897482,
+      "max_ms": 1.497500023106113
+    },
+    {
+      "voice": "taffy",
+      "threads": 1,
+      "neighbors_match": true,
+      "p50_ms": 4.288099997211248,
+      "p95_ms": 4.9431650011683805,
+      "max_ms": 5.130499979713932
+    },
+    {
+      "voice": "taffy",
+      "threads": 2,
+      "neighbors_match": true,
+      "p50_ms": 2.703200007090345,
+      "p95_ms": 3.676740014634561,
+      "max_ms": 3.8835000013932586
+    },
+    {
+      "voice": "taffy",
+      "threads": 4,
+      "neighbors_match": true,
+      "p50_ms": 2.049650007393211,
+      "p95_ms": 2.3856850239099003,
+      "max_ms": 2.4339999945368618
+    },
+    {
+      "voice": "anon",
+      "threads": 1,
+      "neighbors_match": true,
+      "p50_ms": 24.878399999579415,
+      "p95_ms": 31.740789991454218,
+      "max_ms": 36.46679999656044
+    },
+    {
+      "voice": "anon",
+      "threads": 2,
+      "neighbors_match": true,
+      "p50_ms": 15.86805000260938,
+      "p95_ms": 22.83065998344682,
+      "max_ms": 23.76180002465844
+    },
+    {
+      "voice": "anon",
+      "threads": 4,
+      "neighbors_match": true,
+      "p50_ms": 8.766649989411235,
+      "p95_ms": 9.91369000839768,
+      "max_ms": 11.115400004200637
+    },
+    {
+      "voice": "tannhauser",
+      "threads": 1,
+      "neighbors_match": true,
+      "p50_ms": 5.642999996780418,
+      "p95_ms": 6.505435008148195,
+      "max_ms": 7.285900006536394
+    },
+    {
+      "voice": "tannhauser",
+      "threads": 2,
+      "neighbors_match": true,
+      "p50_ms": 3.2336000149371102,
+      "p95_ms": 4.817785001068841,
+      "max_ms": 5.020399985369295
+    },
+    {
+      "voice": "tannhauser",
+      "threads": 4,
+      "neighbors_match": true,
+      "p50_ms": 2.919949998613447,
+      "p95_ms": 3.4908749963506125,
+      "max_ms": 3.5967000003438443
+    }
+  ],
+  "loopback_first": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.1",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tomori",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 1.0,
+        "signal_delay_s": 0.678,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0198,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 65.8,
+        "max_ms": 144.4,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "taffy",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 1.0,
+        "signal_delay_s": 0.671,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0099,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 78.4,
+        "max_ms": 218.7,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 1.0,
+        "signal_delay_s": 2.04,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 110.4,
+        "max_ms": 481.2,
+        "starvations": 1,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 1,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tannhauser",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 1.0,
+        "signal_delay_s": 0.762,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 75.0,
+        "max_ms": 168.8,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "anon_repeat_before_threads": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.1",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 0.66646,
+        "signal_delay_s": 1.048,
+        "worst_voiced_second_correlation": -0.02627,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 123.7,
+        "max_ms": 284.1,
+        "starvations": 1,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 1,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "anon_threads_without_prime": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.1",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824,
+      "voices_loading": [],
+      "ready_seconds": 2.62
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 0.56711,
+        "signal_delay_s": 0.912,
+        "worst_voiced_second_correlation": -0.29342,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0095,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 81.4,
+        "max_ms": 279.7,
+        "starvations": 1,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 1,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "anon_final_primed": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.1",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824,
+      "voices_loading": [],
+      "ready_seconds": 4.56
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 5,
+        "correlation": 1.0,
+        "signal_delay_s": 0.67,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 74.5,
+        "max_ms": 181.5,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "pitch_protocol": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.1",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824,
+      "voices_loading": [],
+      "ready_seconds": 4.56
+    },
+    "presets": [
+      {
+        "voice": "tomori",
+        "preset": "model",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "tomori",
+        "preset": "auto2",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 2.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "tomori",
+        "preset": "auto4",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 4.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "taffy",
+        "preset": "model",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "taffy",
+        "preset": "auto2",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 2.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "taffy",
+        "preset": "auto4",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 4.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "anon",
+        "preset": "model",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "anon",
+        "preset": "auto2",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 2.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "anon",
+        "preset": "auto4",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 4.0,
+          "lookahead_samples": 2304
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "tannhauser",
+        "preset": "model",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 0,
+          "lookahead_samples": 3528
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "tannhauser",
+        "preset": "auto2",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 2.0,
+          "lookahead_samples": 3528
+        },
+        "samples_preserved": true
+      },
+      {
+        "voice": "tannhauser",
+        "preset": "auto4",
+        "hello": {
+          "sample_rate": 22050,
+          "frame_samples": 2646,
+          "format": "s16le",
+          "pitch_shift": null,
+          "pitch_offset": 4.0,
+          "lookahead_samples": 3528
+        },
+        "samples_preserved": true
+      }
+    ],
+    "invalid": [
+      {
+        "parameter": "pitch_shift",
+        "value": "25",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_shift",
+        "value": "-25",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_shift",
+        "value": "nan",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_shift",
+        "value": "inf",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_offset",
+        "value": "25",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_offset",
+        "value": "-25",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_offset",
+        "value": "nan",
+        "http": 422,
+        "websocket": 403
+      },
+      {
+        "parameter": "pitch_offset",
+        "value": "inf",
+        "http": 422,
+        "websocket": 403
+      }
+    ]
+  },
+  "unit_checks": {
+    "passed": 45,
+    "note": "10 gate, 7 pitch, 3 sample conservation, 17 refresh, 2 switch fade, 2 registry, 4 backend probes"
+  },
+  "gui_selfcheck": {
+    "passed": 85,
+    "failed": 0,
+    "skipped": 1,
+    "skip": "Separate backend autostart; validated after relocation instead."
+  },
+  "relocation": {
+    "destination": "D:\\Projects\\character-voice-changer",
+    "source_files": 91778,
+    "source_bytes": 24739454277,
+    "git_fsck": "passed",
+    "git_working_files_sha256_matched": 263,
+    "critical_sha256_matched": 16,
+    "original_backup_retained": true,
+    "cleanup_status": "Automatic approval review rejected recursive source deletion: blocked by policy",
+    "original_entry": "Compatibility launchers only; active code and future edits are on D:"
+  },
+  "startup_after_relocation": {
+    "first": {
+      "script_seconds": 47.703,
+      "model_ready_seconds": 41.46,
+      "ready_voice": "taffy",
+      "remaining_voices_at_ready": [
+        "tomori",
+        "anon",
+        "tannhauser"
+      ]
+    },
+    "warm": {
+      "script_seconds": 7.719,
+      "model_ready_seconds": 3.74,
+      "ready_voice": "taffy",
+      "remaining_voices_at_ready": [
+        "tomori",
+        "anon",
+        "tannhauser"
+      ]
+    }
+  }
+}

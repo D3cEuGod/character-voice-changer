@@ -51,8 +51,11 @@ def voice_index(name):
 
 
 def retrieve(units, name, f0, index_rate=.38, *, all_frames=False):
-    faiss.omp_set_num_threads(2)
-    distances, ids, vectors = voice_index(name).search_and_reconstruct(units[0], 8)
+    index = voice_index(name)
+    # Large IVF quantizers need more CPU time even with nprobe=1. Anon's
+    # 175k-vector index lost realtime headroom at two threads on this machine.
+    faiss.omp_set_num_threads(min(os.cpu_count() or 1, 4 if index.ntotal >= 100000 else 2))
+    distances, ids, vectors = index.search_and_reconstruct(units[0], 8)
     weights = np.where(ids >= 0, np.reciprocal(np.maximum(distances, 1e-5))**2, 0)
     weights /= np.maximum(weights.sum(axis=1, keepdims=True), 1e-12)
     nearest = (np.nan_to_num(vectors) * weights[:, :, None]).sum(axis=1)
@@ -168,12 +171,12 @@ def pitch_track(audio):
     return padded
 
 
-def audio_gate(clean, activity, samples, noise_rms=0):
+def audio_gate(clean, activity, samples, noise_rms=0, full_rms=.00065):
     rms = np.sqrt(np.maximum(uniform_filter1d(clean**2, 480), 0))
     # GTCRN already removes background noise. The old full-gain threshold
     # (.00175 RMS) erased quiet consonants even after VAD accepted the speech.
     floor = max(.00005, 1.8*noise_rms)
-    full = max(.00065, 4*noise_rms)
+    full = max(full_rms, 4*noise_rms)
     gate = np.clip((rms-floor)/(full-floor), 0, 1) * activity
     return np.interp(np.arange(samples)*16000/RATE, np.arange(len(clean)), gate)
 
@@ -265,7 +268,8 @@ class CharacterModel:
         wet = resample_poly(generated, RATE // g, rate // g)
         # Prevent the vocoder from inventing hiss during pauses. Follow the
         # denoised amplitude envelope while preserving soft, unvoiced consonants.
-        gate = audio_gate(clean, activity, RATE, self.denoiser.noise_rms)
+        gate_full=(self.local.output_gate_full_rms or .00065) if self.local is not None else .00065
+        gate = audio_gate(clean, activity, RATE, self.denoiser.noise_rms,gate_full)
         wet *= gate
         if self.local is not None:
             dry = resample_poly(clean, 441, 320)

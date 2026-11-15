@@ -8,7 +8,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
-from gui.backend import BackendClient
+from gui.backend import BackendClient,DEFAULT_PITCH_PRESET
 
 
 def main():
@@ -20,12 +20,12 @@ def main():
     folder=ROOT/'assets/previews'
     original=(folder/'original.wav').read_bytes()
     manifest={'created_utc':datetime.now(timezone.utc).isoformat(),'backend':health,
-              'input_sha256':hashlib.sha256(original).hexdigest(),'pitch_preset':'auto4',
+              'input_sha256':hashlib.sha256(original).hexdigest(),'pitch_preset':DEFAULT_PITCH_PRESET,
               'note':'Existing synthetic Chinese input; file conversion, not real-time delay or the user microphone',
               'files':[]}
     for voice in client.voices():
         for mode in ('character','call'):
-            data=client.convert(original,'audio/wav',voice['id'],1,mode=mode,pitch_preset='auto4')
+            data=client.convert(original,'audio/wav',voice['id'],1,mode=mode,pitch_preset=DEFAULT_PITCH_PRESET)
             filename=voice['id']+('-call' if mode=='call' else '')+'.wav'
             (folder/filename).write_bytes(data)
             manifest['files'].append({'file':filename,'voice':voice['id'],'mode':mode,

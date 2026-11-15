@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from gui.backend import BackendClient, BackendError, BackendLauncher
@@ -25,6 +26,57 @@ class DelayedHealth(BaseHTTPRequestHandler):
 
 
 class ProbeTests(unittest.TestCase):
+    def test_existing_loading_server_reports_progress_without_second_process(self):
+        class LoadingHealth(DelayedHealth):
+            calls=0
+            def do_GET(self):
+                type(self).calls+=1
+                data=(b'{"status":"loading","progress":0.4,"stage":"models"}'
+                      if self.calls<3 else b'{"status":"ok"}')
+                self.send_response(200)
+                self.send_header('Content-Length',str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+        server=ThreadingHTTPServer(('127.0.0.1',0),LoadingHealth)
+        worker=threading.Thread(target=server.serve_forever,daemon=True)
+        worker.start()
+        try:
+            ready,failed,stages=[],[],[]
+            launcher=BackendLauncher(BackendClient(f'http://127.0.0.1:{server.server_port}'),
+                lambda _:None,lambda *args:ready.append(args),failed.append,
+                on_stage=lambda *args:stages.append(args),wait_seconds=3)
+            with patch('gui.backend.spawn_backend') as spawn:
+                launcher.run()
+                spawn.assert_not_called()
+            self.assertEqual(failed,[])
+            self.assertFalse(ready[0][1])
+            self.assertIn(('models',.4,'models'),stages)
+        finally:
+            server.shutdown();server.server_close();worker.join(2)
+
+    def test_existing_failed_server_does_not_spawn_duplicate_backend(self):
+        class FailedHealth(DelayedHealth):
+            def do_GET(self):
+                data=b'{"detail":"model failed"}'
+                self.send_response(503)
+                self.send_header('Content-Length',str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+        server=ThreadingHTTPServer(('127.0.0.1',0),FailedHealth)
+        worker=threading.Thread(target=server.serve_forever,daemon=True)
+        worker.start()
+        try:
+            ready,failed=[],[]
+            launcher=BackendLauncher(BackendClient(f'http://127.0.0.1:{server.server_port}'),
+                lambda _:None,lambda *args:ready.append(args),failed.append)
+            with patch('gui.backend.spawn_backend') as spawn:
+                launcher.run()
+                spawn.assert_not_called()
+            self.assertEqual(ready,[])
+            self.assertIn('model failed',failed[0])
+        finally:
+            server.shutdown();server.server_close();worker.join(2)
+
     def test_closed_port_fails_quickly(self):
         with socket.socket() as reserved:
             reserved.bind(('127.0.0.1',0))

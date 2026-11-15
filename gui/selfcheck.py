@@ -279,8 +279,8 @@ def main(argv=None) -> int:
         c.check(f"角色原声与处理方式：{voice['name']}", window.reference_button.isEnabled()
                 and window.voice_mode.isVisible() and window.current_mode() == "character"
                 and window.hero_caption.text() == model_labels.get(voice["id"], voice["id"].upper()))
-        c.check(f"默认自动音域再 +4：{voice['name']}", window.current_pitch() == "auto4"
-                and window.pitch_combo.count() == 2 and window.pitch_combo.findData("fixed4") == -1)
+        c.check(f"默认自动音域再 +2：{voice['name']}", window.current_pitch() == "auto2"
+                and window.pitch_combo.count() == 3 and window.pitch_combo.findData("fixed4") == -1)
     pick(window, "taffy")
     c.check("示例按钮已经去掉", not hasattr(window, "original_button")
             and all(not b.text().startswith("示例") for b in window.findChildren(QPushButton)))
@@ -357,7 +357,7 @@ def main(argv=None) -> int:
                 and window.result_tag.property("state") == "fresh", window.result_tag.text())
         original_pitch = window.current_pitch()
         window.pitch_combo.setCurrentIndex(window.pitch_combo.findData("model"))
-        c.check("切换音高后旧结果不能试听保存", original_pitch == "auto4"
+        c.check("切换音高后旧结果不能试听保存", original_pitch == "auto2"
                 and window.current_result() is None and not window.save_button.isEnabled())
         window.pitch_combo.setCurrentIndex(window.pitch_combo.findData(original_pitch))
         c.check("切回音高后恢复对应结果", window.current_result() is result and window.save_button.isEnabled())
@@ -532,7 +532,7 @@ def main(argv=None) -> int:
                 f"{first.hello}；{window.live_status.text()}".replace("\n", "；") if first else "没有启动")
         c.check("实时连接带上所选音高且后端确认", first is not None
                 and first.pitch_preset == window.current_pitch()
-                and first.hello.get("pitch_shift") is None and first.hello.get("pitch_offset") == 4,
+                and first.hello.get("pitch_shift") is None and first.hello.get("pitch_offset") == 2,
                 first.url if first else "没有启动")
         c.check("监听：输入和输出都有信号", levels["in"] > 0.02 and levels["out"] > 0.02,
                 f"输入峰值 {levels['in']:.2f}，输出峰值 {levels['out']:.2f}；麦克风“{cable_in.name}”的信号是脚本"
@@ -549,7 +549,7 @@ def main(argv=None) -> int:
             if horse is not None:
                 monitors.append(horse)
             c.check('实时切至诗歌剧：先淡出旧声并完整重开',connected
-                    and horse.pitch_preset == 'auto4' and 'voice_id=tannhauser' in horse.url
+                    and horse.pitch_preset == 'auto2' and 'voice_id=tannhauser' in horse.url
                     and not first.is_alive() and not first.speaker.active
                     and first.speaker._fade_done.is_set() and len(first.speaker.fifo) == 0)
 

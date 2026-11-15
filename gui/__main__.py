@@ -7,7 +7,8 @@ import sys
 import traceback
 from pathlib import Path
 
-from .backend import DEFAULT_URL, ROOT, START_SCRIPT
+from .backend import (DEFAULT_URL, DEFAULT_PITCH_PRESET, PITCH_PRESETS, ROOT, START_SCRIPT, BackendClient,
+                      start_early)
 
 from .taskbar import set_process_app_id, set_window_relaunch
 
@@ -79,20 +80,47 @@ def main(argv=None) -> int:
                         help="自动重开实时变声的包数，默认 3000；0 关闭自动刷新")
     parser.add_argument("--live-packet-ms", type=int, choices=(100,120), default=120,
                         help="VB-CABLE 包长；默认稳定档 120，100 为实验低延迟档")
-    parser.add_argument("--pitch-preset", choices=("model", "auto4"), default="auto4",
-                        help="音高：默认 auto4 自动音域再升 4，model 恢复模型默认")
+    parser.add_argument("--pitch-preset", choices=tuple(PITCH_PRESETS), default=DEFAULT_PITCH_PRESET,
+                        help="音高：默认 auto2 自动音域再升 2，auto4 升 4，model 恢复模型默认")
     args = parser.parse_args(argv)
 
     sys.excepthook = _log_exception
+    # 先把后端拉起来，再加载界面程序库：两边同时进行，能省下界面初始化的那一两秒。
+    prestarted = None if args.no_autostart else start_early(BackendClient(args.backend_url),
+                                                            Path(args.backend_script))
     app = create_app()
     from .app import Config, MainWindow
+    from .splash import StartupWindow
 
+    splash = StartupWindow()
+    set_window_relaunch(int(splash.winId()))
+    splash.show()
+    app.processEvents()  # 先把加载页画出来，再初始化主窗口
     window = MainWindow(Config(args.backend_url, not args.no_autostart, Path(args.backend_script),
-                               args.live_restart_packets, args.live_packet_ms, args.pitch_preset))
+                               args.live_restart_packets, args.live_packet_ms, args.pitch_preset, prestarted))
     available = app.primaryScreen().availableGeometry()
     window.resize(min(1060, available.width() - 40), min(700, available.height() - 60))
     set_window_relaunch(int(window.winId()))  # 在窗口显示之前写入，任务栏按这些信息建立图标
-    window.show()
+
+    def enter_main() -> None:
+        if window.isVisible():
+            return
+        window.show()
+        window.raise_()
+        window.activateWindow()
+        splash.close_for_main()
+
+    def leave() -> None:
+        splash.close_for_main()
+        window.close()  # 停掉由本程序启动的后端
+        app.quit()
+
+    window.startup_stage.connect(splash.set_stage)
+    window.startup_finished.connect(lambda ok, message: splash.finish() if ok else splash.fail(message))
+    splash.done.connect(enter_main)
+    splash.open_anyway.connect(enter_main)
+    splash.retry_requested.connect(window.connect_backend)
+    splash.quit_requested.connect(leave)
     return app.exec()
 
 

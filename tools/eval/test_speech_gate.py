@@ -78,6 +78,14 @@ class GateTests(unittest.TestCase):
         self.assertGreater(audio_gate(clean,activity,22050).mean(),.3)
         self.assertEqual(float(audio_gate(clean,activity,22050,noise_rms=.00025).max()),0)
 
+    def test_soft_ending_preset_preserves_speech_but_keeps_silence_zero(self):
+        clean=np.full(16000,.0003,np.float32);active=np.ones(16000,np.float32)
+        ordinary=audio_gate(clean,active,22050)
+        protected=audio_gate(clean,active,22050,full_rms=.00045)
+        self.assertGreater(float(protected.mean()),float(ordinary.mean())*1.4)
+        self.assertEqual(float(audio_gate(np.zeros(16000),active,22050,full_rms=.00045).max()),0)
+        self.assertEqual(float(audio_gate(clean,np.zeros(16000),22050,full_rms=.00045).max()),0)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

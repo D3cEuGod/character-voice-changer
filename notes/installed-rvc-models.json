@@ -23,7 +23,8 @@
       "index_dimension": 768,
       "label": "deng",
       "provided_weight": "deng.pth",
-      "download_page": "https://pan.baidu.com/s/1SN_jeB4x0-sYYTnot1PO5Q?pwd=93f8"
+      "download_page": "https://pan.baidu.com/s/1SN_jeB4x0-sYYTnot1PO5Q?pwd=93f8",
+      "stream_crossfade_ms": 40
     },
     "anon": {
       "graph": "anon-493ff6c8d9be/voice.onnx",
@@ -45,7 +46,8 @@
       "speakers": 109,
       "index_vectors": 175946,
       "index_dimension": 768,
-      "label": "Anon_v2"
+      "label": "Anon_v2",
+      "stream_crossfade_ms": 40
     },
     "taffy": {
       "label": "mygf-tf",
@@ -68,7 +70,9 @@
       "speakers": 109,
       "index_vectors": 37690,
       "index_dimension": 768,
-      "provided_archive": "Ai塔菲.zip"
+      "provided_archive": "Ai塔菲.zip",
+      "stream_crossfade_ms": 40,
+      "output_gate_full_rms": 0.00045
     },
     "tannhauser": {
       "label": "诗歌剧",
@@ -82,8 +86,8 @@
       "sample_rate": 48000,
       "target_hz": 417.4,
       "semitones": null,
-      "index_rate": 0.75,
-      "protect": 0.33,
+      "index_rate": 0.4,
+      "protect": 0.1,
       "speaker_id": 0,
       "export_recipe": 1,
       "rvc_revision": "d60cd3d009b7e438f92f8624fa89b710d10c6a39",
@@ -93,7 +97,9 @@
       "index_vectors": 51121,
       "index_dimension": 768,
       "provided_archive": "诗歌剧.zip",
-      "archive_sha256": "689da05c59827a5241ad38aa4d32d97ef74d6fe3b34cbc658c5263dc714027a6"
+      "archive_sha256": "689da05c59827a5241ad38aa4d32d97ef74d6fe3b34cbc658c5263dc714027a6",
+      "stream_lookahead_ms": 160,
+      "stream_crossfade_ms": 40
     }
   },
   "recorded_date": "2026-11-15",

@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya or Matikanetannhauser, speak norm
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers, Umamusume), switched with a carousel; custom RVC IDs and display names are supported by the importer and API
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.5.0
+- Versioned releases with a changelog; current internal beta is 0.5.1
 
 ## Tech Stack
 
@@ -83,7 +83,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
     <td colspan="2" align="center">
       <img src="docs/images/voice-tannhauser.jpg" alt="Umamusume category with Matikanetannhauser selected" width="78%" />
       <br />
-      <sub>赛马娘分类中的诗歌剧：独立的 48k RVC 模型、官方头像与角色原声，默认自动音域再 +4。</sub>
+      <sub>赛马娘分类中的诗歌剧：独立的 48k RVC 模型、官方头像与角色原声，默认自动音域再 +2。</sub>
     </td>
   </tr>
 </table>
@@ -94,7 +94,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.5.0`（内测版）
+当前版本：`0.5.1`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -102,22 +102,25 @@ All images are captures of the running app on Windows 11, taken while the self-c
 2. 首次启动会建立虚拟环境并安装依赖。已安装三套本地角色模型时，只准备 ContentVec、RMVPE、GTCRN 和 VAD 等必要推理图。没有本地模型时会准备原来的兼容声线（约 2 GB 权重及导出环境）；这与本次导入的新声线有区别。权重均校验 SHA-256。
 3. 窗口右上角显示“后端：已连接”后即可使用。之后可以离线运行。
 
-后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，三位角色的实际音频预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
+后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，首个角色的真实语音预热与其他角色的生成器预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
-所有已安装角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
+所有已安装角色都可以切换处理方式。灯、塔菲和爱音的“音色优先”采用 0.75 检索比例、0.33 清音特征混合；诗歌剧单独使用 0.4 / 0.1，减少检索对发音的干扰。“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名。
 
-### 音高 +4 试用与试听
+0.5.1 的启动页显示检查与模型加载进度。首个角色准备好后进入主界面，其余角色在后台加载并预热独立生成器；第一次切到尚未准备好的角色仍需要等待。后台不会并发调用正在通话使用的共享特征 / 音高模型。
 
-0.4.2 按用户选定的效果，让 GUI 的高松灯、永雏塔菲和千早爱音都默认使用“自动音域再 +4”。左栏只保留以下两档，“原声 +4”已从界面和启动参数中移除。实时和文件变声都生效；切档后旧文件结果不会被当成新档位的结果，实时会话会自动重连，周期刷新也会保留所选档位。
+### 默认音高 +2 与试听
+
+0.5.1 按用户要求，让 GUI 的高松灯、永雏塔菲、千早爱音和诗歌剧都默认使用“自动音域再 +2”。左栏有以下三档，“原声 +4”仍已移除。实时和文件变声都生效；切档会重连实时会话，周期刷新保留所选档位。
 
 | 档位 | 做法 | 原声中位音高 150 Hz 时，以塔菲为例 |
 | --- | --- | --- |
-| 模型默认 | 使用原有模型配置；本机三位均为自动匹配角色音域 | 约 429 Hz |
-| 自动音域再 +4 | 原有自动音域匹配后再升 4 个半音 | 约 541 Hz |
+| 模型默认 | 使用原有模型配置；本机四位均为自动匹配角色音域 | 约 429 Hz |
+| 自动音域再 +2（默认） | 自动匹配后再升 2 个半音 | 约 482 Hz |
+| 自动音域再 +4 | 自动匹配后再升 4 个半音 | 约 541 Hz |
 
-保留原有 650 Hz 上限和音色强度对移调量的缩放；表中是 100% 强度的简化例子，真实说话还会保留起伏。自动再 +4 会更高，但音高本身不等于角色相似度。普通双击即可使用这档；命令行 `start-gui.cmd --pitch-preset model` 可按原设置启动。
+保留原有 650 Hz 上限和音色强度对移调量的缩放；表中是 100% 强度的简化例子，真实说话还会保留起伏。“+2”是在自动匹配之后增加，并不表示相对输入总共只升两半音。音高本身不等于角色相似度。普通双击即可使用默认 +2；命令行 `start-gui.cmd --pitch-preset model` 可按原设置启动。
 
-用同一段现有回归集的**合成男声**生成了 [灯](assets/pitch-comparisons/tomori.wav)、[塔菲](assets/pitch-comparisons/taffy.wav)、[爱音](assets/pitch-comparisons/anon.wav) 三份对照，顺序均为“模型默认 → 自动音域再 +4”，两段间隔 0.6 秒，已删除原声 +4 的试听段。[原始输入](assets/pitch-comparisons/input-male.wav) 与 [时间段 / 参数 / 校验值](assets/pitch-comparisons/manifest.json) 一并保存。这些对照使用文件接口的 200 ms 包，不代表端到端延迟或真人听感结论。详见 [0.4.2 记录](notes/auto-pitch-default-0.4.2.md)。
+用同一段现有回归集的**合成男声**生成了 [灯](assets/pitch-comparisons/tomori.wav)、[塔菲](assets/pitch-comparisons/taffy.wav)、[爱音](assets/pitch-comparisons/anon.wav)、[诗歌剧](assets/pitch-comparisons/tannhauser.wav) 四份对照，顺序均为“模型默认 → 自动音域再 +2 → 自动音域再 +4”，段间隔 0.6 秒。[原始输入](assets/pitch-comparisons/input-male.wav) 与 [时间段 / 参数 / 校验值](assets/pitch-comparisons/manifest.json) 一并保存。这些对照使用文件接口的 200 ms 包，不代表端到端延迟或真人听感结论。
 
 本机已导入的模型如下，清单与 SHA-256 见 [安装记录](notes/installed-rvc-models.json)：
 
@@ -128,19 +131,23 @@ All images are captures of the running app on Windows 11, taken while the self-c
 | 千早爱音 | `Anon_v2.pth` / 40k RVC v2 | Wanlau 的 BanG Dream 对白模型及配套索引 |
 | 诗歌剧 | `uma-Matikane_Tannhauser.pth` / 48k RVC v2 | 用户提供的 `诗歌剧.zip` 与配套 v2 索引 |
 
-0.5.0 新增“赛马娘”分类，诗歌剧有官方头像和角色原声按钮，同样默认自动音域再 +4。初始自动目标音域 417.4 Hz 来自约 3 秒官方语音的基频中位数，仅作初始校准。当前版本的四份音色优先示例已重新生成：[灯](assets/previews/tomori.wav)、[塔菲](assets/previews/taffy.wav)、[爱音](assets/previews/anon.wav)、[诗歌剧](assets/previews/tannhauser.wav)；均使用同一段合成中文输入、自动再 +4，文件转换不代表实时延迟。参数和校验值见[试听清单](assets/previews/manifest.json)。
+0.5.0 新增“赛马娘”分类，诗歌剧有官方头像和角色原声按钮，默认自动音域再 +2。初始自动目标音域 417.4 Hz 来自约 3 秒官方语音的基频中位数，仅作初始校准。当前版本的四份音色优先示例已重新生成：[灯](assets/previews/tomori.wav)、[塔菲](assets/previews/taffy.wav)、[爱音](assets/previews/anon.wav)、[诗歌剧](assets/previews/tannhauser.wav)；均使用同一段合成中文输入、自动再 +2，文件转换不代表实时延迟。参数和校验值见[试听清单](assets/previews/manifest.json)。
+
+另提供约一分钟的实时包处理示例：[塔菲长句 / 停顿](assets/previews/long/taffy.wav)、[诗歌剧长句 / 停顿](assets/previews/long/tannhauser.wav)、[合成输入](assets/previews/long/input.wav)。这些是重复中文句子、渐弱尾音与人工底噪，120 ms 包、自动再 +2；文件取自送入虚拟线之前的 PCM，不能代表 Discord 远端听感。[参数清单](assets/previews/long/manifest.json)。
 
 ### 导入模型与迁移电脑
+
+本机活动项目已迁到 `D:\Projects\character-voice-changer`，模型、环境和缓存一起保留；从该目录双击 `start-gui.cmd`。原 C 盘目录的同名脚本会转到 D 盘，旧副本作为迁移备份保留，尚未释放其占用的 C 盘空间。迁移校验和启动时间见 [0.5.1 记录](notes/audio-followup-0.5.1.md)。
 
 大权重不放进 Git。迁移本机这套声线时，把整个 `models/local-rvc/` 文件夹一并复制到新电脑的项目目录；其中的配置使用相对路径，并校验推理图与索引。只克隆源码不会自动获得网盘里的用户模型。
 
 也可以在后端环境已准备好后分别导入自己的权重与索引：
 
 ```powershell
-.venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320
-.venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429
-.venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310
-.venv\Scripts\python.exe tools\import_rvc.py --voice tannhauser --name "诗歌剧" --checkpoint "D:\模型\uma-Matikane_Tannhauser.pth" --index "D:\模型\added_IVF1310_Flat_nprobe_1_uma-Matikane_Tannhauser_v2.index" --target-hz 417.4
+.venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320 --stream-crossfade-ms 40
+.venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429 --stream-crossfade-ms 40 --gate-full-rms .00045
+.venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310 --stream-crossfade-ms 40
+.venv\Scripts\python.exe tools\import_rvc.py --voice tannhauser --name "诗歌剧" --checkpoint "D:\模型\uma-Matikane_Tannhauser.pth" --index "D:\模型\added_IVF1310_Flat_nprobe_1_uma-Matikane_Tannhauser_v2.index" --target-hz 417.4 --stream-crossfade-ms 40 --index-rate .4 --protect .1 --stream-lookahead-ms 160
 ```
 
 导入器使用 `torch.load(weights_only=True)`，验证 RVC v2 / f0 架构、已填充的 768 维索引、说话人编号和完整一秒输出，通过后才更新角色配置。导入后重启后端和界面。`--pitch 12` 可使用固定半音移调，默认按目标音域自动调整。`.index` 应与该权重配套，不能把别的角色索引混用。
@@ -306,7 +313,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 `voice_id` 以 `GET /api/voices` 为准；本机有 `tomori`、`taffy`、`anon`、`tannhauser`。额外角色导入后重启后端即可成为可用选项，未安装的角色不显示，非法 ID 返回 422。`strength` 范围 0 到 1。所有角色支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
-RVC 音高参数同样适用于两个接口：GUI 当前默认发送 `pitch_offset=4`，在模型配置调整之后再升 4 半音。低层接口仍支持通用 `pitch_shift` 固定移调，便于已有客户端和导入配置继续工作；不再提供专门的原声 +4 预设。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
+RVC 音高参数同样适用于两个接口：GUI 当前默认发送 `pitch_offset=2`，在模型配置调整之后再升 2 半音。低层接口仍支持通用 `pitch_shift` 固定移调，便于已有客户端和导入配置继续工作；不再提供专门的原声 +4 预设。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
 
 错误用 HTTP 状态码和 JSON 的 `detail` 表示。413 是文件过大，422 是音频或参数无效，429 是引擎正忙，500 是推理失败。一次只处理一个转换任务或一个实时会话。
 

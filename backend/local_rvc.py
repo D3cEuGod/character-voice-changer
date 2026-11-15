@@ -36,6 +36,9 @@ class Profile:
     index_rate: float
     protect: float
     source: str
+    stream_lookahead_ms: int = 0
+    stream_crossfade_ms: int = 0
+    output_gate_full_rms: float = 0
 
 
 def verified_file(relative, expected):
@@ -61,13 +64,18 @@ def profile(voice):
     index = verified_file(data["index"], data["index_sha256"])
     rate, target = int(data["sample_rate"]), float(data["target_hz"])
     ratio, protect = float(data["index_rate"]), float(data["protect"])
+    lookahead, crossfade = int(data.get('stream_lookahead_ms',0)), int(data.get('stream_crossfade_ms',0))
+    gate_full=float(data.get('output_gate_full_rms',0))
     shift = data.get("semitones")
     if (rate not in (32000, 40000, 48000) or not 80 <= target <= 650
             or not 0 <= ratio <= 1 or not 0 <= protect <= .5
-            or shift is not None and not -24 <= float(shift) <= 24):
+            or shift is not None and not -24 <= float(shift) <= 24
+            or not 0 <= lookahead <= 250 or not 0 <= crossfade <= 60
+            or gate_full != 0 and not .00005 < gate_full <= .01):
         raise ValueError("Invalid local RVC inference settings")
     return Profile(str(data.get("label", voice)), graph.relative_to(ROOT / "models").as_posix(), index, rate, target,
-                   None if shift is None else float(shift), ratio, protect, data.get("source", "user model"))
+                   None if shift is None else float(shift), ratio, protect, data.get("source", "user model"),
+                   lookahead,crossfade,gate_full)
 
 
 @lru_cache(maxsize=None)

@@ -19,7 +19,7 @@ def main():
     client = BackendClient(args.backend_url)
     assert client.health().get('pitch_control')
     rows = []
-    for voice in ('tomori','taffy','anon'):
+    for voice in (v['id'] for v in client.voices()):
         for preset, (_, shift, offset) in PITCH_PRESETS.items():
             with connect(client.live_url(voice,1,packet_ms=120,pitch_preset=preset), proxy=None) as ws:
                 hello = json.loads(ws.recv())

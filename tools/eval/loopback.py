@@ -143,7 +143,7 @@ def main():
     parser.add_argument("--packet-ms", type=int, choices=(80, 100, 120, 200), default=200)
     parser.add_argument("--input-rate", type=int, default=22050)
     parser.add_argument("--backend-url", default="http://127.0.0.1:8765")
-    parser.add_argument("--pitch-preset", choices=('model','auto4'), default='model')
+    parser.add_argument("--pitch-preset", choices=('model','auto2','auto4'), default='model')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     pair = discord_pair(list_devices("input"), list_devices("output"))

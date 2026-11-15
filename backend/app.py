@@ -1,21 +1,18 @@
 import asyncio
 import logging
-import numpy as np
 from contextlib import asynccontextmanager
-from concurrent.futures import ThreadPoolExecutor
 from enum import Enum, IntEnum
-from functools import partial
-import time
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from . import __version__, engine, reference, local_rvc
-from .character import graph, voice_index
-from .pitch import model as pitch_model
+from .character import graph
 from .live import FRAME, SHORT_FRAME, REALTIME_FRAME, FAST_FRAME, BALANCED_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
+from .startup import startup
 
 MAX_BYTES = 24 * 1024 * 1024
 VoiceID = Enum('VoiceID', {key: key for key in engine.VOICES}, type=str)
@@ -30,29 +27,9 @@ class PacketMs(IntEnum):
 
 @asynccontextmanager
 async def lifespan(app):
-    started = time.perf_counter()
-    if all(local_rvc.profile(v) is not None for v in engine.VOICES):
-        # Only independent session creation / index reads are parallel. Warmup
-        # stays serial: DirectML forbids concurrent Run calls on one shared graph.
-        loads = [partial(graph, name) for name in
-                 ('gtcrn_simple', 'silero_vad_16k_op15', 'contentvec_768l12')]
-        loads += [pitch_model]
-        loads += [partial(local_rvc.graph, v) for v in engine.VOICES]
-        loads += [partial(voice_index, v) for v in engine.VOICES]
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix='model-load') as pool:
-            for result in pool.map(lambda load: load(), loads):
-                pass
-        logging.getLogger('uvicorn.error').info('Models prepared in %.2f s', time.perf_counter()-started)
-    sample = engine.decode((engine.ROOT / "assets/previews/original.wav").read_bytes())
-    warmup = np.pad(sample, (0, (-len(sample)) % SHORT_FRAME)).reshape(-1, SHORT_FRAME)
-    for voice_id in engine.VOICES:
-        voice = LiveVoice(voice_id, 1, SPEECH_LOOKAHEAD)
-        for frame in warmup:
-            if np.max(np.abs(voice.process(frame))) > .002:
-                break
-        else:
-            raise RuntimeError(f"角色模型启动自检没有检测到语音：{voice_id}")
+    # Open the port first and load models in the background; /api/health reports the progress.
     app.state.busy = asyncio.Lock()
+    startup.start()
     try:
         yield
     finally:
@@ -67,6 +44,13 @@ app.add_middleware(CORSMiddleware,
 
 @app.get("/api/health")
 def health():
+    state = startup.snapshot()
+    if state["error"]:
+        return JSONResponse({"status": "error", "version": __version__, "stage": state["stage"],
+                             "detail": f"模型加载失败：{state['error']}"}, status_code=503)
+    if not state["ready"]:
+        return {"status": "loading", "version": __version__, "stage": state["stage"],
+                "progress": state["progress"], "first_voice": state["first_voice"]}
     worker = reference.client()
     ready = worker.port is not None and worker.process is not None and worker.process.poll() is None
     profiles = {voice: local_rvc.profile(voice) for voice in engine.VOICES}
@@ -77,7 +61,8 @@ def health():
                       else "So-VITS-SVC 3.0" if voice == "taffy" else "RVC v2")
               for voice, profile in profiles.items()}
     current_engine = "Seed-VC / RVC" if ready else "RVC v2" if all(profiles.values()) else "RVC v2 / So-VITS-SVC 3.0"
-    provider = ("PyTorch CUDA" if ready else local_rvc.graph(next(voice for voice, profile in profiles.items() if profile)).get_providers()[0]
+    # ContentVec is loaded before the server reports ready, so asking it never starts a model load here.
+    provider = ("PyTorch CUDA" if ready else graph("contentvec_768l12").get_providers()[0]
                 if any(profiles.values()) else graph("taffy_svc").get_providers()[0])
     return {"status": "ok", "version": __version__, "engine": current_engine,
             "reference_engine": ready, "reference_error": reference.client().failure,
@@ -86,7 +71,8 @@ def health():
             "sample_rate": engine.RATE,
             "live_packet_ms": [80, 100, 120, 200],
             "pitch_control": True,
-            "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES}
+            "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES,
+            "voices_loading": state["pending"], "ready_seconds": state["ready_seconds"]}
 
 
 @app.get("/api/voices")
@@ -111,10 +97,13 @@ async def convert(request: Request, voice_id: VoiceID,
                   pitch_shift: Annotated[float | None, Query(ge=-24, le=24, allow_inf_nan=False)] = None,
                   pitch_offset: Annotated[float, Query(ge=-24, le=24, allow_inf_nan=False)] = 0):
     voice_id = voice_id.value
+    if not startup.ready:
+        raise HTTPException(503, "后端还在加载模型，请稍候。")
     lock = request.app.state.busy
     if lock.locked():
         raise HTTPException(429, "正在处理另一段音频，请稍后重试。")
     async with lock:
+        await run_in_threadpool(startup.ensure_voice, voice_id)
         data = bytearray()
         async for chunk in request.stream():
             if len(data) + len(chunk) > MAX_BYTES:
@@ -146,20 +135,25 @@ async def live(ws: WebSocket, voice_id: VoiceID,
         await ws.close(code=1008)
         return
     await ws.accept()
+    if not startup.ready:
+        await ws.close(code=1013, reason="Models are still loading")
+        return
     lock = ws.app.state.busy
     if lock.locked():
         await ws.close(code=1013, reason="Engine is busy")
         return
     async with lock:
+        await run_in_threadpool(startup.ensure_voice, voice_id)
         lookahead = SPEECH_LOOKAHEAD if speech_context else OVERLAP
         session = LiveVoice(voice_id, strength, lookahead, mode,
                             pitch_shift=pitch_shift, pitch_offset=pitch_offset)
+        requested_lookahead, lookahead = lookahead, session.lookahead
         frame_size = SHORT_FRAME if low_latency else FRAME
         if low_latency and session.model.reference is None:
             frame_size = {80: FAST_FRAME, 100: BALANCED_FRAME, 120: REALTIME_FRAME, 200: SHORT_FRAME}[packet_ms]
         hello = {"sample_rate": engine.RATE, "frame_samples": frame_size, "format": "s16le"}
         hello.update(pitch_shift=pitch_shift, pitch_offset=pitch_offset)
-        if speech_context:
+        if speech_context or lookahead != requested_lookahead:
             hello["lookahead_samples"] = lookahead
         await ws.send_json(hello)
         try:

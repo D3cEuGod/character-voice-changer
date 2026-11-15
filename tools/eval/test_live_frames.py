@@ -2,6 +2,7 @@
 from pathlib import Path
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -35,6 +36,32 @@ class FrameTests(unittest.TestCase):
                         self.assertEqual(len(x),len(y))
                         np.testing.assert_allclose(y,x,atol=1e-7)
                         self.assertEqual(len(voice.flush()),0)
+
+    def test_longer_role_specific_fade_preserves_all_samples(self):
+        class Protected(Identity):
+            strength=1
+            local=SimpleNamespace(stream_lookahead_ms=160,stream_crossfade_ms=40)
+        rng=np.random.default_rng(92)
+        with patch('backend.live.CharacterModel',Protected):
+            for frame in (1764,2205,2646,4410,8192):
+                for count in (0,1,2,3,12):
+                    with self.subTest(frame=frame,count=count):
+                        x=rng.uniform(-.2,.2,size=count*frame).astype(np.float32)
+                        voice=LiveVoice('tannhauser',1,2304)
+                        self.assertEqual((voice.lookahead,voice.join),(3528,882))
+                        parts=[voice.process(x[i:i+frame]) for i in range(0,len(x),frame)]
+                        parts.append(voice.flush())
+                        y=np.concatenate(parts)
+                        self.assertEqual(len(x),len(y))
+                        np.testing.assert_allclose(y,x,atol=1e-7)
+
+    def test_ordinary_profiles_keep_existing_lookahead_and_fade(self):
+        class Ordinary(Identity):
+            strength=1
+            local=SimpleNamespace(stream_lookahead_ms=0,stream_crossfade_ms=0)
+        with patch('backend.live.CharacterModel',Ordinary):
+            voice=LiveVoice('tomori',1,2304)
+            self.assertEqual((voice.lookahead,voice.join),(2304,320))
 
 
 if __name__=='__main__':

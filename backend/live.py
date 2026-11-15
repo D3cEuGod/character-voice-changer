@@ -24,8 +24,8 @@ def pcm(samples):
     return np.rint(np.clip(samples, -1, 1) * 32767).astype("<i2").tobytes()
 
 
-def blend(old, new):
-    """Crossfade two renderings of the same 14.5 ms without the level sagging in the middle.
+def blend(old, new, fade=FADE):
+    """Crossfade two renderings of the same overlap without a level dip in the middle.
 
     old and new carry SPLIT_PAD samples of context on both sides. A linear fade only keeps
     the level when both signals are identical; the vocoder's noise-like components differ
@@ -33,14 +33,15 @@ def blend(old, new):
     therefore scaled by the gain that restores its level for the correlation measured
     between the two renderings: 1 where they agree, up to sqrt(2) where they are unrelated.
     """
-    core = slice(SPLIT_PAD, SPLIT_PAD + JOIN)
-    out = np.zeros(JOIN, np.float32)
+    count=len(fade)
+    core = slice(SPLIT_PAD, SPLIT_PAD + count)
+    out = np.zeros(count, np.float32)
     old_low, new_low = np.convolve(old, SPLIT, mode="valid"), np.convolve(new, SPLIT, mode="valid")
     for a, b in ((old_low, new_low), (old[core] - old_low, new[core] - new_low)):
         power = float(np.sqrt(np.dot(a, a) * np.dot(b, b)))
         agreement = float(np.clip(np.dot(a, b) / power, 0, 1)) if power > 1e-9 else 1.0
-        gain = 1 / np.sqrt((1 - FADE)**2 + FADE**2 + 2 * FADE * (1 - FADE) * agreement)
-        out += (a * (1 - FADE) + b * FADE) * gain
+        gain = 1 / np.sqrt((1 - fade)**2 + fade**2 + 2 * fade * (1 - fade) * agreement)
+        out += (a * (1 - fade) + b * fade) * gain
     return out
 
 
@@ -48,6 +49,14 @@ class LiveVoice:
     """Keep acoustic context and a short lookahead at packet edges."""
     def __init__(self, voice_id, strength, lookahead=OVERLAP, mode="character", *, pitch_shift=None, pitch_offset=0):
         self.model = CharacterModel(voice_id, strength, mode, pitch_shift=pitch_shift, pitch_offset=pitch_offset)
+        profile=getattr(self.model,'local',None)
+        if strength and profile is not None:
+            lookahead=max(lookahead,round(profile.stream_lookahead_ms*RATE/1000))
+        crossfade=round(profile.stream_crossfade_ms*RATE/1000) if strength and profile is not None else 0
+        if crossfade:
+            lookahead=max(lookahead,crossfade+SPLIT_PAD)
+        self.join=crossfade or JOIN
+        self.fade=np.linspace(0,1,self.join,dtype=np.float32) if crossfade else FADE
         self.lookahead = lookahead
         self.history = np.zeros(self.model.context_samples, np.float32)
         self.tail = np.empty(0, np.float32)
@@ -72,19 +81,19 @@ class LiveVoice:
         shift = 0
         if self.tail.size and self.model.strength > 0:
             # SOLA: align the overlapping voiced cycles before mixing them.
-            probe = rendered[start-SEARCH:start+JOIN+SEARCH]
-            old = self.tail[:JOIN]
-            energy = np.convolve(probe**2, np.ones(JOIN, np.float32), mode="valid")
+            probe = rendered[start-SEARCH:start+self.join+SEARCH]
+            old = self.tail[:self.join]
+            energy = np.convolve(probe**2, np.ones(self.join, np.float32), mode="valid")
             scores = correlate(probe, old, mode="valid") / np.sqrt(np.maximum(energy, 1e-9))
             if np.mean(old**2) > 1e-7 and scores.max() > 0.3 * np.linalg.norm(old):
                 shift = int(scores.argmax()) - SEARCH
         result = rendered[start+shift:end+shift].copy()
         if self.tail.size and LEVEL_JOIN and self.model.strength > 0:
             first = start + shift
-            result[:JOIN] = blend(np.concatenate((self.sent, self.tail[:JOIN+SPLIT_PAD])),
-                                  rendered[first-SPLIT_PAD:first+JOIN+SPLIT_PAD])
+            result[:self.join] = blend(np.concatenate((self.sent, self.tail[:self.join+SPLIT_PAD])),
+                                      rendered[first-SPLIT_PAD:first+self.join+SPLIT_PAD],self.fade)
         elif self.tail.size:
-            result[:JOIN] = self.tail[:JOIN]*(1-FADE) + result[:JOIN]*FADE
+            result[:self.join] = self.tail[:self.join]*(1-self.fade) + result[:self.join]*self.fade
         if self.model.strength > 0:
             np.clip(result, -.99, .99, out=result)
         self.sent = result[-SPLIT_PAD:].copy()

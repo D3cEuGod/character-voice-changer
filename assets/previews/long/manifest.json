@@ -1,0 +1,22 @@
+{
+  "version": "0.5.1",
+  "pitch_preset": "auto2",
+  "packet_ms": 120,
+  "mode": "character",
+  "note": "61.2-second synthetic repeated Chinese phrase, fading endings, hum and pauses; PCM sent to VB-CABLE before hardware capture. Not the user microphone or Discord remote recording.",
+  "input_sha256": "ea3334e208ff166adfb5a1eeafda2b1b3a151271e9b1a87786607759af535683",
+  "files": [
+    {
+      "voice": "taffy",
+      "file": "taffy.wav",
+      "seconds": 61.2,
+      "sha256": "e29d48a716295cbb4d9e89ea4354c49f53360eb7bc0e93c169ee958ff57274ed"
+    },
+    {
+      "voice": "tannhauser",
+      "file": "tannhauser.wav",
+      "seconds": 61.2,
+      "sha256": "e5825f10d65f2df1e02bac4d1c6500b228538afedecdf9828017c9e5777a1a1d"
+    }
+  ]
+}

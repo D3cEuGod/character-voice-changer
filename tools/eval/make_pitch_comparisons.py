@@ -1,4 +1,4 @@
-"""Compare model-default pitch with the +4 automatic preset, without audio playback."""
+"""Compare the available pitch presets for every installed voice, without playback."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -11,7 +11,7 @@ import soundfile as sf
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from gui.backend import BackendClient, PITCH_PRESETS
+from gui.backend import BackendClient, PITCH_PRESETS,DEFAULT_PITCH_PRESET
 
 
 def main():
@@ -30,8 +30,9 @@ def main():
     manifest = {'created_utc':datetime.now(timezone.utc).isoformat(), 'backend':health,
                 'input':{'file':'input-male.wav','sha256':hashlib.sha256(original).hexdigest(),
                          'kind':'Synthetic male speech from the existing regression set; not the user microphone'},
-                'strength':1, 'mode':'character', 'packet_ms':200, 'comparisons':[]}
-    for voice in ('tomori','taffy','anon'):
+                'strength':1, 'mode':'character', 'packet_ms':200,
+                'default_pitch_preset':DEFAULT_PITCH_PRESET,'comparisons':[]}
+    for voice in (v['id'] for v in client.voices()):
         pieces, segments, position = [], [], 0
         for preset, (name, shift, offset) in PITCH_PRESETS.items():
             data = client.convert(original,'audio/wav',voice,1,pitch_preset=preset)
@@ -47,7 +48,7 @@ def main():
         manifest['comparisons'].append({'voice':voice,'file':path.name,
                                         'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
                                         'segments':segments})
-        print(f'{voice}: model / auto +4',flush=True)
+        print(f'{voice}: '+ ' / '.join(PITCH_PRESETS),flush=True)
     (args.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
 
 

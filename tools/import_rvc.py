@@ -42,13 +42,18 @@ def main():
     parser.add_argument("--index-rate", type=float, default=.75)
     parser.add_argument("--protect", type=float, default=.33)
     parser.add_argument("--speaker-id", type=int, default=0)
+    parser.add_argument('--stream-lookahead-ms',type=int,default=0,help='Optional minimum streaming lookahead')
+    parser.add_argument('--stream-crossfade-ms',type=int,default=0,help='Optional per-voice crossfade length')
+    parser.add_argument('--gate-full-rms',type=float,default=0,help='Optional per-voice speech envelope level')
     args = parser.parse_args()
     if not re.fullmatch(r'[a-z][a-z0-9_]{0,47}', args.voice):
         parser.error('Voice ID must use lowercase ASCII letters, digits or underscores')
     target_hz = args.target_hz or {"tomori": 255, "anon": 310, "taffy": 429}.get(args.voice, 300)
     shift = None if args.pitch == "auto" else float(args.pitch)
     if (not 80 <= target_hz <= 650 or not 0 <= args.index_rate <= 1
-            or not 0 <= args.protect <= .5 or shift is not None and not -24 <= shift <= 24):
+            or not 0 <= args.protect <= .5 or shift is not None and not -24 <= shift <= 24
+            or not 0 <= args.stream_lookahead_ms <= 250 or not 0 <= args.stream_crossfade_ms <= 60
+            or args.gate_full_rms != 0 and not .00005 < args.gate_full_rms <= .01):
         parser.error("Invalid pitch, index-rate or protect setting")
     python = prepare_export_environment()
     # Inspection runs separately in the existing torch environment. No globals,
@@ -96,6 +101,8 @@ def main():
              "target_hz": target_hz, "semitones": shift, "index_rate": args.index_rate,
              "protect": args.protect, "speaker_id": args.speaker_id, "export_recipe": 1,
              "rvc_revision": RVC_REV, **metadata}
+    entry.update(stream_lookahead_ms=args.stream_lookahead_ms,stream_crossfade_ms=args.stream_crossfade_ms)
+    entry['output_gate_full_rms']=args.gate_full_rms
     registry = json.loads(REGISTRY.read_text(encoding="utf-8")) if REGISTRY.exists() else {"version": 1, "voices": {}}
     registry["voices"][args.voice] = entry
     with tempfile.NamedTemporaryFile(dir=DIRECTORY, suffix=".json", delete=False, mode="w", encoding="utf-8") as stream:

@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayo
                                QPushButton, QSizePolicy, QSlider, QStackedWidget, QVBoxLayout, QWidget)
 
 from . import __version__, audio, catalog, theme
-from .backend import (CONTENT_TYPES, DEFAULT_URL, ROOT, START_SCRIPT, BackendClient, BackendError,
+from .backend import (CONTENT_TYPES, DEFAULT_URL, DEFAULT_PITCH_PRESET, ROOT, START_SCRIPT, BackendClient, BackendError,
                       BackendLauncher, stop_process_tree, PITCH_PRESETS)
 from .live import LiveMonitor
 from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCarousel,
@@ -37,7 +37,8 @@ class Config:
     script: Path = START_SCRIPT
     live_restart_packets: int = 3000
     live_packet_ms: int = 120
-    pitch_preset: str = "auto4"
+    pitch_preset: str = DEFAULT_PITCH_PRESET
+    prestarted: object = None  # 界面初始化前已经拉起的后端进程（gui.backend.start_early）
 
 
 @dataclass
@@ -70,6 +71,7 @@ class Bridge(QObject):
     """工作线程通过这些信号把结果送回界面线程。"""
 
     backend_progress = Signal(str)
+    backend_stage = Signal(object, object, object, str)  # 启动器、阶段、模型加载进度、说明
     backend_ready = Signal(object, object, bool)
     backend_failed = Signal(object, str)
     voices_loaded = Signal(object)
@@ -88,6 +90,9 @@ def _clock(seconds: float) -> str:
 
 
 class MainWindow(QWidget):
+    startup_stage = Signal(object, object, str)  # 给加载页：阶段、进度、说明
+    startup_finished = Signal(bool, str)         # 给加载页：后端和角色列表就绪，或失败原因
+
     def __init__(self, config: Config | None = None):
         super().__init__()
         self.config = config or Config()
@@ -130,6 +135,7 @@ class MainWindow(QWidget):
         self._live_stats: dict = {}
         self._live_auto_refreshes = 0
         self._closing = False
+        self._startup_reported = False
         self._last_dir = str(ROOT)
         self._avatars: dict[str, QPixmap | None] = {}
         self._avatar = self._pixmap("taffy")
@@ -273,7 +279,7 @@ class MainWindow(QWidget):
             self.pitch_combo.addItem(name, preset)
         self.pitch_combo.setCurrentIndex(self.pitch_combo.findData(self.config.pitch_preset))
         self.pitch_combo.setAccessibleName("音高")
-        self.pitch_combo.setToolTip("默认先按角色音域自动调整，再升 4 个半音；模型默认恢复原设置。")
+        self.pitch_combo.setToolTip("默认先按角色音域自动调整，再升 2 个半音；也可手动选 +4 或模型默认。")
         pitch_row.addWidget(self.pitch_combo, 1)
         card.body.addLayout(pitch_row)
         return card
@@ -476,6 +482,7 @@ class MainWindow(QWidget):
     def _wire(self) -> None:
         b = self.bridge
         b.backend_progress.connect(self._on_backend_progress)
+        b.backend_stage.connect(self._on_backend_stage)
         b.backend_ready.connect(self._on_backend_ready)
         b.backend_failed.connect(self._on_backend_failed)
         b.voices_loaded.connect(self._on_voices_loaded)
@@ -656,7 +663,10 @@ class MainWindow(QWidget):
             on_progress=lambda text: self._emit(self.bridge.backend_progress, text),
             on_ready=lambda health, started: self._emit(self.bridge.backend_ready, launcher, health, started),
             on_failed=lambda reason: self._emit(self.bridge.backend_failed, launcher, reason),
-            autostart=self.config.autostart, script=self.config.script)
+            on_stage=lambda stage, fraction, text: self._emit(self.bridge.backend_stage, launcher, stage,
+                                                               fraction, text),
+            autostart=self.config.autostart, script=self.config.script, process=self.config.prestarted)
+        self.config.prestarted = None  # 只用一次；重试时由启动器自己判断要不要再拉起
         self._launcher = launcher
         launcher.start()
 
@@ -665,6 +675,17 @@ class MainWindow(QWidget):
             self.set_status(text)
             if "启动" in text:
                 self.backend_pill.setText("后端：启动中")
+
+    def _on_backend_stage(self, launcher, stage, fraction, text: str) -> None:
+        if launcher is self._launcher:
+            self.startup_stage.emit(stage, fraction, text)
+
+    def _report_startup(self, ok: bool, message: str = "") -> None:
+        """第一次就绪时告诉加载页；失败可以重试，所以失败不算报告过。"""
+        if self._startup_reported:
+            return
+        self._startup_reported = ok
+        self.startup_finished.emit(ok, message)
 
     def _on_backend_ready(self, launcher, health: dict, started: bool) -> None:
         if launcher is not self._launcher:
@@ -698,6 +719,7 @@ class MainWindow(QWidget):
         stop_process_tree(launcher.process)
         self._set_backend(False, reason)
         self.set_status("后端没有就绪，转换和监听暂时不可用。", "error")
+        self._report_startup(False, reason)
 
     def _set_backend(self, ok: bool, reason: str = "") -> None:
         self.backend_ok = ok
@@ -718,8 +740,8 @@ class MainWindow(QWidget):
 
         def work():
             try:
-                self.client.health()
-                outcome = (True, "")
+                info = self.client.health()
+                outcome = (info.get("status") == "ok", "后端正在加载模型。")
             except BackendError as exc:
                 outcome = (False, str(exc))
             self._emit(self.bridge.health_result, *outcome)
@@ -758,6 +780,7 @@ class MainWindow(QWidget):
         self.notice.setText(f"读取角色列表失败：{message}")
         self.notice.show()
         self.set_status("读取角色列表失败。", "error")
+        self._report_startup(False, f"读取角色列表失败：{message}")
 
     def _on_voices_loaded(self, voices: list) -> None:
         self.voices = voices
@@ -778,8 +801,10 @@ class MainWindow(QWidget):
         target = self.voice_id if self.voice_id in ids else "taffy" if "taffy" in ids else ids[0]
         self.voice_id = None
         self.select_voice(target)
+        self._report_startup(True)
 
     # ---- 角色 -----------------------------------------------------------
+
     def _category_of(self, voice_id: str) -> catalog.Category | None:
         return next((c for c in self.categories if voice_id in c.voices), None)
 
