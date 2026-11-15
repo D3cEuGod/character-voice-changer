@@ -25,6 +25,8 @@ LOG = logging.getLogger("uvicorn.error")
 
 class Startup:
     def __init__(self):
+        self._busy = lambda: False
+        self._client_seen = threading.Event()  # set when a client has fetched the voice list
         self._load_lock = threading.Lock()   # one model load at a time, startup or on demand
         self._state_lock = threading.Lock()
         self._loaded: set[str] = set()
@@ -52,13 +54,24 @@ class Startup:
         wanted = os.environ.get("VOICE_WARM_FIRST", "taffy")
         return wanted if wanted in engine.VOICES else next(iter(engine.VOICES))
 
-    def start(self) -> None:
+    def start(self, busy=None) -> None:
+        """busy() is true while a conversion or live session runs; background voices wait for it."""
+        if busy is not None:
+            self._busy = busy
         threading.Thread(target=self._run, daemon=True, name="model-startup").start()
 
+    def client_ready(self) -> None:
+        """The GUI has fetched the voice list: background loading can start without delaying it."""
+        self._client_seen.set()
+
     def ensure_voice(self, voice: str) -> None:
-        """Load one voice's graph and index if the background loader has not reached it yet."""
-        if voice in self._loaded:
-            return
+        """Called before every conversion or live session: wait for a background load in progress, then
+        load this voice if the background loader has not reached it yet.
+
+        Taking the lock even for a voice that is already loaded keeps a session from starting while another
+        voice's session is being created: ONNX Runtime and FAISS hold the GIL while they load, which would
+        stall the session's audio, and a live session once failed when it overlapped a cold index load.
+        """
         with self._load_lock:
             self._load_voice(voice)
 
@@ -128,7 +141,15 @@ class Startup:
             LOG.info('VOICE_STARTUP 1.000 就绪')
             LOG.info("Startup: ready for %s after %.2f s; %d more voices load in the background",
                      first, seconds, len(others))
+            # Loading a voice holds the GIL for about a second and would delay the GUI's own health and
+            # voice-list requests right when it is about to show the main window. Give it up to 3 s first.
+            self._client_seen.wait(3.0)
             for voice in others:
+                # Creating a session holds Python's GIL for about a second, which would stall a live
+                # session's audio. Wait until the engine is idle; a voice the user picks meanwhile is
+                # loaded on demand by ensure_voice().
+                while self._busy() and voice not in self._loaded:
+                    time.sleep(0.5)
                 started = time.perf_counter()
                 with self._load_lock:
                     self._load_voice(voice)

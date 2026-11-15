@@ -20,13 +20,14 @@ SCRIPT_STAGES = {
 }
 MODELS_START = 0.35
 SERVER_CREEP_SECONDS = 3.0  # 后端导入程序库这段没有进度，按时间慢慢挪，免得看起来卡住
+MODEL_CREEP_SECONDS = 2.5   # 单个模型加载要一两秒，期间也往前挪一点（最多走完剩余的三成）
 
 
 class TaffyRunner(QWidget):
     """进度条：粉色填充往右走，Q 版塔菲在最前面拉着它跑，后面扬起一点小尘土。"""
 
     TRACK_HEIGHT = 16
-    CHIBI = 70
+    CHIBI = 96
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -58,7 +59,7 @@ class TaffyRunner(QWidget):
 
     def _track(self) -> QRectF:
         left = 10
-        right = self.width() - self.CHIBI * 0.75 - 6  # 右边留出塔菲的位置，到 100% 时她也不出框
+        right = self.width() - self.CHIBI - 12  # 右边留出塔菲的位置，到 100% 时她也不出框
         top = self.height() - self.TRACK_HEIGHT - 6
         return QRectF(left, top, max(40.0, right - left), self.TRACK_HEIGHT)
 
@@ -98,7 +99,12 @@ class TaffyRunner(QWidget):
         swing = math.sin(self._phase * 2 * math.pi)
         hop = abs(swing) * 6 if self._running else 0
         side = float(self.CHIBI)
-        body = QRectF(fill.right() + 4, track.top() - side + 8 - hop, side, side)
+        body = QRectF(fill.right() + 4, track.top() - side + 10 - hop, side, side)
+        shadow = QColor(theme.SAKURA_DEEP)
+        shadow.setAlpha(45)
+        p.setPen(Qt.NoPen)
+        p.setBrush(shadow)
+        p.drawEllipse(QPointF(body.center().x(), track.top() + 2), side * 0.28 - hop * 0.8, 4)
         hand = QPointF(body.left() + side * 0.30, body.top() + side * 0.62)
         p.setPen(QPen(QColor(theme.SAKURA_DEEP), 2.2, Qt.SolidLine, Qt.RoundCap))
         rope = QPainterPath(head)
@@ -134,10 +140,12 @@ class StartupWindow(QWidget):
         self.setObjectName("root")
         self.setWindowTitle("角色变声器")
         self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
-        self.resize(620, 360)
+        self.resize(600, 340)
         self._target = 0.0
         self._shown = 0.0
         self._server_since: float | None = None
+        self._model_since: float | None = None
+        self._last_fraction = -1.0  # 健康检查的回包可能比启动日志晚到，不让旧阶段盖掉新阶段
         self._finishing = False
         self._failed = False
         self._closing_by_code = False
@@ -201,8 +209,14 @@ class StartupWindow(QWidget):
         if self._failed or self._finishing:
             return
         if stage == "models" and fraction is not None:
+            if float(fraction) < self._last_fraction:
+                return
+            self._last_fraction = float(fraction)
             self._server_since = None
-            self._target = max(self._target, MODELS_START + (1 - MODELS_START) * float(fraction))
+            value = MODELS_START + (1 - MODELS_START) * float(fraction)
+            if value > self._target:
+                self._target = value
+                self._model_since = time.monotonic()
             self.stage.setText(f"{text}…" if fraction < 1 else "加载完成")
         elif stage in SCRIPT_STAGES:
             value, name = SCRIPT_STAGES[stage]
@@ -235,7 +249,8 @@ class StartupWindow(QWidget):
         self._failed = False
         self._finishing = False
         self._target = self._shown = 0.0
-        self._server_since = None
+        self._server_since = self._model_since = None
+        self._last_fraction = -1.0
         self.runner.set_running(True)
         self.subtitle.setText("正在准备声线，马上就好")
         self.stage.setText("正在重新连接后端…")
@@ -250,14 +265,19 @@ class StartupWindow(QWidget):
             elapsed = time.monotonic() - self._server_since
             target = max(target, SCRIPT_STAGES["server"][0]
                          + (MODELS_START - 0.02 - SCRIPT_STAGES["server"][0]) * (1 - math.exp(-elapsed / SERVER_CREEP_SECONDS)))
+        if self._model_since is not None and not self._finishing:
+            elapsed = time.monotonic() - self._model_since
+            target = max(target, self._target + (1 - self._target) * 0.3 * (1 - math.exp(-elapsed / MODEL_CREEP_SECONDS)))
         if self._shown < target:
-            self._shown = min(target, self._shown + max(0.004, (target - self._shown) * 0.12))
+            # 就绪后快速走满；平时追着目标走，不跳格
+            step = 0.05 if self._finishing else max(0.004, (target - self._shown) * 0.12)
+            self._shown = min(target, self._shown + step)
         self.runner.set_value(self._shown)
         self.percent.setText(f"{round(self._shown * 100)}%")
         if self._finishing and self._shown >= 0.999:
             self._finishing = False
             self._timer.stop()
-            QTimer.singleShot(250, self.done.emit)
+            QTimer.singleShot(150, self.done.emit)
 
     # ---- 窗口 --------------------------------------------------------------------------
     def close_for_main(self) -> None:

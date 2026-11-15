@@ -1,5 +1,10 @@
-import asyncio
-import logging
+# Start reading model files from disk before the heavy imports below; see backend/prefetch.py.
+from .prefetch import start_prefetch
+
+start_prefetch()
+
+import asyncio  # noqa: E402
+import logging  # noqa: E402
 from contextlib import asynccontextmanager
 from enum import Enum, IntEnum
 from typing import Annotated, Literal
@@ -29,7 +34,8 @@ class PacketMs(IntEnum):
 async def lifespan(app):
     # Open the port first and load models in the background; /api/health reports the progress.
     app.state.busy = asyncio.Lock()
-    startup.start()
+    # Background voices wait while a conversion or live session holds the engine (see startup.py).
+    startup.start(busy=app.state.busy.locked)
     try:
         yield
     finally:
@@ -77,6 +83,7 @@ def health():
 
 @app.get("/api/voices")
 def voices():
+    startup.client_ready()
     return [{"id": key, "name": name} for key, name in engine.VOICES.items()]
 
 
