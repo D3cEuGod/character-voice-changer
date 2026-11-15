@@ -1319,7 +1319,7 @@ class MainWindow(QWidget):
             return
         self._live_restart = True
         self.live.request_stop(abort=True)
-        self.live_title.setText("正在重新连接…")
+        self.live_title.setText("正在淡出并重启实时变声…")
 
     def _on_live_connected(self, monitor, hello: dict) -> None:
         if monitor is not self.live:

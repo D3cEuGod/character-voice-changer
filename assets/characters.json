@@ -2,12 +2,14 @@
   "_comment": "角色分类与界面美术。新增角色：头像放进 assets/，在 voices 里加一条并放进某个分类。后端 /api/voices 返回、但这里没有登记的角色会归入“其他”。",
   "categories": [
     {"id": "mygo", "name": "MyGO!!!!!", "voices": ["tomori", "anon"]},
-    {"id": "vtuber", "name": "V圈", "voices": ["taffy"]}
+    {"id": "vtuber", "name": "V圈", "voices": ["taffy"]},
+    {"id": "umamusume", "name": "赛马娘", "voices": ["tannhauser"]}
   ],
   "voices": {
     "tomori": {"color": "#5AA8D6", "accent": "#9BD0EC", "art": "mic", "avatar": "tomori-avatar.png"},
     "anon": {"color": "#EF7189", "accent": "#FFB3C1", "art": "guitar", "avatar": "anon-avatar.png"},
     "taffy": {"color": "#E9739B", "accent": "#F8C537", "art": "note", "avatar": "taffy-avatar.jpg",
-              "chibi": "taffy-chibi.png"}
+              "chibi": "taffy-chibi.png"},
+    "tannhauser": {"color": "#598FC5", "accent": "#F4C27A", "art": "note", "avatar": "tannhauser-avatar.png"}
   }
 }

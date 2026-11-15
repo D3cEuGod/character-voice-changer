@@ -58,6 +58,26 @@ class GateTests(unittest.TestCase):
         self.assertGreater(gate[-100], .99)
         self.assertEqual(len(detector.pending), 488)
 
+    def test_weak_onset_above_background_opens_early(self):
+        with patch('backend.character.graph', return_value=Probabilities([.01]*20+[.25]*4)):
+            detector = SpeechDetector()
+        detector.process(np.full(20*512,.0005,np.float32))
+        gate = detector.process(np.full(4*512,.004,np.float32))
+        self.assertGreater(gate[-1000:].mean(), .99)
+
+    def test_low_confidence_background_does_not_use_weak_onset_path(self):
+        with patch('backend.character.graph', return_value=Probabilities([.01]*20+[.25]*4)):
+            detector = SpeechDetector()
+        detector.process(np.full(20*512,.001,np.float32))
+        gate = detector.process(np.full(4*512,.001,np.float32))
+        self.assertEqual(float(gate.max()),0)
+
+    def test_residual_background_is_suppressed_after_speech(self):
+        clean=np.full(16000,.0003,np.float32)
+        activity=np.ones(16000,np.float32)
+        self.assertGreater(audio_gate(clean,activity,22050).mean(),.3)
+        self.assertEqual(float(audio_gate(clean,activity,22050,noise_rms=.00025).max()),0)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

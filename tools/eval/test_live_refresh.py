@@ -116,6 +116,14 @@ class RefreshTests(unittest.TestCase):
         _, _, stops, _ = self.run_monitor(3, stop_at=4, blocks=blocks)
         self.assertEqual(stops, [('user','')])
 
+    @patch.object(Speaker,'fade_out',create=True)
+    def test_role_switch_abort_fades_but_normal_stop_keeps_tail(self, fade):
+        self.run_monitor(0,stop_at=3,abort=True)
+        fade.assert_called_once_with()
+        fade.reset_mock()
+        self.run_monitor(0,stop_at=3)
+        fade.assert_not_called()
+
     def test_finished_monitor_has_no_callback_reference_cycle(self):
         monitor, _, _, _ = self.run_monitor(3)
         ref = weakref.ref(monitor)

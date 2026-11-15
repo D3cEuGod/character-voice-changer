@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from contextlib import asynccontextmanager
 from concurrent.futures import ThreadPoolExecutor
-from enum import IntEnum
+from enum import Enum, IntEnum
 from functools import partial
 import time
 from typing import Annotated, Literal
@@ -18,6 +18,7 @@ from .pitch import model as pitch_model
 from .live import FRAME, SHORT_FRAME, REALTIME_FRAME, FAST_FRAME, BALANCED_FRAME, OVERLAP, SPEECH_LOOKAHEAD, LiveVoice
 
 MAX_BYTES = 24 * 1024 * 1024
+VoiceID = Enum('VoiceID', {key: key for key in engine.VOICES}, type=str)
 
 
 class PacketMs(IntEnum):
@@ -104,11 +105,12 @@ def process(data, voice_id, strength, mode="character", pitch_shift=None, pitch_
     mime: {"schema": {"type": "string", "format": "binary"}}
     for mime in ("audio/wav", "audio/flac", "audio/mpeg", "audio/ogg", "application/octet-stream")
 }}})
-async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"],
+async def convert(request: Request, voice_id: VoiceID,
                   strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
                   mode: Literal["character", "call"] = "character",
                   pitch_shift: Annotated[float | None, Query(ge=-24, le=24, allow_inf_nan=False)] = None,
                   pitch_offset: Annotated[float, Query(ge=-24, le=24, allow_inf_nan=False)] = 0):
+    voice_id = voice_id.value
     lock = request.app.state.busy
     if lock.locked():
         raise HTTPException(429, "正在处理另一段音频，请稍后重试。")
@@ -132,13 +134,14 @@ async def convert(request: Request, voice_id: Literal["tomori", "taffy", "anon"]
 
 
 @app.websocket("/api/live")
-async def live(ws: WebSocket, voice_id: Literal["tomori", "taffy", "anon"],
+async def live(ws: WebSocket, voice_id: VoiceID,
                strength: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 1.0,
                low_latency: bool = False, speech_context: bool = False,
                packet_ms: PacketMs = PacketMs.standard,
                mode: Literal["character", "call"] = "character",
                pitch_shift: Annotated[float | None, Query(ge=-24, le=24, allow_inf_nan=False)] = None,
                pitch_offset: Annotated[float, Query(ge=-24, le=24, allow_inf_nan=False)] = 0):
+    voice_id = voice_id.value
     if ws.headers.get("origin") not in (None, "http://localhost:5173", "http://127.0.0.1:5173"):
         await ws.close(code=1008)
         return

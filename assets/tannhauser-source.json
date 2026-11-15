@@ -1,0 +1,12 @@
+{
+  "character": "Matikanetannhauser",
+  "display_name": "诗歌剧",
+  "page": "https://umamusume.jp/character/matikanetannhauser",
+  "avatar": {
+    "source": "https://images.microcms-assets.io/assets/973fc097984b400db8729642ddff5938/84950375528545698a56ac724cd85a46/matikanetannhauser_icon.png",
+    "file": "tannhauser-avatar.png",
+    "sha256": "426773905ae0e7818749c4d7d137dea18d0dcdd49c9cd9503e8428ac70932f6c"
+  },
+  "reference_f0_median_hz": 417.4,
+  "reference_note": "Short official speaking sample; initial calibration, not a trained-model measurement"
+}

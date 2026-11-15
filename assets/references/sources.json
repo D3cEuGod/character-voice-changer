@@ -36,5 +36,13 @@
     "end_seconds": 16,
     "processing": "Kim_Vocal_2 vocal separation, mono 22050 Hz",
     "sha256": "8de119cb553596be7c55eda44f1db1c4e72053a8389552a0711abd5db24d07cc"
+  },
+  {
+    "voice": "tannhauser",
+    "source": "https://files.microcms-assets.io/assets/973fc097984b400db8729642ddff5938/f724ae38d8e743d995a560ef7b3d7a90/matikanetannhauser_voice.mp3",
+    "source_page": "https://umamusume.jp/character/matikanetannhauser",
+    "kind": "official character voice sample, original performance",
+    "processing": "MP3 decoded to mono PCM WAV, original 48 kHz",
+    "sha256": "4a0b396945e63cbe3c075d4a692b508c5a8c42a7962fe6dd70cfcdb3ded53603"
   }
 ]

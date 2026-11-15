@@ -120,13 +120,15 @@ def export_taffy(src, weights):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(__doc__)
-    p.add_argument("voice", choices=["tomori","anon","taffy"])
+    p.add_argument("voice")
     p.add_argument("source", type=Path)
     p.add_argument("weights", type=Path)
     p.add_argument("--checkpoint", type=Path)
     p.add_argument("--output-name")
     p.add_argument("--speaker-id", type=int, default=0)
     args = p.parse_args()
+    if args.voice not in ('tomori','anon','taffy') and args.checkpoint is None:
+        p.error('Custom voices require --checkpoint')
     torch.manual_seed(0)
     torch.set_num_threads(3)
     if args.voice == "taffy" and args.checkpoint is None:

@@ -241,6 +241,9 @@ def main(argv=None) -> int:
     c.check("角色按分类显示：MyGO 一类，V圈一类", groups.get("mygo") == ("tomori", "anon")
             and groups.get("vtuber") == ("taffy",) and window.category_bar.count() == len(groups),
             "；".join(f"{cat.name}: {'、'.join(cat.voices)}" for cat in window.categories))
+    if 'tannhauser' in window.voice_names:
+        c.check('赛马娘分类包含诗歌剧',groups.get('umamusume') == ('tannhauser',)
+                and window.voice_names['tannhauser'] == '诗歌剧')
     c.check("默认分类是永雏塔菲所在的 V圈，转盘只显示这一类", window.category_id == "vtuber"
             and window.carousel.ids() == ["taffy"] and not window.carousel.left.isEnabled()
             and not window.carousel.right.isEnabled())
@@ -455,8 +458,9 @@ def main(argv=None) -> int:
     original_samples, original_rate = sf.read(str(ORIGINAL), dtype="float32")
     feeder = audio.ClipPlayer()
 
-    def feed_cable(repeats: int) -> None:
-        feeder.play(np.tile(original_samples, repeats), original_rate, cable_out)
+    def feed_cable(repeats: int, gap: float = 0) -> None:
+        clip = np.r_[original_samples,np.zeros(round(gap*original_rate),np.float32)] if gap else original_samples
+        feeder.play(np.tile(clip, repeats), original_rate, cable_out)
 
     if cable_in is None:
         c.skip("录音", "没有找到有信号的麦克风（虚拟音频线），真实录音未验证")
@@ -537,6 +541,18 @@ def main(argv=None) -> int:
                 window.convert_button.toolTip())
         shot(window, "06_live_on_air")
 
+        if 'tannhauser' in window.voice_names:
+            pick(window,'tannhauser')
+            connected = wait(lambda: window.live is not None and window.live is not first
+                             and bool(window.live.hello),10)
+            horse = window.live
+            if horse is not None:
+                monitors.append(horse)
+            c.check('实时切至诗歌剧：先淡出旧声并完整重开',connected
+                    and horse.pitch_preset == 'auto4' and 'voice_id=tannhauser' in horse.url
+                    and not first.is_alive() and not first.speaker.active
+                    and first.speaker._fade_done.is_set() and len(first.speaker.fifo) == 0)
+
         pick(window, "anon")
         wait(lambda: window.live is not None and window.live is not first and bool(window.live.hello), 8)
         second = window.live
@@ -577,7 +593,7 @@ def main(argv=None) -> int:
         # Shorten only this test's threshold; production keeps 3000 packets.
         previous_limit = window.config.live_restart_packets
         window.config.live_restart_packets = 12
-        feed_cable(4)
+        feed_cable(4, gap=.9)
         settings = (window.voice_id, window.strength_pct, window.current_mode(), window.current_pitch(),
                     window._device(window.mic_combo).name, window._device(window.out_combo).name)
         before_refreshes = window._live_auto_refreshes

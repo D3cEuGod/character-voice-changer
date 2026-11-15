@@ -328,7 +328,7 @@ def live_slack(reference_engine: bool, voice: str, mode: str, discord: bool,
     """Absorb inference and device jitter before sending audio to a virtual microphone."""
     if discord:
         if not reference_engine and "cable input" in output_name.casefold():
-            return .24
+            return .32
         return .50
     if reference_engine and voice in ("tomori", "taffy") and mode == "character":
         return .40
@@ -359,6 +359,10 @@ class SpeakerStream:
         self._waiting = True
         self._draining = False
         self._target_fill = self._slack
+        self._fade_total = 0
+        self._fade_left = 0
+        self._fade_done = threading.Event()
+        self._muted = False
         # Large shared-mode device buffers showed sample-position jumps through
         # VB-CABLE even without a PortAudio underflow; use small native transfers.
         latency = (device_latency if device_latency is not None else
@@ -380,7 +384,11 @@ class SpeakerStream:
                                            callback=self._callback)
 
     def _callback(self, outdata, frames, time_info, status):
-        if self._waiting and not self._draining and len(self.fifo) < self._target_fill:
+        if self._muted:
+            outdata.fill(0)
+            self.level = 0.0
+            return
+        if self._waiting and not self._draining and not self._fade_total and len(self.fifo) < self._target_fill:
             outdata.fill(0)
             self.level = 0.0
             return
@@ -393,6 +401,14 @@ class SpeakerStream:
             chunk[:ramp] *= np.linspace(0, 1, ramp, dtype=np.float32)
         if count < frames and ramp:
             chunk[-ramp:] *= np.linspace(1, 0, ramp, dtype=np.float32)
+        if self._fade_total:
+            gains = np.maximum(self._fade_left-1-np.arange(count), 0)/self._fade_total
+            chunk *= gains.astype(np.float32)
+            self._fade_left = max(0, self._fade_left-frames)
+            if not self._fade_left:
+                self._muted = True
+                self.fifo.read(len(self.fifo))
+                self._fade_done.set()
         if self._steam:
             outdata[:count, 0] = np.rint(np.clip(chunk, -1, 1).astype("float64") * 2147483647)
         else:
@@ -401,7 +417,7 @@ class SpeakerStream:
         if count < frames:  # 回包还没到：补静音，等下一包到了再留出余量继续
             outdata[count:] = 0
             self._waiting = True
-            if not self._draining:
+            if not self._draining and not self._fade_total:
                 self.underruns += 1
                 self.starvations += 1
                 self._target_fill = min(self._target_fill + self.rate // 16, self.rate // 2)
@@ -410,7 +426,21 @@ class SpeakerStream:
             self.device_underflows += 1
 
     def write(self, samples: np.ndarray) -> None:
-        self.fifo.write(samples)
+        if not self._muted:
+            self.fifo.write(samples)
+
+    def fade_out(self, seconds: float = .02) -> None:
+        """Fade queued speech before an intentional switch, then discard its tail."""
+        if not self.active:
+            return
+        self._fade_left = max(1, round(seconds*self.rate))
+        self._fade_total = self._fade_left
+        if self._fade_done.wait(seconds+self.latency+.1):
+            # The callback filled a fading buffer; WASAPI has not necessarily
+            # played it yet. stop() drains that native queue before abort/close.
+            stream = self._stream
+            if stream is not None:
+                stream.stop()
 
     def begin_drain(self) -> None:
         self._draining = True

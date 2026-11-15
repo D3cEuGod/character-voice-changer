@@ -6,6 +6,7 @@ Only tensor checkpoints accepted by torch.load(weights_only=True) are loaded.
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -28,8 +29,11 @@ def digest(path):
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(__doc__)
-    parser.add_argument("--voice", choices=("tomori", "taffy", "anon"), required=True)
+    parser.add_argument("--voice", required=True, help="Stable lowercase voice ID, e.g. tannhauser")
+    parser.add_argument("--name", help="Display name for a newly installed voice")
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--index", type=Path, required=True)
     parser.add_argument("--source", default="User-provided RVC model")
@@ -39,7 +43,9 @@ def main():
     parser.add_argument("--protect", type=float, default=.33)
     parser.add_argument("--speaker-id", type=int, default=0)
     args = parser.parse_args()
-    target_hz = args.target_hz or {"tomori": 255, "anon": 310, "taffy": 429}[args.voice]
+    if not re.fullmatch(r'[a-z][a-z0-9_]{0,47}', args.voice):
+        parser.error('Voice ID must use lowercase ASCII letters, digits or underscores')
+    target_hz = args.target_hz or {"tomori": 255, "anon": 310, "taffy": 429}.get(args.voice, 300)
     shift = None if args.pitch == "auto" else float(args.pitch)
     if (not 80 <= target_hz <= 650 or not 0 <= args.index_rate <= 1
             or not 0 <= args.protect <= .5 or shift is not None and not -24 <= shift <= 24):
@@ -83,7 +89,7 @@ def main():
                                "noise": np.zeros((1, 192, 100), np.float32)})[0]
     if output.size != metadata["sample_rate"] or not np.isfinite(output).all():
         raise ValueError("The exported model failed its one-second inference check")
-    entry = {"label": args.checkpoint.stem,
+    entry = {"label": args.name or args.checkpoint.stem, "display_name": args.name or args.checkpoint.stem,
              "graph": graph_path.relative_to(DIRECTORY).as_posix(), "graph_sha256": digest(graph_path),
              "index": index_path.relative_to(DIRECTORY).as_posix(), "index_sha256": digest(index_path),
              "weights_sha256": weight_hash, "source": args.source, "sample_rate": metadata["sample_rate"],

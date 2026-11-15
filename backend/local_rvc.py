@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from functools import lru_cache
 import json
+import re
 from pathlib import Path
 
 from tools.model_integrity import verified
@@ -10,6 +11,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 DIRECTORY = ROOT / "models/local-rvc"
 REGISTRY = DIRECTORY / "profiles.json"
+
+
+def installed_voices():
+    """Only installed custom speakers become API choices on this computer."""
+    if not REGISTRY.exists():
+        return {}
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    if registry.get('version') != 1:
+        raise ValueError('Unsupported local RVC registry version')
+    return {key: str(value.get('display_name') or value.get('label') or key)
+            for key, value in registry.get('voices', {}).items()
+            if re.fullmatch(r'[a-z][a-z0-9_]{0,47}', key)}
 
 
 @dataclass(frozen=True)
@@ -34,7 +47,7 @@ def verified_file(relative, expected):
     return path
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=None)
 def profile(voice):
     if not REGISTRY.exists():
         return None
@@ -57,7 +70,7 @@ def profile(voice):
                    None if shift is None else float(shift), ratio, protect, data.get("source", "user model"))
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=None)
 def graph(voice):
     from .engine import load_graph
     return load_graph(profile(voice).graph)

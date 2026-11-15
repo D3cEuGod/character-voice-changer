@@ -2,11 +2,11 @@
 
 A local, real-time voice changer for Windows that turns your microphone into an anime character's voice and sends it to Discord.
 
-Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app converts your speech on your own GPU. VB-CABLE uses 120 ms packets; Steam and file conversion retain 200 ms packets. It can also convert recorded or imported audio files. Conversion runs locally.
+Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya or Matikanetannhauser, speak normally, and the app converts your speech on your own GPU. VB-CABLE uses 120 ms packets; Steam and file conversion retain 200 ms packets. It can also convert recorded or imported audio files. Conversion runs locally.
 
 ## Key Features
 
-- Three dedicated RVC v2 40k voices, with matched retrieval indexes and RMVPE pitch extraction
+- Four installed RVC v2 voices (40k / 48k), with matched retrieval indexes and RMVPE pitch extraction
 - Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
 - Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE and a session refresh every 3,000 packets
 - Discord output through a virtual microphone (Steam Streaming Microphone or VB-CABLE), or local monitoring
@@ -14,9 +14,9 @@ Pick Tomori Takamatsu, Ace Taffy or Anon Chihaya, speak normally, and the app co
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself; unchanged model checks and compatible optimized graphs are cached locally
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
-- Characters grouped by franchise (MyGO!!!!!, VTubers), switched with a carousel; new characters are added in `assets/characters.json`
+- Characters grouped by franchise (MyGO!!!!!, VTubers, Umamusume), switched with a carousel; custom RVC IDs and display names are supported by the importer and API
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.4.3
+- Versioned releases with a changelog; current internal beta is 0.5.0
 
 ## Tech Stack
 
@@ -45,7 +45,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="docs/images/live-taffy.png" alt="Main window with Taffy selected" width="100%" />
+      <img src="docs/images/main-window.png" alt="Main window with Taffy selected" width="100%" />
       <br />
       <sub>
         <strong>EN:</strong> Main window on a white background with pink accents. Categories, the character carousel and strength on the left, one large switch on the right. Chibi Taffy sits next to the title.<br />
@@ -79,15 +79,22 @@ All images are captures of the running app on Windows 11, taken while the self-c
       </sub>
     </td>
   </tr>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/images/voice-tannhauser.jpg" alt="Umamusume category with Matikanetannhauser selected" width="78%" />
+      <br />
+      <sub>赛马娘分类中的诗歌剧：独立的 48k RVC 模型、官方头像与角色原声，默认自动音域再 +4。</sub>
+    </td>
+  </tr>
 </table>
 
 ## Chinese Notes / 中文说明
 
-一个在本机运行的角色变声器。选择高松灯、永雏塔菲或千早爱音，对着麦克风说话，变声后的声音发给 Discord，也可以转换录音和音频文件。
+一个在本机运行的角色变声器。选择高松灯、永雏塔菲、千早爱音或赛马娘的诗歌剧，对着麦克风说话，变声后的声音发给 Discord，也可以转换录音和音频文件。
 
 ## Latest 安装说明
 
-当前版本：`0.4.3`（内测版）
+当前版本：`0.5.0`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -97,7 +104,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，三位角色的实际音频预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
-三位角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
+所有已安装角色都可以切换处理方式。新 RVC 模型的默认“音色优先”采用 0.75 检索比例、0.33 清音特征混合；“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15，以保留更多原始发音特征。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名，避免把兼容声线误认为已安装的新模型。
 
 ### 音高 +4 试用与试听
 
@@ -119,6 +126,9 @@ All images are captures of the running app on Windows 11, taken while the self-c
 | 高松灯 | `deng.pth` / 40k RVC v2 | 用户提供的教程模型与配套索引 |
 | 永雏塔菲 | `mygf-tf.pth` / 40k RVC v2 | 用户提供的 `Ai塔菲.zip` |
 | 千早爱音 | `Anon_v2.pth` / 40k RVC v2 | Wanlau 的 BanG Dream 对白模型及配套索引 |
+| 诗歌剧 | `uma-Matikane_Tannhauser.pth` / 48k RVC v2 | 用户提供的 `诗歌剧.zip` 与配套 v2 索引 |
+
+0.5.0 新增“赛马娘”分类，诗歌剧有官方头像和角色原声按钮，同样默认自动音域再 +4。初始自动目标音域 417.4 Hz 来自约 3 秒官方语音的基频中位数，仅作初始校准。当前版本的四份音色优先示例已重新生成：[灯](assets/previews/tomori.wav)、[塔菲](assets/previews/taffy.wav)、[爱音](assets/previews/anon.wav)、[诗歌剧](assets/previews/tannhauser.wav)；均使用同一段合成中文输入、自动再 +4，文件转换不代表实时延迟。参数和校验值见[试听清单](assets/previews/manifest.json)。
 
 ### 导入模型与迁移电脑
 
@@ -130,6 +140,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 .venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320
 .venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429
 .venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310
+.venv\Scripts\python.exe tools\import_rvc.py --voice tannhauser --name "诗歌剧" --checkpoint "D:\模型\uma-Matikane_Tannhauser.pth" --index "D:\模型\added_IVF1310_Flat_nprobe_1_uma-Matikane_Tannhauser_v2.index" --target-hz 417.4
 ```
 
 导入器使用 `torch.load(weights_only=True)`，验证 RVC v2 / f0 架构、已填充的 768 维索引、说话人编号和完整一秒输出，通过后才更新角色配置。导入后重启后端和界面。`--pitch 12` 可使用固定半音移调，默认按目标音域自动调整。`.index` 应与该权重配套，不能把别的角色索引混用。
@@ -173,7 +184,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 ## 当前状态
 
-0.4.3 改善轻声门控，调整自动刷新收尾并补测刷新后的实际虚拟麦克风音频；保留三个女性角色的自动音域再 +4 默认值、启动缓存和 120 ms VB-CABLE 包长。结果与限制见 [0.4.3 记录](notes/soft-speech-refresh-0.4.3.md)。音色评测见 [模型评测记录](notes/reference-engine-evaluation.md)，延迟改动见 [0.2.1 测试记录](notes/latency-0.2.1.md)，启动与实验包长见 [0.4.0 测试记录](notes/realtime-refresh-startup-0.4.0.md)。
+0.5.0 新增诗歌剧，并针对轻声句首、句尾滋滋声和切角色时的爆音继续调整：连续 48 Hz 高通、随背景残余电平调整的输出门控、背景之上弱句首的提前识别；切换时先淡出、排空旧设备缓冲，再完整重开实时会话。VB-CABLE 的目标播放缓冲由 240 ms 改为 320 ms，给偶发慢回包留余量，保留 120 ms 包长。四条声线各约 40.8 秒的最后一轮回录均无断流，整段和最后有声秒波形相关性为 1.00000，本机测得约 0.66～0.69 秒；不含手机和 Discord 额外延迟。尚未完整复现用户的持续滋滋声，也未完成小时级通话测试，不能保证完全消失。结果、失败轮与限制见 [0.5.0 记录](notes/poetry-edges-0.5.0.md)。
 
 **参考音来源更正：** 0.1.0 / 0.1.1 的灯和爱音参考音来自第三方应用，实际上是 MiMo 合成语音，并非动画原始配音。以前把它们称为“角色日语对白”不准确，相应的相似度数字不能代表与真实角色的相似度。0.2.0 改用动画官方角色 CM 的原始表演并分离配乐，塔菲改用可追溯的直播说话片段，旧引擎的音色向量也已重新生成。
 
@@ -293,7 +304,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 | `GET /api/voices` | 数组，每条记录包含 `id` 和中文 `name` |
 | `POST /api/convert?voice_id=taffy&strength=1` | 请求体直接放音频文件字节。成功返回 `audio/wav`，22,050 Hz 单声道 PCM16 |
 
-`voice_id` 取 `tomori`、`taffy`、`anon`；`strength` 范围 0 到 1。三位角色都支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
+`voice_id` 以 `GET /api/voices` 为准；本机有 `tomori`、`taffy`、`anon`、`tannhauser`。额外角色导入后重启后端即可成为可用选项，未安装的角色不显示，非法 ID 返回 422。`strength` 范围 0 到 1。所有角色支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
 RVC 音高参数同样适用于两个接口：GUI 当前默认发送 `pitch_offset=4`，在模型配置调整之后再升 4 半音。低层接口仍支持通用 `pitch_shift` 固定移调，便于已有客户端和导入配置继续工作；不再提供专门的原声 +4 预设。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
 
@@ -345,6 +356,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 | 高松灯、千早爱音的头像 | 从动画《BanG Dream! It's MyGO!!!!!》官网的角色立绘裁出，版权归原权利方所有。[角色页](https://anime.bang-dream.com/mygo/character/) |
 | 永雏塔菲的头像 | 账号的公开头像。[账号主页](https://space.bilibili.com/1265680561) |
 | Q 版永雏塔菲 | 游戏《盲盒派对》联动角色“王牌发明家”的 Q 版形象，取自该游戏的 BWIKI 文件页，版权归原权利方所有。[角色页](https://wiki.biligame.com/gachaparty/?curid=378) |
+| 诗歌剧模型、头像与原声 | 模型来自用户的 `诗歌剧.zip`，训练数据未核实；头像与短语音为 [Cygames 官方角色页](https://umamusume.jp/character/matikanetannhauser) 提供的素材，来源与校验值见 `assets/tannhauser-source.json`，版权归原权利方所有 |
 | 试听示例 | `assets/previews/original.wav` 是 Windows 中文合成语音，其余由本后端转换。界面从 0.3.0 起不再播放它们，保留给评测和自检 |
 | 算法与模型 | [RVC](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) · [OpenVoice](https://github.com/myshell-ai/OpenVoice) · [GTCRN](https://github.com/Xiaobin-Rong/gtcrn) · [Silero VAD](https://github.com/snakers4/silero-vad)。各模型的下载地址和校验值在 `setup_models.py` |
 

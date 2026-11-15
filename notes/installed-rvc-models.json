@@ -69,8 +69,33 @@
       "index_vectors": 37690,
       "index_dimension": 768,
       "provided_archive": "Ai塔菲.zip"
+    },
+    "tannhauser": {
+      "label": "诗歌剧",
+      "display_name": "诗歌剧",
+      "graph": "tannhauser-305ca8238d2d/voice.onnx",
+      "graph_sha256": "086e1d2c7eef8e720687df0fc6e1a5d5868edff4832ba86bf03712514ce6b1d8",
+      "index": "tannhauser-305ca8238d2d/voice.index",
+      "index_sha256": "93907fce2fcb38a218a5dc66feb45720c9d4d09300bc31f6e035ab7389fc0bae",
+      "weights_sha256": "305ca8238d2d8cecdcf19812f4c85c1c622e8a190af0199ee05d2b1b83d94cd2",
+      "source": "User-provided 诗歌剧.zip",
+      "sample_rate": 48000,
+      "target_hz": 417.4,
+      "semitones": null,
+      "index_rate": 0.75,
+      "protect": 0.33,
+      "speaker_id": 0,
+      "export_recipe": 1,
+      "rvc_revision": "d60cd3d009b7e438f92f8624fa89b710d10c6a39",
+      "version": "v2",
+      "f0": 1,
+      "speakers": 109,
+      "index_vectors": 51121,
+      "index_dimension": 768,
+      "provided_archive": "诗歌剧.zip",
+      "archive_sha256": "689da05c59827a5241ad38aa4d32d97ef74d6fe3b34cbc658c5263dc714027a6"
     }
   },
-  "recorded_date": "2026-11-13",
+  "recorded_date": "2026-11-15",
   "description": "Installed local RVC models; weights and indexes are stored outside Git history."
 }

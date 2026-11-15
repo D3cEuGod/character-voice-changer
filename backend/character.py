@@ -34,6 +34,7 @@ WINDOW = np.sqrt(hann(512, sym=False)).astype(np.float32)
 MASK = np.ones((1, 16080), dtype=np.int64)
 LATENT = np.zeros((1, 192, 100), dtype=np.float32)
 CONSONANT_BAND = butter(3, 1700, btype="highpass", fs=RATE, output="sos")
+INPUT_HIGHPASS = butter(5, 48, btype="highpass", fs=16000, output="sos")
 
 
 @lru_cache(maxsize=None)
@@ -41,7 +42,7 @@ def graph(name):
     return load_graph(name + ".onnx", gpu=name not in ("gtcrn_simple", "silero_vad_16k_op15"))
 
 
-@lru_cache(maxsize=3)
+@lru_cache(maxsize=None)
 def voice_index(name):
     local = local_rvc.profile(name)
     path = local.index if local is not None else ROOT / "models" / (name + ".index")
@@ -69,6 +70,7 @@ class SpeechDetector:
         self.history = np.zeros(history_samples, np.float32)
         self.speech_history = np.zeros(history_samples, np.float32)
         self.speaking = False
+        self.noise_power = .001**2
 
     def process(self, samples):
         data = np.concatenate((self.pending, samples))
@@ -83,7 +85,12 @@ class SpeechDetector:
             levels[i:i+512] = probability.item()
             # A probability is confidence, not an audio volume control. Open on
             # speech, then keep quieter syllables until confidence really falls.
-            self.speaking = probability.item() >= (.12 if self.speaking else .35)
+            confidence = probability.item()
+            power = float(np.mean(block**2))
+            if confidence < .1 and not self.speaking:
+                self.noise_power = .95*self.noise_power + .05*power
+            weak_onset = confidence >= .20 and power > 4*self.noise_power
+            self.speaking = confidence >= .12 if self.speaking else confidence >= .35 or weak_onset
             speech[i:i+512] = float(self.speaking)
             self.context = block[-64:]
         self.pending = data[consumed:]
@@ -107,14 +114,25 @@ class StreamingDenoiser:
         self.history = np.zeros(history_samples, np.float32)
         self.source_count = 0
         self.detector = SpeechDetector(history_samples)
+        self.highpass_state = np.zeros((len(INPUT_HIGHPASS), 2))
+        self.input_history = np.zeros(history_samples, np.float32)
+        self.noise_power = 0.0
+
+    @property
+    def noise_rms(self):
+        return np.sqrt(self.noise_power)
 
     def process(self, window, count):
         previous = round(self.source_count * 16000 / RATE)
         self.source_count += count
         new_count = round(self.source_count * 16000 / RATE) - previous
         audio = resample_poly(window, 320, 441)
-        activity = self.detector.process(audio[-new_count:])
-        data = np.concatenate((self.pending, audio[-new_count:]))
+        fresh, self.highpass_state = sosfilt(INPUT_HIGHPASS, audio[-new_count:], zi=self.highpass_state)
+        fresh = fresh.astype(np.float32)
+        self.input_history = np.concatenate((self.input_history, fresh))[-len(self.input_history):]
+        audio = self.input_history
+        activity = self.detector.process(fresh)
+        data = np.concatenate((self.pending, fresh))
         consumed = len(data) // 256 * 256
         clean = np.empty(consumed, np.float32)
         for i in range(0, consumed, 256):
@@ -129,10 +147,13 @@ class StreamingDenoiser:
             self.previous, self.overlap = hop, block[256:]
         self.pending = data[consumed:]
         self.history = np.concatenate((self.history, clean))[-len(self.history):]
-        # The converter withholds 46 ms at the right edge. The unresolved
+        # The realtime converter withholds 104 ms at the right edge. The unresolved
         # 16–32 ms here is lookahead only and is never emitted as speech.
         lookahead = 256 + len(self.pending)
         clean = np.concatenate((self.history[lookahead:], audio[-lookahead:] * activity[-lookahead:]))
+        background = clean[activity < .005]
+        if background.size >= 512:
+            self.noise_power = .8*self.noise_power + .2*float(np.mean(background**2))
         return clean, activity
 
 
@@ -147,11 +168,13 @@ def pitch_track(audio):
     return padded
 
 
-def audio_gate(clean, activity, samples):
+def audio_gate(clean, activity, samples, noise_rms=0):
     rms = np.sqrt(np.maximum(uniform_filter1d(clean**2, 480), 0))
     # GTCRN already removes background noise. The old full-gain threshold
     # (.00175 RMS) erased quiet consonants even after VAD accepted the speech.
-    gate = np.clip((rms - 0.00005) / 0.0006, 0, 1) * activity
+    floor = max(.00005, 1.8*noise_rms)
+    full = max(.00065, 4*noise_rms)
+    gate = np.clip((rms-floor)/(full-floor), 0, 1) * activity
     return np.interp(np.arange(samples)*16000/RATE, np.arange(len(clean)), gate)
 
 
@@ -195,7 +218,7 @@ class CharacterModel:
             wet = np.zeros_like(window)
             # Leave headroom for the level-preserving packet crossfade.
             wet[reference.OUTPUT_START:reference.OUTPUT_START+reference.OUTPUT_SAMPLES] = .7 * rendered
-            wet *= audio_gate(clean, activity, len(window))
+            wet *= audio_gate(clean, activity, len(window), self.denoiser.noise_rms)
             dry = resample_poly(clean, 441, 320)
             return np.clip(self.strength*wet + (1-self.strength)*dry, -.99, .99)
         f0 = rmvpe_pitch(clean) if self.fidelity or self.local is not None else pitch_track(clean)
@@ -242,7 +265,7 @@ class CharacterModel:
         wet = resample_poly(generated, RATE // g, rate // g)
         # Prevent the vocoder from inventing hiss during pauses. Follow the
         # denoised amplitude envelope while preserving soft, unvoiced consonants.
-        gate = audio_gate(clean, activity, RATE)
+        gate = audio_gate(clean, activity, RATE, self.denoiser.noise_rms)
         wet *= gate
         if self.local is not None:
             dry = resample_poly(clean, 441, 320)

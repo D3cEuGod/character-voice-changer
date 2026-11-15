@@ -17,6 +17,8 @@ TONE_WINDOW = hann(1024, sym=False).astype("float32")
 TONE_CONTEXT = 8192
 MAX_SECONDS = 60
 VOICES = {"tomori": "高松灯", "taffy": "永雏塔菲", "anon": "千早爱音"}
+from .local_rvc import installed_voices
+VOICES.update({key: name for key, name in installed_voices().items() if key not in VOICES})
 
 
 class AudioError(ValueError):

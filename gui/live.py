@@ -113,6 +113,11 @@ class LiveMonitor(threading.Thread):
         except Exception as exc:  # 不让意外错误留下占用中的设备
             kind, message = "error", f"监听出错：{type(exc).__name__}: {exc}"
         finally:
+            if self._abort and hasattr(self.speaker, 'fade_out'):
+                try:
+                    self.speaker.fade_out()
+                except Exception:
+                    pass
             for closer in (getattr(ws, "close", None), self.mic.close, self.speaker.close):
                 if closer is not None:
                     try:

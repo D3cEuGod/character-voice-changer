@@ -1,0 +1,639 @@
+{
+  "baseline": "9f1a4bc",
+  "offline_context": "Synthetic male m2, 120ms packets, auto4; tannhauser preliminary target 300Hz for both offline conditions, final installed target 417.4Hz from official short voice sample",
+  "offline": {
+    "before": [
+      {
+        "input": "long",
+        "voice": "tomori",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.727247416973114,
+        "p95_ms": 73.0871650026529
+      },
+      {
+        "input": "long",
+        "voice": "taffy",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.716515302658081,
+        "p95_ms": 60.55803000635932
+      },
+      {
+        "input": "long",
+        "voice": "anon",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.6403956413269043,
+        "p95_ms": 81.66254999814554
+      },
+      {
+        "input": "long",
+        "voice": "tannhauser",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7506377696990967,
+        "p95_ms": 71.03598001122009
+      },
+      {
+        "input": "soft",
+        "voice": "tomori",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7129647135734558,
+        "p95_ms": 68.55298000155017
+      },
+      {
+        "input": "soft",
+        "voice": "taffy",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.6950938105583191,
+        "p95_ms": 60.943050001515076
+      },
+      {
+        "input": "soft",
+        "voice": "anon",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.5691437125205994,
+        "p95_ms": 101.92621999885884
+      },
+      {
+        "input": "soft",
+        "voice": "tannhauser",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7550280690193176,
+        "p95_ms": 66.34651000495069
+      }
+    ],
+    "after": [
+      {
+        "input": "long",
+        "voice": "tomori",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7259599566459656,
+        "p95_ms": 64.81413000437897
+      },
+      {
+        "input": "long",
+        "voice": "taffy",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7248014211654663,
+        "p95_ms": 61.50597999367164
+      },
+      {
+        "input": "long",
+        "voice": "anon",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.6208736896514893,
+        "p95_ms": 76.32416000706144
+      },
+      {
+        "input": "long",
+        "voice": "tannhauser",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7602644562721252,
+        "p95_ms": 67.09769499429966
+      },
+      {
+        "input": "soft",
+        "voice": "tomori",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7016198039054871,
+        "p95_ms": 57.83141998690552
+      },
+      {
+        "input": "soft",
+        "voice": "taffy",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.6997026205062866,
+        "p95_ms": 61.29256999702192
+      },
+      {
+        "input": "soft",
+        "voice": "anon",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.5677140355110168,
+        "p95_ms": 75.4993300040951
+      },
+      {
+        "input": "soft",
+        "voice": "tannhauser",
+        "tail_rms": 0.0,
+        "pause_rms": 0.0,
+        "tail_high_rms": 0.0,
+        "peak": 0.7602484822273254,
+        "p95_ms": 63.39686001010704
+      }
+    ]
+  },
+  "asr": [
+    {
+      "version": "before",
+      "file": "soft-anon.wav",
+      "text": "你大天能听清楚我说话吧我刚换了了一个新的麦克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 4,
+      "chars": 22
+    },
+    {
+      "version": "before",
+      "file": "soft-taffy.wav",
+      "text": "你那天能听清楚我说话吗我刚坏了一个新的麦克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 2,
+      "chars": 22
+    },
+    {
+      "version": "before",
+      "file": "soft-tannhauser.wav",
+      "text": "你那边能听清楚我说话吧我根换了一个新的麦克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 2,
+      "chars": 22
+    },
+    {
+      "version": "before",
+      "file": "soft-tomori.wav",
+      "text": "你那边能听清楚我说话吧我刚换了一个新的耐克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 2,
+      "chars": 22
+    },
+    {
+      "version": "after",
+      "file": "soft-anon.wav",
+      "text": "你那天能听清楚我说话吧我刚换了一个新的麦克东",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 3,
+      "chars": 22
+    },
+    {
+      "version": "after",
+      "file": "soft-taffy.wav",
+      "text": "你那天能听清楚我说话吗我刚换了一个新的麦克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 1,
+      "chars": 22
+    },
+    {
+      "version": "after",
+      "file": "soft-tannhauser.wav",
+      "text": "你那天能听清楚我说话吗我刚换了一个新的麦克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 1,
+      "chars": 22
+    },
+    {
+      "version": "after",
+      "file": "soft-tomori.wav",
+      "text": "你那边能听清楚我说话吧我刚换了一个新的耐克风",
+      "truth": "你那边能听清楚我说话吗我刚换了一个新的麦克风",
+      "errors": 2,
+      "chars": 22
+    }
+  ],
+  "noise": [
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "tomori",
+      "onset_rms": 0.015007254667580128,
+      "pause_rms": 0.0,
+      "output_rms": 0.008150584995746613,
+      "peak": 0.14171865582466125,
+      "clipped_pct": 0.0,
+      "elapsed": 3.74
+    },
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "taffy",
+      "onset_rms": 0.019388310611248016,
+      "pause_rms": 0.0,
+      "output_rms": 0.00891356822103262,
+      "peak": 0.3171500563621521,
+      "clipped_pct": 0.0,
+      "elapsed": 2.05
+    },
+    {
+      "input": "fan",
+      "version": "before",
+      "voice": "anon",
+      "onset_rms": 0.02759844809770584,
+      "pause_rms": 0.0,
+      "output_rms": 0.010880166664719582,
+      "peak": 0.29810574650764465,
+      "clipped_pct": 0.0,
+      "elapsed": 2.47
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "tomori",
+      "onset_rms": 0.010601315647363663,
+      "pause_rms": 0.0,
+      "output_rms": 0.0075539187528193,
+      "peak": 0.12373750656843185,
+      "clipped_pct": 0.0,
+      "elapsed": 1.15
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "taffy",
+      "onset_rms": 0.018345804885029793,
+      "pause_rms": 0.0,
+      "output_rms": 0.007959334179759026,
+      "peak": 0.27424320578575134,
+      "clipped_pct": 0.0,
+      "elapsed": 1.17
+    },
+    {
+      "input": "fan",
+      "version": "after",
+      "voice": "anon",
+      "onset_rms": 0.03305189311504364,
+      "pause_rms": 0.0,
+      "output_rms": 0.012381237000226974,
+      "peak": 0.36983054876327515,
+      "clipped_pct": 0.0,
+      "elapsed": 1.52
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "tomori",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.64
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "taffy",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.66
+    },
+    {
+      "input": "keyboard",
+      "version": "before",
+      "voice": "anon",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.65
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "tomori",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.68
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "taffy",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.61
+    },
+    {
+      "input": "keyboard",
+      "version": "after",
+      "voice": "anon",
+      "onset_rms": 0.0,
+      "pause_rms": 0.0,
+      "output_rms": 0.0,
+      "peak": 0.0,
+      "clipped_pct": 0.0,
+      "elapsed": 0.61
+    }
+  ],
+  "loopback_240": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.0",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tomori",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 0.44647,
+        "signal_delay_s": 0.671,
+        "worst_voiced_second_correlation": -0.55494,
+        "last_voiced_second_correlation": -0.00301,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 66.0,
+        "max_ms": 182.2,
+        "starvations": 1,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.24,
+        "device_latency_s": 0.03,
+        "underruns": 1,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "taffy",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 1.0,
+        "signal_delay_s": 0.659,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0099,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 68.9,
+        "max_ms": 99.0,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.24,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 0.82339,
+        "signal_delay_s": 0.665,
+        "worst_voiced_second_correlation": -0.16116,
+        "last_voiced_second_correlation": -0.05803,
+        "capture_prefix_s": -0.0199,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 93.7,
+        "max_ms": 146.1,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.24,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tannhauser",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 0.94304,
+        "signal_delay_s": 0.671,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0099,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 77.7,
+        "max_ms": 112.6,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.24,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "loopback_320": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.0",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tomori",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 1.0,
+        "signal_delay_s": 0.689,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0198,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 63.6,
+        "max_ms": 104.9,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "anon",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 1.0,
+        "signal_delay_s": 0.662,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0099,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 86.5,
+        "max_ms": 92.8,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      },
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "tannhauser",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 1.0,
+        "signal_delay_s": 0.672,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0099,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 82.2,
+        "max_ms": 143.0,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  },
+  "loopback_320_taffy": {
+    "health": {
+      "status": "ok",
+      "version": "0.5.0",
+      "engine": "RVC v2",
+      "reference_engine": false,
+      "reference_error": "",
+      "reference_voices": [],
+      "voice_models": {
+        "tomori": "deng · RVC v2 40k",
+        "taffy": "mygf-tf · RVC v2 40k",
+        "anon": "Anon_v2 · RVC v2 40k",
+        "tannhauser": "诗歌剧 · RVC v2 48k"
+      },
+      "provider": "DmlExecutionProvider",
+      "sample_rate": 22050,
+      "live_packet_ms": [
+        80,
+        100,
+        120,
+        200
+      ],
+      "pitch_control": true,
+      "max_seconds": 60,
+      "max_bytes": 25165824
+    },
+    "sender": "CABLE Input (VB-Audio Virtual Cable)",
+    "receiver": "CABLE Output (VB-Audio Virtual Cable)",
+    "tests": [
+      {
+        "input": ".run\\edges-050-after\\long-input.wav",
+        "voice": "taffy",
+        "mode": "character",
+        "repeat": 2,
+        "correlation": 1.0,
+        "signal_delay_s": 0.664,
+        "worst_voiced_second_correlation": 1.0,
+        "last_voiced_second_correlation": 1.0,
+        "capture_prefix_s": -0.0098,
+        "capture_overflows": 0,
+        "input_rate": 48000,
+        "frame_samples": 2646,
+        "p95_ms": 63.5,
+        "max_ms": 100.8,
+        "starvations": 0,
+        "device_underflows": 0,
+        "fifo_dropped": 0,
+        "playback_slack_s": 0.32,
+        "device_latency_s": 0.03,
+        "underruns": 0,
+        "full_scale_pct": 0.0,
+        "audio_present": true
+      }
+    ]
+  }
+}

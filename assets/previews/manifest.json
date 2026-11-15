@@ -1,8 +1,8 @@
 {
-  "created_utc": "2026-11-13T05:33:02.450563+00:00",
+  "created_utc": "2026-11-15T01:42:37.978780+00:00",
   "backend": {
     "status": "ok",
-    "version": "0.2.0",
+    "version": "0.5.0",
     "engine": "RVC v2",
     "reference_engine": false,
     "reference_error": "",
@@ -10,56 +10,80 @@
     "voice_models": {
       "tomori": "deng · RVC v2 40k",
       "taffy": "mygf-tf · RVC v2 40k",
-      "anon": "Anon_v2 · RVC v2 40k"
+      "anon": "Anon_v2 · RVC v2 40k",
+      "tannhauser": "诗歌剧 · RVC v2 48k"
     },
     "provider": "DmlExecutionProvider",
     "sample_rate": 22050,
+    "live_packet_ms": [
+      80,
+      100,
+      120,
+      200
+    ],
+    "pitch_control": true,
     "max_seconds": 60,
     "max_bytes": 25165824
   },
   "input_sha256": "5736f4639d2ec5d1190e4e86d3f2b58d6aca09db30efe72f572ddfe1e0b8fc4d",
+  "pitch_preset": "auto4",
+  "note": "Existing synthetic Chinese input; file conversion, not real-time delay or the user microphone",
   "files": [
     {
       "file": "tomori.wav",
       "voice": "tomori",
       "mode": "character",
       "model": "deng · RVC v2 40k",
-      "sha256": "131444817567510bd7e79fdaf7bb957ae28b8143c467113ac934113f4700915c"
+      "sha256": "501a8c38c380890d0569073ce4637ec3e205cfaac84ddcd3f5afbb8e8d2157e0"
     },
     {
       "file": "tomori-call.wav",
       "voice": "tomori",
       "mode": "call",
       "model": "deng · RVC v2 40k",
-      "sha256": "0d04991641274862292140091c8c173a4b20e006c4dbe1a445c6450f3c0fe647"
+      "sha256": "1bbaf4bb1f7e294b98b45416ad13b8feb7ca0a55efe067dad563401b15d0918f"
     },
     {
       "file": "taffy.wav",
       "voice": "taffy",
       "mode": "character",
       "model": "mygf-tf · RVC v2 40k",
-      "sha256": "84adcc09d4b713e2d9800d70e5fd606a3563234a2c19e64cb1111dfd1c1c64b3"
+      "sha256": "b3fb05cfc07c54af101bbc594ea45c4f0fa25b804ffdf520b6d8f017bd580bfd"
     },
     {
       "file": "taffy-call.wav",
       "voice": "taffy",
       "mode": "call",
       "model": "mygf-tf · RVC v2 40k",
-      "sha256": "f873712a4b06f526c737b3eb605adadcc289ceb9800eab949065d6475945c8e5"
+      "sha256": "ceae1076bc10624a25635a7dfa51b8098a314554bec08a384d643f7cbaf7f225"
     },
     {
       "file": "anon.wav",
       "voice": "anon",
       "mode": "character",
       "model": "Anon_v2 · RVC v2 40k",
-      "sha256": "53debd779999f0057c5fef00df645239d2e4495e173e2d2e2555a138b3bc9b13"
+      "sha256": "b5fa66cd757c889f426a2df48de02fcf6ce35358bfa5a016e347cc4f6de6c6e4"
     },
     {
       "file": "anon-call.wav",
       "voice": "anon",
       "mode": "call",
       "model": "Anon_v2 · RVC v2 40k",
-      "sha256": "08e71fecbb0fd5ee523d3300d59393e934e708596777e8fcc8242580fdc3949b"
+      "sha256": "a0a2dd3117f08723fae34395ed55ecbc4485bb0d5b3976c18ff3e7e66d649bb9"
+    },
+    {
+      "file": "tannhauser.wav",
+      "voice": "tannhauser",
+      "mode": "character",
+      "model": "诗歌剧 · RVC v2 48k",
+      "sha256": "9dd6a219bbfd2afaf50bd21311a8e0ddd5c2b85d1af41fcde0fad9b859bcef28"
+    },
+    {
+      "file": "tannhauser-call.wav",
+      "voice": "tannhauser",
+      "mode": "call",
+      "model": "诗歌剧 · RVC v2 48k",
+      "sha256": "c960e95378a2cb919d7b63c032227012250da2d3cd2f58741c3a420742ce8b79"
     }
   ]
 }

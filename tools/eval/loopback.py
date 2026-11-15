@@ -38,7 +38,7 @@ class FileMic:
 
 
 def test(client, path, voice, mode, sender, receiver, output, repeat,
-         slack_override=None, device_latency=None, packet_ms=200, input_rate=22050):
+         slack_override=None, device_latency=None, packet_ms=200, input_rate=22050, pitch_preset='model'):
     signal, rate = sf.read(path, dtype="float32", always_2d=True)
     signal = np.tile(soxr.resample(signal.mean(axis=1), rate, input_rate), repeat)
     mic = FileMic(input_rate)
@@ -67,7 +67,7 @@ def test(client, path, voice, mode, sender, receiver, output, repeat,
 
     speaker.write = tee
     ready = threading.Event()
-    url = client.live_url(voice, 1, mode, packet_ms=packet_ms)
+    url = client.live_url(voice, 1, mode, packet_ms=packet_ms, pitch_preset=pitch_preset)
     monitor = LiveMonitor(url, mic, speaker,
                           lambda hello: ready.set(), ticks.append, lambda *args: stops.append(args))
     capture_rate = 48000
@@ -105,12 +105,21 @@ def test(client, path, voice, mode, sender, receiver, output, repeat,
     lag = int(correlation.argmax())
     norm = np.linalg.norm(sent.astype(np.float64))*np.linalg.norm(heard.astype(np.float64))
     agreement = float(np.clip(correlation[lag]/max(norm, 1e-12), -1., 1.))
+    segments = []
+    for offset in range(0,len(sent)-capture_rate+1,capture_rate//2):
+        expected_part = sent[offset:offset+capture_rate].astype(np.float64)
+        heard_part = heard[lag+offset:lag+offset+capture_rate].astype(np.float64)
+        if len(heard_part) == capture_rate and np.sqrt(np.mean(expected_part**2)) > .005:
+            denominator = np.linalg.norm(expected_part)*np.linalg.norm(heard_part)
+            segments.append(float(np.dot(expected_part,heard_part)/max(denominator,1e-12)))
     name = f"{path.stem}-{voice}-{mode}"
     sf.write(output / f"{name}-received.wav", heard, capture_rate)
     sf.write(output / f"{name}-sent.wav", sent, capture_rate)
     (output / f"{name}-trace.json").write_text(json.dumps(ticks), encoding="utf-8")
     return {"input": str(path), "voice": voice, "mode": mode, "repeat": repeat,
             "correlation": round(agreement, 5), "signal_delay_s": round(lag/capture_rate-capture_prefix, 3),
+            "worst_voiced_second_correlation": round(min(segments),5) if segments else None,
+            "last_voiced_second_correlation": round(segments[-1],5) if segments else None,
             "capture_prefix_s": round(capture_prefix, 4), "capture_overflows": len(capture_overflows),
             "input_rate": input_rate, "frame_samples": monitor.hello["frame_samples"],
             "p95_ms": round(float(np.percentile([tick["last_ms"] for tick in ticks], 95)), 1),
@@ -134,6 +143,7 @@ def main():
     parser.add_argument("--packet-ms", type=int, choices=(80, 100, 120, 200), default=200)
     parser.add_argument("--input-rate", type=int, default=22050)
     parser.add_argument("--backend-url", default="http://127.0.0.1:8765")
+    parser.add_argument("--pitch-preset", choices=('model','auto4'), default='model')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     pair = discord_pair(list_devices("input"), list_devices("output"))
@@ -144,7 +154,7 @@ def main():
     for path in args.inputs:
         for voice in args.voices:
             row = test(client, path, voice, args.mode, *pair, args.output, args.repeat,
-                       args.slack, args.device_latency, args.packet_ms, args.input_rate)
+                       args.slack, args.device_latency, args.packet_ms, args.input_rate, args.pitch_preset)
             results["tests"].append(row)
             print(json.dumps(row), flush=True)
     (args.output / "metrics.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
