@@ -166,6 +166,8 @@ Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=se
 
 想把入口放到任务栏：运行一次 `powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1`，右键生成的“角色变声器”快捷方式，在“显示更多选项”里选“固定到任务栏”。
 
+项目搬家后任务栏头像变空白时，运行 `powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1 -RepairPinned`。它会备份并更新已有的同名、同应用 ID 固定入口，让头像和启动目录指向当前位置；不会新增固定入口，也不需要重启资源管理器。
+
 ### 在 Discord 里用
 
 1. 在界面底部的“麦克风”里选原声输入。如果用手机，通过 WO Mic 接入时这里选 `Microphone (WO Mic Device)`；WO Mic Client 保持已连接，并取消“设置 → 本地播放”。

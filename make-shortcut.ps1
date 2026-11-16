@@ -5,7 +5,8 @@
 # Keep this file ASCII: Windows PowerShell 5.1 reads scripts without a BOM in the ANSI code page.
 param(
     [string]$Name = ([string][char]0x89D2 + [char]0x8272 + [char]0x53D8 + [char]0x58F0 + [char]0x5668),
-    [string]$AppId = 'LocalVoiceChanger.Gui'
+    [string]$AppId = 'LocalVoiceChanger.Gui',
+    [switch]$RepairPinned
 )
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -106,3 +107,29 @@ if (-not (Test-Path -LiteralPath $icon)) { throw "icon not found: $icon" }
 [VoiceGui.Shortcut]::Create($lnk, $cmd, '/d /c ".\start-gui.cmd"', $root, $icon, $Name, $AppId)
 "created: $lnk"
 "app id:  $([VoiceGui.Shortcut]::ReadAppId($lnk))"
+
+# Moving the project does not update Windows' separate copy of a taskbar pin.
+# Repair an existing pin only; this never pins the app or changes unrelated pins.
+if ($RepairPinned) {
+    $pinned = Join-Path $env:APPDATA ('Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\' + $Name + '.lnk')
+    if (Test-Path -LiteralPath $pinned) {
+        if ([VoiceGui.Shortcut]::ReadAppId($pinned) -ne $AppId) {
+            throw 'The existing taskbar shortcut has a different app ID; leaving it unchanged.'
+        }
+        $backup = Join-Path $root ('.run\shortcut-backup-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        New-Item -ItemType Directory -Path $backup -Force | Out-Null
+        Copy-Item -LiteralPath $pinned -Destination $backup
+        Copy-Item -LiteralPath $lnk -Destination $pinned -Force
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class VoiceShortcutNotify {
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    public static extern void SHChangeNotify(uint change, uint flags, string item, IntPtr other);
+}
+"@
+        [VoiceShortcutNotify]::SHChangeNotify(0x2000, 0x1005, $pinned, [IntPtr]::Zero)
+        [VoiceShortcutNotify]::SHChangeNotify(0x08000000, 0, $null, [IntPtr]::Zero)
+        "repaired existing taskbar shortcut: $pinned"
+    }
+}
