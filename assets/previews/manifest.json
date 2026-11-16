@@ -1,8 +1,8 @@
 {
-  "created_utc": "2026-11-15T21:09:44.329685+00:00",
+  "created_utc": "2026-11-16T00:49:00.351360+00:00",
   "backend": {
     "status": "ok",
-    "version": "0.5.1",
+    "version": "0.5.3",
     "engine": "RVC v2",
     "reference_engine": false,
     "reference_error": "",
@@ -25,7 +25,7 @@
     "max_seconds": 60,
     "max_bytes": 25165824,
     "voices_loading": [],
-    "ready_seconds": 4.56
+    "ready_seconds": 7.69
   },
   "input_sha256": "5736f4639d2ec5d1190e4e86d3f2b58d6aca09db30efe72f572ddfe1e0b8fc4d",
   "pitch_preset": "auto2",
@@ -36,56 +36,56 @@
       "voice": "tomori",
       "mode": "character",
       "model": "deng · RVC v2 40k",
-      "sha256": "fbe41518b9d89c5bd3d9ac469dc43640cbfdda11bbaf65ba57888904abbf2adf"
+      "sha256": "7623f4ed32dc2622cef7b83413e40d3e0aa3c94173f22d44b33affee083b682f"
     },
     {
       "file": "tomori-call.wav",
       "voice": "tomori",
       "mode": "call",
       "model": "deng · RVC v2 40k",
-      "sha256": "a56c1e0ee49f52c9c2ec7b3f22df87bd1c9fa452b5a56aaca6cede5fdb92e99f"
+      "sha256": "567192b26cc7afbcedba771f762af0982de15e379f90998cb5546bf0c0cb80a1"
     },
     {
       "file": "taffy.wav",
       "voice": "taffy",
       "mode": "character",
       "model": "mygf-tf · RVC v2 40k",
-      "sha256": "1719496efa51cade0fd50735cebde9dfcd4cfa0d718348df9b9cc2461e94bb36"
+      "sha256": "a11b925e11b8da96832fad7ff9028b6083ca7dd62f4b0fb75166c34ad917763b"
     },
     {
       "file": "taffy-call.wav",
       "voice": "taffy",
       "mode": "call",
       "model": "mygf-tf · RVC v2 40k",
-      "sha256": "5476efa0ffff7a401b58b6d191e724c53d7918cf750a0819ff802952a86aac22"
+      "sha256": "6606cbdad812aa52b4e83e1df7aa5462fd4dc509ea7c82deb050ab5d6205601a"
     },
     {
       "file": "anon.wav",
       "voice": "anon",
       "mode": "character",
       "model": "Anon_v2 · RVC v2 40k",
-      "sha256": "ac1aa6101680d07dbf6898cf5c480ec8c928522e3337aa037e5b849f103f586e"
+      "sha256": "09413c0af95c984bcdbce0402f552e30fe683688b51eb43c745e4d695bf86c16"
     },
     {
       "file": "anon-call.wav",
       "voice": "anon",
       "mode": "call",
       "model": "Anon_v2 · RVC v2 40k",
-      "sha256": "212b7545c07e9cb8f4281a7460bc035a880569d0327ea1e32905bbcea04dc27e"
+      "sha256": "657577c5a23dd257799584f29deb13a752d7096befeead6c4bc945c8a569428a"
     },
     {
       "file": "tannhauser.wav",
       "voice": "tannhauser",
       "mode": "character",
       "model": "诗歌剧 · RVC v2 48k",
-      "sha256": "b8a77ed9dc22b69616b50d44046c9338d34bab2f75bb9de2c55a021e47a8d3de"
+      "sha256": "cd92446fb7f81594cd7b152ca2027361c98fdbdabc5758d881788e3d4f8ffe05"
     },
     {
       "file": "tannhauser-call.wav",
       "voice": "tannhauser",
       "mode": "call",
       "model": "诗歌剧 · RVC v2 48k",
-      "sha256": "554f83269ad4aabcb0dad3660a728b70c398c4df937c9240e21e6b4d4f8e5dab"
+      "sha256": "b2d079a445b32917b54b44aabac4e6fd94fadcf588ca4d9080fd07598f02c393"
     }
   ]
 }

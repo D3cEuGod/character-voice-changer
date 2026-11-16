@@ -1,0 +1,88 @@
+0.5.3 final code: 58 distinct tests; the expanded noise suite repeats four tests.
+
+Source: .run/unit-053-core-final.log
+D:\Projects\character-voice-changer\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+test_adjacent_windows_keep_the_same_overlap (tools.eval.test_rvc_noise.NoiseTests.test_adjacent_windows_keep_the_same_overlap) ... ok
+test_native_distribution_and_shape (tools.eval.test_rvc_noise.NoiseTests.test_native_distribution_and_shape) ... ok
+test_noise_is_independent_of_packet_partitioning (tools.eval.test_rvc_noise.NoiseTests.test_noise_is_independent_of_packet_partitioning) ... ok
+test_reset_sessions_have_private_noise_and_silence_keeps_clock (tools.eval.test_rvc_noise.NoiseTests.test_reset_sessions_have_private_noise_and_silence_keeps_clock) ... ok
+test_changing_packet_sizes_preserve_phase_and_sample_count (tools.eval.test_input_resample.ResampleTests.test_changing_packet_sizes_preserve_phase_and_sample_count) ... ok
+test_denoiser_consumes_guard_inside_existing_lookahead (tools.eval.test_input_resample.ResampleTests.test_denoiser_consumes_guard_inside_existing_lookahead) ... ok
+test_fixed_and_fractional_packets_match_continuous_reference (tools.eval.test_input_resample.ResampleTests.test_fixed_and_fractional_packets_match_continuous_reference) ... ok
+test_retrieval_preserves_voiced_and_unvoiced_protection (tools.eval.test_rvc_features.FeatureTests.test_retrieval_preserves_voiced_and_unvoiced_protection) ... ok
+test_startup_does_not_read_unused_large_index (tools.eval.test_rvc_features.FeatureTests.test_startup_does_not_read_unused_large_index) ... ok
+test_zero_ratio_keeps_features_and_never_searches (tools.eval.test_rvc_features.FeatureTests.test_zero_ratio_keeps_features_and_never_searches) ... ok
+test_on_demand_voice_finishes_background_wait_without_waiting_for_call_end (tools.eval.test_startup_idle.IdleTests.test_on_demand_voice_finishes_background_wait_without_waiting_for_call_end) ... ok
+test_session_becoming_busy_while_loader_waits_defers_loading (tools.eval.test_startup_idle.IdleTests.test_session_becoming_busy_while_loader_waits_defers_loading) ... ok
+test_accepted_soft_audio_is_not_muted_by_second_volume_gate (tools.eval.test_speech_gate.GateTests.test_accepted_soft_audio_is_not_muted_by_second_volume_gate) ... ok
+test_background_does_not_open_gate (tools.eval.test_speech_gate.GateTests.test_background_does_not_open_gate) ... ok
+test_boundaries_retain_consonants_but_close_in_long_pause (tools.eval.test_speech_gate.GateTests.test_boundaries_retain_consonants_but_close_in_long_pause) ... ok
+test_low_confidence_background_does_not_use_weak_onset_path (tools.eval.test_speech_gate.GateTests.test_low_confidence_background_does_not_use_weak_onset_path) ... ok
+test_pending_partial_vad_block_does_not_lose_onset (tools.eval.test_speech_gate.GateTests.test_pending_partial_vad_block_does_not_lose_onset) ... ok
+test_quiet_speech_opens_without_turning_confidence_into_volume (tools.eval.test_speech_gate.GateTests.test_quiet_speech_opens_without_turning_confidence_into_volume) ... ok
+test_residual_background_is_suppressed_after_speech (tools.eval.test_speech_gate.GateTests.test_residual_background_is_suppressed_after_speech) ... ok
+test_soft_ending_preset_preserves_speech_but_keeps_silence_zero (tools.eval.test_speech_gate.GateTests.test_soft_ending_preset_preserves_speech_but_keeps_silence_zero) ... ok
+test_soft_syllables_after_speech_are_retained (tools.eval.test_speech_gate.GateTests.test_soft_syllables_after_speech_are_retained) ... ok
+test_weak_onset_above_background_opens_early (tools.eval.test_speech_gate.GateTests.test_weak_onset_above_background_opens_early) ... ok
+test_client_presets_encode_the_two_different_operations (tools.eval.test_pitch_controls.PitchTests.test_client_presets_encode_the_two_different_operations) ... ok
+test_existing_automatic_mapping_is_unchanged (tools.eval.test_pitch_controls.PitchTests.test_existing_automatic_mapping_is_unchanged) ... ok
+test_fixed_four_replaces_automatic_mapping (tools.eval.test_pitch_controls.PitchTests.test_fixed_four_replaces_automatic_mapping) ... ok
+test_new_default_adds_two_without_replacing_automatic_register (tools.eval.test_pitch_controls.PitchTests.test_new_default_adds_two_without_replacing_automatic_register) ... ok
+test_offset_four_adds_to_automatic_mapping (tools.eval.test_pitch_controls.PitchTests.test_offset_four_adds_to_automatic_mapping) ... ok
+test_pitch_strength_and_safety_ceiling (tools.eval.test_pitch_controls.PitchTests.test_pitch_strength_and_safety_ceiling) ... ok
+test_zero_shift_overrides_automatic_pitch_and_keeps_unvoiced_zero (tools.eval.test_pitch_controls.PitchTests.test_zero_shift_overrides_automatic_pitch_and_keeps_unvoiced_zero) ... ok
+test_longer_role_specific_fade_preserves_all_samples (tools.eval.test_live_frames.FrameTests.test_longer_role_specific_fade_preserves_all_samples) ... ok
+test_no_audio_lost_or_duplicated_at_any_startup_length (tools.eval.test_live_frames.FrameTests.test_no_audio_lost_or_duplicated_at_any_startup_length) ... ok
+test_ordinary_profiles_keep_existing_lookahead_and_fade (tools.eval.test_live_frames.FrameTests.test_ordinary_profiles_keep_existing_lookahead_and_fade) ... ok
+test_only_valid_installed_ids_are_exposed (tools.eval.test_voice_registry.RegistryTests.test_only_valid_installed_ids_are_exposed) ... ok
+test_voice_api_includes_installed_horse (tools.eval.test_voice_registry.RegistryTests.test_voice_api_includes_installed_horse) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 0.526s
+
+OK
+
+
+Source: .run/unit-053-gui-final.log
+test_closed_device_wrappers_release_callback_cycles (tools.eval.test_live_refresh.RefreshTests.test_closed_device_wrappers_release_callback_cycles) ... ok
+test_disabled_refresh_keeps_normal_stop (tools.eval.test_live_refresh.RefreshTests.test_disabled_refresh_keeps_normal_stop) ... ok
+test_error_during_finish_does_not_restart_forever (tools.eval.test_live_refresh.RefreshTests.test_error_during_finish_does_not_restart_forever) ... ok
+test_exact_boundary_and_complete_tail (tools.eval.test_live_refresh.RefreshTests.test_exact_boundary_and_complete_tail) ... ok
+test_exit_during_device_settle_cancels_pending_restart (tools.eval.test_live_refresh.RefreshTests.test_exit_during_device_settle_cancels_pending_restart) ... ok
+test_finished_monitor_has_no_callback_reference_cycle (tools.eval.test_live_refresh.RefreshTests.test_finished_monitor_has_no_callback_reference_cycle) ... ok
+test_gui_manual_voice_change_still_restarts (tools.eval.test_live_refresh.RefreshTests.test_gui_manual_voice_change_still_restarts) ... ok
+test_gui_refresh_waits_for_device_release (tools.eval.test_live_refresh.RefreshTests.test_gui_refresh_waits_for_device_release) ... ok
+test_gui_stale_callback_cannot_restart_new_session (tools.eval.test_live_refresh.RefreshTests.test_gui_stale_callback_cannot_restart_new_session) ... ok
+test_gui_stop_or_exit_prevents_restart (tools.eval.test_live_refresh.RefreshTests.test_gui_stop_or_exit_prevents_restart) ... ok
+test_limit_does_not_cut_utterance_and_waits_for_pause (tools.eval.test_live_refresh.RefreshTests.test_limit_does_not_cut_utterance_and_waits_for_pause) ... ok
+test_manual_stop_at_boundary_cancels_restart (tools.eval.test_live_refresh.RefreshTests.test_manual_stop_at_boundary_cancels_restart) ... ok
+test_old_worker_must_finish_before_reopen (tools.eval.test_live_refresh.RefreshTests.test_old_worker_must_finish_before_reopen) ... ok
+test_production_thresholds (tools.eval.test_live_refresh.RefreshTests.test_production_thresholds) ... ok
+test_role_switch_abort_fades_but_normal_stop_keeps_tail (tools.eval.test_live_refresh.RefreshTests.test_role_switch_abort_fades_but_normal_stop_keeps_tail) ... ok
+test_stop_during_device_settle_cancels_pending_restart (tools.eval.test_live_refresh.RefreshTests.test_stop_during_device_settle_cancels_pending_restart) ... ok
+test_user_can_stop_while_refresh_waits_for_pause (tools.eval.test_live_refresh.RefreshTests.test_user_can_stop_while_refresh_waits_for_pause) ... ok
+test_empty_queue_during_switch_finishes_with_silence (tools.eval.test_switch_fade.FadeTests.test_empty_queue_during_switch_finishes_with_silence) ... ok
+test_switch_fades_across_callbacks_then_discards_old_queue (tools.eval.test_switch_fade.FadeTests.test_switch_fades_across_callbacks_then_discards_old_queue) ... ok
+test_closed_port_fails_quickly (tools.eval.test_backend_probe.ProbeTests.test_closed_port_fails_quickly) ... ok
+test_existing_failed_server_does_not_spawn_duplicate_backend (tools.eval.test_backend_probe.ProbeTests.test_existing_failed_server_does_not_spawn_duplicate_backend) ... ok
+test_existing_loading_server_reports_progress_without_second_process (tools.eval.test_backend_probe.ProbeTests.test_existing_loading_server_reports_progress_without_second_process) ... ok
+test_slow_http_response_is_not_mistaken_for_dead_backend (tools.eval.test_backend_probe.ProbeTests.test_slow_http_response_is_not_mistaken_for_dead_backend) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 1.910s
+
+OK
+
+
+Source: .run/noise-unit-final.log
+test_adjacent_windows_keep_the_same_overlap (tools.eval.test_rvc_noise.NoiseTests.test_adjacent_windows_keep_the_same_overlap) ... ok
+test_gated_packets_advance_model_clock_without_running_vocoder (tools.eval.test_rvc_noise.NoiseTests.test_gated_packets_advance_model_clock_without_running_vocoder) ... ok
+test_native_distribution_and_shape (tools.eval.test_rvc_noise.NoiseTests.test_native_distribution_and_shape) ... ok
+test_noise_is_independent_of_packet_partitioning (tools.eval.test_rvc_noise.NoiseTests.test_noise_is_independent_of_packet_partitioning) ... ok
+test_reset_sessions_have_private_noise_and_silence_keeps_clock (tools.eval.test_rvc_noise.NoiseTests.test_reset_sessions_have_private_noise_and_silence_keeps_clock) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.015s
+
+OK

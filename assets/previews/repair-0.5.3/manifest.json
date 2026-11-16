@@ -1,0 +1,51 @@
+{
+  "version": "0.5.3",
+  "created_utc": "2026-11-16T00:45:06.719723+00:00",
+  "pitch_preset": "auto2",
+  "packet_ms": 120,
+  "note": "Synthetic weak-edge speech. Before=zero latent; after=native-scale rolling Gaussian. Same role settings and input. NSF excitation is stochastic in both. No user microphone or Discord recording.",
+  "files": [
+    {
+      "voice": "anon",
+      "file": "anon-ab.wav",
+      "segments": [
+        {
+          "variant": "zero",
+          "start_s": 0.0,
+          "end_s": 12.8,
+          "audition_gain": 0.30147817730903625,
+          "latent_std": 0
+        },
+        {
+          "variant": "native",
+          "start_s": 13.6,
+          "end_s": 26.4,
+          "audition_gain": 0.30261752009391785,
+          "latent_std": 0.66666
+        }
+      ],
+      "sha256": "b7526c88c2311a731f55ecdfd2fe0537ff89247fb604a8ef3bc466a2ebf6007d"
+    },
+    {
+      "voice": "tomori",
+      "file": "tomori-ab.wav",
+      "segments": [
+        {
+          "variant": "zero",
+          "start_s": 0.0,
+          "end_s": 12.8,
+          "audition_gain": 0.3022434413433075,
+          "latent_std": 0
+        },
+        {
+          "variant": "native",
+          "start_s": 13.6,
+          "end_s": 26.4,
+          "audition_gain": 0.30128592252731323,
+          "latent_std": 0.66666
+        }
+      ],
+      "sha256": "9294cfb17fa8550b3c35299434c4418734951943b07c6da902bb109b83a56754"
+    }
+  ]
+}

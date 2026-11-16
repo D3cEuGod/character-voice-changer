@@ -16,7 +16,7 @@ Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya or Matikanetannhauser, speak norm
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers, Umamusume), switched with a carousel; custom RVC IDs and display names are supported by the importer and API
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.5.1
+- Versioned releases with a changelog; current internal beta is 0.5.3
 
 ## Tech Stack
 
@@ -94,7 +94,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.5.1`（内测版）
+当前版本：`0.5.3`（内测版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
@@ -104,7 +104,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，首个角色的真实语音预热与其他角色的生成器预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
-所有已安装角色都可以切换处理方式。灯、塔菲和爱音的“音色优先”采用 0.75 检索比例、0.33 清音特征混合；诗歌剧单独使用 0.4 / 0.1，减少检索对发音的干扰。“通话清晰”将检索比例降到最多 0.5，清音混合比例降到最多 0.15。两档均使用 RMVPE，不再串接 OpenVoice 或混回输入者的有声波形。头像下会显示实际模型名。
+所有已安装角色都可以切换处理方式。0.5.3 针对爱音电音与吞音的反馈，关闭爱音的检索索引混合，继续使用 `Anon_v2` 权重生成声音；两档处理方式在这条声线上相同。灯的检索比例 / 清音保护改为 0.5 / 0.15，塔菲保留 0.75 / 0.33，诗歌剧保留 0.4 / 0.1。“通话清晰”将混合比例限制到最多 0.5 / 0.15。均使用 RMVPE，不串接 OpenVoice 或混回输入者的有声波形。灯与爱音恢复约 14.5 ms 的短接缝；四位仍默认自动音域再 +2。对照与限制见 [0.5.3 记录](notes/clarity-regression-0.5.3.md)。
 
 0.5.1 的启动页显示检查与模型加载进度，Q 版塔菲拉着进度条往前跑。首个角色准备好后进入主界面，其余角色在后台加载并预热独立生成器；第一次切到尚未准备好的角色仍需要等待。后台不会并发调用正在通话使用的共享特征 / 音高模型。
 
@@ -139,6 +139,10 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ### 导入模型与迁移电脑
 
+本轮修正还恢复了原版 RVC 的内部随机采样，并让重叠窗口共用同一段采样上下文；之前误用全零输入会影响合成的自然度。同时修复按包重采样的边缘和相位问题，默认缓冲不增加。用户认为新一轮对照比上一轮好，剩余电音仍需真实通话确认。
+
+有 [爱音 A/B](assets/previews/repair-0.5.3/anon-ab.wav) 和 [灯 A/B](assets/previews/repair-0.5.3/tomori-ab.wav)：前段全零采样，后段恢复原版采样，均为默认 +2、相同合成弱音输入与相同角色参数。它们用于辅助听感，不代表真实 Discord 远端质量。
+
 本机活动项目已迁到 `D:\Projects\character-voice-changer`，模型、环境和缓存一起保留；从该目录双击 `start-gui.cmd`。原 C 盘目录的同名脚本会转到 D 盘，旧副本作为迁移备份保留，尚未释放其占用的 C 盘空间。迁移校验和启动时间见 [0.5.1 记录](notes/audio-followup-0.5.1.md)。
 
 大权重不放进 Git。迁移本机这套声线时，把整个 `models/local-rvc/` 文件夹一并复制到新电脑的项目目录；其中的配置使用相对路径，并校验推理图与索引。只克隆源码不会自动获得网盘里的用户模型。
@@ -146,9 +150,9 @@ All images are captures of the running app on Windows 11, taken while the self-c
 也可以在后端环境已准备好后分别导入自己的权重与索引：
 
 ```powershell
-.venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320 --stream-crossfade-ms 40
+.venv\Scripts\python.exe tools\import_rvc.py --voice tomori --checkpoint "D:\模型\deng.pth" --index "D:\模型\deng.index" --target-hz 320 --index-rate .5 --protect .15
 .venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429 --stream-crossfade-ms 40 --gate-full-rms .00045
-.venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310 --stream-crossfade-ms 40
+.venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310 --index-rate 0
 .venv\Scripts\python.exe tools\import_rvc.py --voice tannhauser --name "诗歌剧" --checkpoint "D:\模型\uma-Matikane_Tannhauser.pth" --index "D:\模型\added_IVF1310_Flat_nprobe_1_uma-Matikane_Tannhauser_v2.index" --target-hz 417.4 --stream-crossfade-ms 40 --index-rate .4 --protect .1 --stream-lookahead-ms 160
 ```
 
@@ -276,10 +280,10 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 
 一包音频经过的步骤：
 
-1. GTCRN 连续降噪，Silero VAD 判断是否在说话。
+1. 按连续采样网格重采样，GTCRN 连续降噪，Silero VAD 判断是否在说话。
 2. RMVPE 跟踪音高，按所选档位使用固定半音、原有角色目标音域，或在模型设置后再升调。
-3. ContentVec 第 12 层提取 768 维发音特征，检索本角色索引的 8 个近邻，以距离平方的倒数加权。
-4. 在特征域保护清辅音，再由本角色的 RVC v2 模型生成波形。100% 强度时不会把说话人的原始有声波形混回来，也不会再经过另一个音色转换模型。
+3. ContentVec 第 12 层提取 768 维发音特征。启用检索的角色查询配套索引的 8 个近邻，以距离平方的倒数加权；爱音默认跳过检索。
+4. 在特征域保护清辅音，再由本角色的 RVC v2 模型生成波形，使用原版尺度的随机采样并复用窗口重叠部分。100% 强度时不会把说话人的原始有声波形混回来，也不会再经过另一个音色转换模型。
 5. 语音门控、SOLA 对齐、分频交叉淡化与最终限幅，再发送有 104 毫秒前瞻的音频。
 
 没有导入本地角色模型时仍可使用原来的兼容声线，界面会显示实际模型名。原兼容路径和可选 Seed-VC 的历史取舍见决策记录。

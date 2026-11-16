@@ -1,8 +1,8 @@
 {
-  "created_utc": "2026-11-15T21:09:55.134738+00:00",
+  "created_utc": "2026-11-16T00:49:22.773975+00:00",
   "backend": {
     "status": "ok",
-    "version": "0.5.1",
+    "version": "0.5.3",
     "engine": "RVC v2",
     "reference_engine": false,
     "reference_error": "",
@@ -25,7 +25,7 @@
     "max_seconds": 60,
     "max_bytes": 25165824,
     "voices_loading": [],
-    "ready_seconds": 4.56
+    "ready_seconds": 7.69
   },
   "input": {
     "file": "input-male.wav",
@@ -40,7 +40,7 @@
     {
       "voice": "tomori",
       "file": "tomori.wav",
-      "sha256": "36e05a34747e271453fe3c4cc587d85e3f37c19c29ff0120b604d749e10c6756",
+      "sha256": "ab97948be195c53df4c85e74ac8b5f9451591f19d20542e4dab9e66935d04029",
       "segments": [
         {
           "preset": "model",
@@ -49,7 +49,7 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "b3c1da0dbdfbb04c1e2cbb666dc8c819b351aa7c66197ffb30ecd751911ce630"
+          "result_sha256": "237a3a81394c44b18461a4daf6cf88dec3c7f3aaf0f654af52c90b89dd7718a1"
         },
         {
           "preset": "auto2",
@@ -58,7 +58,7 @@
           "pitch_offset": 2,
           "start_s": 5.862,
           "end_s": 11.124,
-          "result_sha256": "2d6191540543ac566b7250c39b4653f3c6163b75c5d3b220326682256cc026e6"
+          "result_sha256": "ab722eb54fb21240ba68d44330186f291d4febbb82e2ec4ad23bafe5ee65b2be"
         },
         {
           "preset": "auto4",
@@ -67,14 +67,14 @@
           "pitch_offset": 4,
           "start_s": 11.724,
           "end_s": 16.986,
-          "result_sha256": "1282462e7a4b0a7593be1464329f0d21e75c8f13d3c6f3a4f103e54cc423dfab"
+          "result_sha256": "ed6d7f23550e1049dca8c38dd2058771152fbb07e1916bbeac29713582f3b6a5"
         }
       ]
     },
     {
       "voice": "taffy",
       "file": "taffy.wav",
-      "sha256": "18f77030aa43e1546692aa82eb93db11ae8d688342a81181333de7664a35b28c",
+      "sha256": "c152ab5e555bac61625afbf3eba1889f4e33cd7221958eb56357d0c38fe9420f",
       "segments": [
         {
           "preset": "model",
@@ -83,7 +83,7 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "ff97f1edc9277e329e020abb27a1f20cde3d848f674dae1dee3eb9a60cac2866"
+          "result_sha256": "d60cd2c4323da5a9145bbcee4e7677869f29ed188b25756c265c0c65a43c7c95"
         },
         {
           "preset": "auto2",
@@ -92,7 +92,7 @@
           "pitch_offset": 2,
           "start_s": 5.862,
           "end_s": 11.124,
-          "result_sha256": "1aa6cb4045b8d7c110b0ce58c73a1144658f1d2625346acd05c5cf8005485420"
+          "result_sha256": "a075075356025f703862cb2c4d6c9ed497f978c1612138590856a2e31c94fbf7"
         },
         {
           "preset": "auto4",
@@ -101,14 +101,14 @@
           "pitch_offset": 4,
           "start_s": 11.724,
           "end_s": 16.986,
-          "result_sha256": "23d726070c33e368f1598a27dea38cdad7b5cad0c78172fd00f6193e4c4fa730"
+          "result_sha256": "19c42f37b5bd7988b734630a945a4ad3c84a7a42e545ce65bf55df9084cce0d3"
         }
       ]
     },
     {
       "voice": "anon",
       "file": "anon.wav",
-      "sha256": "5de4d27a99f663f6b8506be02eb2ad6a01ad727829723492fa5e8129198fe940",
+      "sha256": "d318532c1c6ded5e3e984f3dfb9cfef2fb1e26224ddb127627b167ac770bbbf3",
       "segments": [
         {
           "preset": "model",
@@ -117,7 +117,7 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "ee292c0ecc3095dc7f58ce20e28a362f1ee479f9ce8bb02ece37e4caef4f8667"
+          "result_sha256": "08f09e984d29b4c9798e073d22d1354ef84cd0283ed1e7221c7e4d3ae7d339db"
         },
         {
           "preset": "auto2",
@@ -126,7 +126,7 @@
           "pitch_offset": 2,
           "start_s": 5.862,
           "end_s": 11.124,
-          "result_sha256": "68a4b1dcac778f50fd4ac1bdc8c0d9cb569db5bde884d1423b9c641cceaaec8b"
+          "result_sha256": "b0f37084d7a1ad29b1511bb23cc316f8ea825c5bb322e84ab09bb1d65ba7b373"
         },
         {
           "preset": "auto4",
@@ -135,14 +135,14 @@
           "pitch_offset": 4,
           "start_s": 11.724,
           "end_s": 16.986,
-          "result_sha256": "4f313363219f197ff0517b82ee644ffca90ee00a21e6046d153af0ed966bf5b3"
+          "result_sha256": "67e3c02901fed80775623e5197561f8032c04058fe51a6039d25ac4d43d166e5"
         }
       ]
     },
     {
       "voice": "tannhauser",
       "file": "tannhauser.wav",
-      "sha256": "0ef98c8b98eb630aec8f28e8d3ead665be74a93a02d849826879a560ebc378bd",
+      "sha256": "7bebca82d2d3ae9a4b51c8a46359c29ae21f52cbb800a3c998a7cbba5e42b639",
       "segments": [
         {
           "preset": "model",
@@ -151,7 +151,7 @@
           "pitch_offset": 0,
           "start_s": 0.0,
           "end_s": 5.262,
-          "result_sha256": "2ad04cf5659a4035ccf6b2791ad97e7315047d558fa4819251a9498b0f3e2f38"
+          "result_sha256": "aa3ed1fce4183dd764b9c653fc5cdd7db908286c50951f03fce05718c55657fc"
         },
         {
           "preset": "auto2",
@@ -160,7 +160,7 @@
           "pitch_offset": 2,
           "start_s": 5.862,
           "end_s": 11.124,
-          "result_sha256": "c615deee6e8491447e90e077732e2b40eb6c1f3733cae71607d2ab1cdb980b6d"
+          "result_sha256": "bcd5abd6d8d1b5d819e3837f0a2b5b9583a31b8f7455e53d7dc735b9477087f0"
         },
         {
           "preset": "auto4",
@@ -169,7 +169,7 @@
           "pitch_offset": 4,
           "start_s": 11.724,
           "end_s": 16.986,
-          "result_sha256": "ff4947017ece5b427f556657cdda878a0804d87372fb1b79b9a986b02f5b8c39"
+          "result_sha256": "2c26aff66eeccee0e144b94c802cdfd0245cc6efab49f4393654cdc905ae9d76"
         }
       ]
     }

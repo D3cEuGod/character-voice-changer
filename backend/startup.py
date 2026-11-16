@@ -81,7 +81,8 @@ class Startup:
         if local_rvc.profile(voice) is not None:
             profile = local_rvc.profile(voice)
             model = local_rvc.graph(voice)
-            voice_index(voice)
+            if profile.index_rate > 0:
+                voice_index(voice)
             # Session construction does not compile every DirectML kernel. Do
             # this before marking a voice loaded, so its first spoken syllable
             # does not pay that cost and empty the playback queue. Only this
@@ -99,6 +100,18 @@ class Startup:
         with self._state_lock:
             if voice in self._state["pending"]:
                 self._state["pending"].remove(voice)
+
+    def _load_background_voice(self, voice: str) -> float:
+        while voice not in self._loaded:
+            # A request can claim the engine while this thread waits for the
+            # load lock. Recheck under the lock before starting disk / ORT work.
+            with self._load_lock:
+                if not self._busy():
+                    started = time.perf_counter()
+                    self._load_voice(voice)
+                    return time.perf_counter()-started
+            time.sleep(.05)
+        return 0.0
 
     def _warm(self, voice: str) -> None:
         """One real render of the bundled sentence: compiles the GPU kernels and checks the voice answers."""
@@ -148,12 +161,8 @@ class Startup:
                 # Creating a session holds Python's GIL for about a second, which would stall a live
                 # session's audio. Wait until the engine is idle; a voice the user picks meanwhile is
                 # loaded on demand by ensure_voice().
-                while self._busy() and voice not in self._loaded:
-                    time.sleep(0.5)
-                started = time.perf_counter()
-                with self._load_lock:
-                    self._load_voice(voice)
-                LOG.info("Startup: background voice %s in %.2f s", voice, time.perf_counter() - started)
+                elapsed = self._load_background_voice(voice)
+                LOG.info("Startup: background voice %s in %.2f s", voice, elapsed)
         except Exception as exc:  # report through /api/health instead of leaving a silent server
             LOG.exception("Model startup failed")
             self._update(error=f"{type(exc).__name__}: {exc}", stage="模型加载失败")

@@ -52,7 +52,10 @@ def _graph_file(name: str) -> Path | None:
 def _voice_files(voice: str) -> list[Path]:
     try:
         entry = json.loads((LOCAL / "profiles.json").read_text(encoding="utf-8"))["voices"][voice]
-        return [LOCAL / entry["graph"], LOCAL / entry["index"]]
+        files = [LOCAL / entry["graph"]]
+        if float(entry.get('index_rate', .75)) > 0:
+            files.append(LOCAL / entry["index"])
+        return files
     except (OSError, ValueError, KeyError, TypeError):
         return []
 

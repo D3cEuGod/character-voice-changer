@@ -11,8 +11,8 @@
       "sample_rate": 40000,
       "target_hz": 320,
       "semitones": null,
-      "index_rate": 0.75,
-      "protect": 0.33,
+      "index_rate": 0.5,
+      "protect": 0.15,
       "speaker_id": 0,
       "export_recipe": 1,
       "rvc_revision": "d60cd3d009b7e438f92f8624fa89b710d10c6a39",
@@ -24,7 +24,7 @@
       "label": "deng",
       "provided_weight": "deng.pth",
       "download_page": "https://pan.baidu.com/s/1SN_jeB4x0-sYYTnot1PO5Q?pwd=93f8",
-      "stream_crossfade_ms": 40
+      "stream_crossfade_ms": 0
     },
     "anon": {
       "graph": "anon-493ff6c8d9be/voice.onnx",
@@ -36,7 +36,7 @@
       "sample_rate": 40000,
       "target_hz": 310,
       "semitones": null,
-      "index_rate": 0.75,
+      "index_rate": 0,
       "protect": 0.33,
       "speaker_id": 0,
       "export_recipe": 1,
@@ -47,7 +47,7 @@
       "index_vectors": 175946,
       "index_dimension": 768,
       "label": "Anon_v2",
-      "stream_crossfade_ms": 40
+      "stream_crossfade_ms": 0
     },
     "taffy": {
       "label": "mygf-tf",

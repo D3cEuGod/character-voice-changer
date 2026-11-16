@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--trim',action='store_true')
     parser.add_argument('--variants',nargs='+',default=['old-plus4','plus2','gentler','lower'])
     parser.add_argument('--voice',default='tannhauser')
+    parser.add_argument('--samples',nargs='+')
     args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     original=replace(local_rvc.profile(args.voice),index_rate=.75,protect=.33,
@@ -30,13 +31,18 @@ def main():
         'old-plus4':(original,4),
         'plus2':(original,2),
         'gentler':(replace(original,index_rate=.4,protect=.1),2),
+        'balanced':(replace(original,index_rate=.5,protect=.15),2),
+        'no-retrieval':(replace(original,index_rate=0,protect=.1),2),
+        'no-retrieval-low':(replace(original,index_rate=0,protect=.1,target_hz=260),2),
+        'context':(replace(original,stream_lookahead_ms=180),2),
+        'context-balanced':(replace(original,index_rate=.5,protect=.15,stream_lookahead_ms=180),2),
         'lower':(replace(original,target_hz=330,index_rate=.4,protect=.1),2),
         'protected':(replace(original,index_rate=.4,protect=.1,
                              stream_lookahead_ms=160,stream_crossfade_ms=40),2),
         'tail':(replace(original,protect=.15,stream_crossfade_ms=40,output_gate_full_rms=.00045),2),
     }
     rows=[]
-    samples=['m1','m2','m3','m4','f2','f3'] if args.extended else ['m2','m3']
+    samples=args.samples or (['m1','m2','m3','m4','f2','f3'] if args.extended else ['m2','m3'])
     for sample in samples:
         index=int(sample[1:])
         x,rate=sf.read(ROOT/f'.run/evalset/{sample}.wav',dtype='float32')

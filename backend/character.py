@@ -12,6 +12,7 @@ from scipy.signal.windows import hann
 
 from .engine import ROOT, RATE, load_graph, refine_timbre, tone_embedding, tone_spec
 from .pitch import pitch_track as rmvpe_pitch, transpose_f0
+from .rvc_noise import RollingLatent
 from . import reference, local_rvc
 
 VOICE_RATES = {"tomori": 48000, "anon": 40000, "taffy": 32000}
@@ -32,9 +33,20 @@ REGISTER = {"tomori": 285, "anon": 310, "taffy": 315}
 OUTPUT_GAIN = {"tomori": .8, "anon": .8, "taffy": 3.0}
 WINDOW = np.sqrt(hann(512, sym=False)).astype(np.float32)
 MASK = np.ones((1, 16080), dtype=np.int64)
-LATENT = np.zeros((1, 192, 100), dtype=np.float32)
 CONSONANT_BAND = butter(3, 1700, btype="highpass", fs=RATE, output="sos")
 INPUT_HIGHPASS = butter(5, 48, btype="highpass", fs=16000, output="sos")
+INPUT_RESAMPLE_GUARD = 16  # 1 ms at 16 kHz; keep the FIR's zero-padded edge out of speech.
+
+
+def fresh_input(window, previous, total):
+    """Resample only real interior samples on one session-wide 16 kHz grid."""
+    count = round(total*320/441)-round(previous*320/441)
+    left = total-len(window)
+    phase = left % 441
+    base = (left-phase)//441*320
+    audio = resample_poly(np.pad(window, (phase, 0)), 320, 441)
+    end = round(total*320/441)-base-INPUT_RESAMPLE_GUARD
+    return audio[end-count:end].copy()
 
 
 @lru_cache(maxsize=None)
@@ -62,6 +74,17 @@ def retrieve(units, name, f0, index_rate=.38, *, all_frames=False):
     mix = np.full(units.shape[1], index_rate, np.float32) if all_frames else np.where(
         f0.reshape(-1, 2).max(axis=1) > 0, index_rate, .06).astype(np.float32)
     return units + (nearest[None] - units) * mix[None, :, None]
+
+
+def rvc_features(units, name, f0, profile, mode):
+    original = units.repeat(2, axis=1)
+    ratio = profile.index_rate if mode == 'character' else min(profile.index_rate, .5)
+    if ratio == 0:
+        return original
+    retrieved = retrieve(units, name, f0, 1., all_frames=True).repeat(2, axis=1)
+    protect = profile.protect if mode == 'character' else min(profile.protect, .15)
+    mask = np.ones_like(f0) if protect >= .5 else np.where(f0 > 0, 1., protect).astype(np.float32)
+    return original + (retrieved-original) * (ratio*mask)[None, :, None]
 
 
 class SpeechDetector:
@@ -126,15 +149,17 @@ class StreamingDenoiser:
         return np.sqrt(self.noise_power)
 
     def process(self, window, count):
-        previous = round(self.source_count * 16000 / RATE)
+        previous = self.source_count
         self.source_count += count
-        new_count = round(self.source_count * 16000 / RATE) - previous
-        audio = resample_poly(window, 320, 441)
-        fresh, self.highpass_state = sosfilt(INPUT_HIGHPASS, audio[-new_count:], zi=self.highpass_state)
+        fresh = fresh_input(window, previous, self.source_count)
+        fresh, self.highpass_state = sosfilt(INPUT_HIGHPASS, fresh, zi=self.highpass_state)
         fresh = fresh.astype(np.float32)
         self.input_history = np.concatenate((self.input_history, fresh))[-len(self.input_history):]
-        audio = self.input_history
+        # The FIR guard is already inside the converter's speech lookahead.
+        # Align both analysis tracks back to the original input timeline.
+        audio = np.pad(self.input_history[INPUT_RESAMPLE_GUARD:], (0, INPUT_RESAMPLE_GUARD), mode='edge')
         activity = self.detector.process(fresh)
+        activity = np.pad(activity[INPUT_RESAMPLE_GUARD:], (0, INPUT_RESAMPLE_GUARD), mode='edge')
         data = np.concatenate((self.pending, fresh))
         consumed = len(data) // 256 * 256
         clean = np.empty(consumed, np.float32)
@@ -152,7 +177,7 @@ class StreamingDenoiser:
         self.history = np.concatenate((self.history, clean))[-len(self.history):]
         # The realtime converter withholds 104 ms at the right edge. The unresolved
         # 16–32 ms here is lookahead only and is never emitted as speech.
-        lookahead = 256 + len(self.pending)
+        lookahead = 256 + len(self.pending) + INPUT_RESAMPLE_GUARD
         clean = np.concatenate((self.history[lookahead:], audio[-lookahead:] * activity[-lookahead:]))
         background = clean[activity < .005]
         if background.size >= 512:
@@ -201,6 +226,7 @@ class CharacterModel:
         self.tone = None
         self.tone_windows = 0
         self.denoiser = StreamingDenoiser(round(self.context_samples*16000/RATE)) if strength else None
+        self.latent = RollingLatent() if strength else None
 
     def source_tone(self, wet, voiced_frames):
         """Running mean of the trained voice's own timbre vector, from windows with enough voicing."""
@@ -213,6 +239,10 @@ class CharacterModel:
     def render(self, window, count):
         if self.strength == 0:
             return window.copy()
+        # Advance through silent packets as well, keeping noise and speech on
+        # the same timeline when the gate reopens. Overlapping windows reuse
+        # their noise instead of sampling a new unrelated one every 120 ms.
+        latent = self.latent.advance(count, RATE)
         clean, activity = self.denoiser.process(window, count)
         if np.max(activity) < .005 or np.max(np.abs(clean)) < 0.0001:
             return np.zeros_like(window)
@@ -246,19 +276,14 @@ class CharacterModel:
             if self.local is not None:
                 # RVC's protection happens in feature space, not by mixing the
                 # caller's raw high-frequency voice into the generated waveform.
-                original = units.repeat(2, axis=1)
-                retrieved = retrieve(units, self.name, f0, 1., all_frames=True).repeat(2, axis=1)
-                ratio = self.local.index_rate if self.mode == "character" else min(self.local.index_rate, .5)
-                protect = self.local.protect if self.mode == "character" else min(self.local.protect, .15)
-                mask = (np.ones_like(f0) if protect >= .5 else np.where(f0 > 0, 1., protect).astype(np.float32))
-                units = original + (retrieved-original) * (ratio*mask)[None, :, None]
+                units = rvc_features(units, self.name, f0, self.local, self.mode)
             else:
                 units = retrieve(units, self.name, f0, .75 if self.anon_fidelity else .38).repeat(2, axis=1)
             mel = 1127 * np.log1p(f0 / 700)
             low, high = 1127 * np.log1p(np.array([50., 1100.]) / 700)
             pitch = np.rint((mel - low) * 254 / (high-low) + 1).clip(1, 255).astype("int64")
             inputs = {"units": units, "f0": f0[None],
-                      "pitch": pitch[None], "noise": LATENT}
+                      "pitch": pitch[None], "noise": latent}
             model = local_rvc.graph(self.name) if self.local is not None else graph(self.name + "_rvc")
         generated = model.run(None, inputs)[0].ravel()
         rate = self.local.sample_rate if self.local is not None else VOICE_RATES[self.name]
