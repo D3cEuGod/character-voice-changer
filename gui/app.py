@@ -198,14 +198,16 @@ class MainWindow(QWidget):
         top = QHBoxLayout()
         top.setSpacing(10)
         chibi = QPixmap(str(ASSETS / catalog.brand_style().chibi)) if catalog.brand_style().chibi else QPixmap()
+        ratio = self.devicePixelRatioF() or 1.0
+        self.mascot = QLabel()
         if not chibi.isNull():
-            self.mascot = QLabel()
-            ratio = self.devicePixelRatioF() or 1.0
             scaled = chibi.scaled(int(40 * ratio), int(40 * ratio), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            scaled.setDevicePixelRatio(ratio)
-            self.mascot.setPixmap(scaled)
             self.mascot.setToolTip("Q 版永雏塔菲")
-            top.addWidget(self.mascot, 0, Qt.AlignVCenter)
+        else:
+            scaled = app_pixmap(int(30 * ratio))  # 公开版没有 Q 版形象，用程序图标
+        scaled.setDevicePixelRatio(ratio)
+        self.mascot.setPixmap(scaled)
+        top.addWidget(self.mascot, 0, Qt.AlignVCenter)
         top.addWidget(label("角色变声器", "appTitle"))
         top.addWidget(label(f"v{__version__}", "version"), 0, Qt.AlignBottom)
         top.addStretch(1)
@@ -320,6 +322,7 @@ class MainWindow(QWidget):
         self.pitch_combo.setAccessibleName("音高")
         self.pitch_combo.setToolTip("推荐“自动 +2”：先按角色音域自动调整，再升 2 个半音。声音太尖选“模型默认”，不够高选“自动 +4”。")
         pitch_row.addWidget(self.pitch_combo, 1)
+        self._any_reference = any((ASSETS / "references").glob("*.wav"))
         self.reference_button = QPushButton("角色原声")
         self.reference_button.setIconSize(QSize(11, 11))
         self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来对照变声效果")
@@ -1046,7 +1049,9 @@ class MainWindow(QWidget):
     def _show_voice(self, voice_id: str | None) -> None:
         self.voice_mode.setEnabled(voice_id is not None)
         self.pitch_combo.setEnabled(voice_id is not None and self.pitch_supported and voice_id not in self.reference_voices)
-        self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
+        has_reference = voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file()
+        self.reference_button.setEnabled(has_reference)
+        self.reference_button.setVisible(has_reference or self._any_reference)  # 导入的声线没有原声片段
         style = theme.voice_style(voice_id) if voice_id else theme.brand_style()
         self.hero.set_voice(style, self._pixmap(voice_id or catalog.BRAND_VOICE))
         self.live_switch.set_color(style.color)
