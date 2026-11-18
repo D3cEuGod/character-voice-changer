@@ -231,7 +231,9 @@ def main(argv=None) -> int:
             cable_in, cable_out = mic, partner
             break
     print("虚拟音频线：", f"{cable_out.name} → {cable_in.name}" if cable_in else "没有找到")
-    quiet_out = next((o for o in outputs if o is not default_out and o is not cable_out
+    # 第二个试听输出。指定了 --output 时只在名称匹配的设备里挑，绝不落到扬声器或耳机上。
+    allowed = [o for o in outputs if args.output in o.name] if args.output else outputs
+    quiet_out = next((o for o in allowed if o is not default_out and o is not cable_out
                       and "cable" not in o.name.casefold()), None) or default_out
     combo_names = [window.mic_combo.itemText(i) for i in range(window.mic_combo.count())]
     c.check("设备下拉框显示系统报告的完整名称",
