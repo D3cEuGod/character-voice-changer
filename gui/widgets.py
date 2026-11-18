@@ -109,6 +109,25 @@ def paint_voice_art(p: QPainter, clip: QPainterPath, rect: QRectF, style: theme.
     p.restore()
 
 
+def app_pixmap(side: int = 256) -> QPixmap:
+    """没有角色头像时的程序图标：粉色圆角方块上一支白色麦克风。"""
+    pixmap = QPixmap(side, side)
+    pixmap.fill(Qt.transparent)
+    p = QPainter(pixmap)
+    p.setRenderHint(QPainter.Antialiasing)
+    rect = QRectF(side * .04, side * .04, side * .92, side * .92)
+    gradient = QLinearGradient(rect.topLeft(), rect.bottomRight())
+    gradient.setColorAt(0, QColor(theme.SAKURA))
+    gradient.setColorAt(1, QColor(theme.SAKURA_DEEP))
+    p.setPen(Qt.NoPen)
+    p.setBrush(gradient)
+    p.drawRoundedRect(rect, side * .22, side * .22)
+    mic = side * .56
+    paint_mic(p, QRectF((side - mic) / 2, (side - mic) / 2, mic, mic), QColor(theme.WHITE))
+    p.end()
+    return pixmap
+
+
 def make_icon(kind: str, color: str, size: int = 18) -> QIcon:
     """播放、停止、刷新小图标，按 3 倍像素画，缩放后保持清晰。"""
     ratio = 3
@@ -271,7 +290,7 @@ class HeroArt(QWidget):
 
     def __init__(self, side: int = 280, parent=None):
         super().__init__(parent)
-        self._style = theme.voice_style("taffy")
+        self._style = theme.brand_style()
         self._pixmap: QPixmap | None = None
         self._on_air = False
         self._side = side

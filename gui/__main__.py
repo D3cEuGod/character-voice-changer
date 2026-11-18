@@ -10,6 +10,7 @@ from pathlib import Path
 from .backend import (DEFAULT_URL, DEFAULT_PITCH_PRESET, PITCH_PRESETS, ROOT, START_SCRIPT, BackendClient,
                       start_early)
 
+from . import backend as backend_module
 from .settings import Settings, default_path
 from .taskbar import set_process_app_id, set_window_relaunch
 
@@ -91,6 +92,8 @@ def main(argv=None) -> int:
     if settings.pitch not in PITCH_PRESETS:
         settings.pitch = DEFAULT_PITCH_PRESET
     pitch = args.pitch_preset or settings.pitch
+    if settings.voice_id:  # 上次用的声线先加载，进主界面更快
+        backend_module.WARM_FIRST = settings.voice_id
     restart = settings.live_restart_packets if args.live_restart_packets is None else args.live_restart_packets
     packet_ms = settings.live_packet_ms if args.live_packet_ms is None else args.live_packet_ms
 

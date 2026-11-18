@@ -359,3 +359,180 @@ class OnboardingDialog(QDialog):
             self.mic_result.setText(text)
             set_state(self.mic_result, "warn")
 
+
+
+BACKEND_PYTHON = ROOT / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+IMPORTER = ROOT / "tools" / "import_rvc.py"
+# 目标音域：自动移调会把说话人的音高移到这附近。不确定就选“女声”。
+VOICE_RANGES = {"女声（推荐）": 300.0, "高音少女 / 萝莉": 420.0, "低沉女声 / 少年": 220.0, "男声": 140.0}
+
+
+def new_voice_id(name: str) -> str:
+    """后端只接受小写字母开头的 ASCII id；中文名不能直接用，取名字和时间的散列。"""
+    import hashlib
+    import time
+    return "v" + hashlib.sha1(f"{name}{time.time_ns()}".encode("utf-8")).hexdigest()[:11]
+
+
+class VoiceImportDialog(QDialog):
+    """导入一个 RVC v2 声线包：选 .pth 和 .index，起个名字，后台运行 tools/import_rvc.py。
+
+    导入器会校验模型和索引、导出推理图并跑一秒推理自检，通过后才登记。第一次导入要准备导出环境
+    （下载约 2 GB 的 PyTorch），之后每次一两分钟。完成后重启本程序启动的引擎，让新声线出现在列表里。
+    """
+
+    def __init__(self, window):
+        from PySide6.QtCore import QProcess
+        from PySide6.QtWidgets import QFileDialog, QLineEdit, QPlainTextEdit
+
+        super().__init__(window)
+        self._QFileDialog = QFileDialog
+        self.window_ = window
+        self.voice_id = ""
+        self.setWindowTitle("导入声线")
+        self.setMinimumWidth(560)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(18, 18, 18, 14)
+        outer.setSpacing(12)
+        outer.addWidget(label("导入声线包", "heading"))
+        outer.addWidget(_wrap("声线包是一对文件：RVC v2 模型（.pth）和配套的检索索引（.index）。"
+                              "请只导入你有权使用的声线，不要用它冒充他人。", "muted"))
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("例如：小樱")
+        self.name_edit.setMaxLength(24)
+        grid.addWidget(label("名字", "sectionLabel"), 0, 0)
+        grid.addWidget(self.name_edit, 0, 1, 1, 2)
+        self.pth_edit, self.index_edit = QLineEdit(), QLineEdit()
+        for row, (edit, text, pattern) in enumerate(((self.pth_edit, "模型 .pth", "RVC 模型 (*.pth)"),
+                                                     (self.index_edit, "索引 .index", "检索索引 (*.index)")), 1):
+            edit.setReadOnly(True)
+            button = QPushButton("选择…")
+            button.clicked.connect(lambda _=False, e=edit, p=pattern: self._choose(e, p))
+            grid.addWidget(label(text, "sectionLabel"), row, 0)
+            grid.addWidget(edit, row, 1)
+            grid.addWidget(button, row, 2)
+        self.range_combo = ConsoleCombo()
+        for name, hz in VOICE_RANGES.items():
+            self.range_combo.addItem(name, hz)
+        self.range_combo.setToolTip("自动移调会把你的音高移到这个音域附近。之后在主界面的“音高”里还能再调。")
+        grid.addWidget(label("音域", "sectionLabel"), 3, 0)
+        grid.addWidget(self.range_combo, 3, 1, 1, 2)
+        grid.setColumnStretch(1, 1)
+        outer.addLayout(grid)
+        self.log = QPlainTextEdit()
+        self.log.setReadOnly(True)
+        self.log.setMaximumBlockCount(400)
+        self.log.setMinimumHeight(120)
+        self.log.hide()
+        outer.addWidget(self.log)
+        self.state = _wrap("", "muted")
+        outer.addWidget(self.state)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        self.cancel_button = QPushButton("取消")
+        self.start_button = QPushButton("开始导入")
+        self.start_button.setObjectName("primary")
+        row.addWidget(self.cancel_button)
+        row.addWidget(self.start_button)
+        outer.addLayout(row)
+
+        self.process = QProcess(self)
+        self.process.setProcessChannelMode(QProcess.MergedChannels)
+        self.process.setWorkingDirectory(str(ROOT))
+        self.process.readyReadStandardOutput.connect(self._read)
+        self.process.finished.connect(self._finished)
+        self.process.errorOccurred.connect(self._failed_to_start)
+        self.cancel_button.clicked.connect(self.reject)
+        self.start_button.clicked.connect(self.start)
+        for edit in (self.name_edit, self.pth_edit, self.index_edit):
+            edit.textChanged.connect(self._validate)
+        self._validate()
+
+    def _choose(self, edit, pattern: str) -> None:
+        path, _ = self._QFileDialog.getOpenFileName(self, "选择文件", str(Path(edit.text()).parent if edit.text()
+                                                                      else Path.home()), pattern)
+        if path:
+            edit.setText(path)
+            if edit is self.pth_edit and not self.name_edit.text():
+                self.name_edit.setText(Path(path).stem[:24])
+            if edit is self.pth_edit and not self.index_edit.text():
+                match = next(Path(path).parent.glob("*.index"), None)
+                if match is not None:
+                    self.index_edit.setText(str(match))
+
+    def _validate(self) -> bool:
+        problem = ("先给声线起个名字" if not self.name_edit.text().strip() else
+                   "选择模型文件（.pth）" if not Path(self.pth_edit.text()).is_file() else
+                   "选择索引文件（.index）" if not Path(self.index_edit.text()).is_file() else
+                   "引擎环境还没准备好：先正常打开一次变声器，等出现“引擎就绪”" if not BACKEND_PYTHON.is_file() else "")
+        running = self.process.state() != self.process.ProcessState.NotRunning
+        self.start_button.setEnabled(not problem and not running)
+        if not running:
+            self.state.setText(problem or "准备好了。第一次导入要下载约 2 GB 的导出工具，请保持联网，耐心等几分钟。")
+            set_state(self.state, "")
+        return not problem
+
+    def arguments(self) -> list[str]:
+        return [str(IMPORTER), "--voice", self.voice_id, "--name", self.name_edit.text().strip(),
+                "--checkpoint", self.pth_edit.text(), "--index", self.index_edit.text(),
+                "--target-hz", f"{self.range_combo.currentData():g}", "--source", "用户导入的声线包"]
+
+    def start(self) -> None:
+        if not self._validate():
+            return
+        self.voice_id = new_voice_id(self.name_edit.text())
+        self.log.clear()
+        self.log.show()
+        self.state.setText("正在导入：校验文件、导出推理图并试跑一秒…")
+        set_state(self.state, "")
+        for widget in (self.name_edit, self.pth_edit, self.index_edit, self.range_combo, self.start_button):
+            widget.setEnabled(False)
+        self.cancel_button.setText("停止")
+        env = self.process.processEnvironment()
+        if env.isEmpty():
+            from PySide6.QtCore import QProcessEnvironment
+            env = QProcessEnvironment.systemEnvironment()
+        env.insert("PYTHONUTF8", "1")
+        env.insert("PYTHONUNBUFFERED", "1")
+        self.process.setProcessEnvironment(env)
+        self.process.start(str(BACKEND_PYTHON), self.arguments())
+
+    def _read(self) -> None:
+        text = bytes(self.process.readAllStandardOutput()).decode("utf-8", errors="replace")
+        self.log.appendPlainText(text.rstrip())
+
+    def _failed_to_start(self, error) -> None:
+        if self.process.state() == self.process.ProcessState.NotRunning:
+            self._done(False, f"无法运行导入程序：{self.process.errorString()}")
+
+    def _finished(self, code: int, status) -> None:
+        self._read()
+        ok = code == 0 and status == self.process.ExitStatus.NormalExit
+        self._done(ok, "" if ok else f"导入失败（退出码 {code}）。看上面的输出找原因：常见的是模型不是 RVC v2，或索引和模型不配套。")
+
+    def _done(self, ok: bool, message: str) -> None:
+        self.cancel_button.setText("关闭")
+        for widget in (self.name_edit, self.pth_edit, self.index_edit, self.range_combo):
+            widget.setEnabled(True)
+        self._validate()
+        if not ok:
+            self.state.setText(message)
+            set_state(self.state, "error")
+            return
+        name = self.name_edit.text().strip()
+        if self.window_.reload_backend(select=self.voice_id):
+            self.state.setText(f"“{name}”已导入，正在重启变声引擎载入它。")
+        else:
+            self.state.setText(f"“{name}”已导入。变声引擎不是由本程序启动的，请关掉变声器再打开。")
+        set_state(self.state, "ok")
+        self.start_button.setEnabled(False)
+
+    def reject(self) -> None:
+        if self.process.state() != self.process.ProcessState.NotRunning:
+            self.process.kill()
+            self.process.waitForFinished(3000)
+            return
+        super().reject()

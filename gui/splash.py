@@ -34,7 +34,7 @@ class TaffyRunner(QWidget):
         self._value = 0.0
         self._phase = 0.0
         self._running = True
-        chibi_file = catalog.voice_style("taffy").chibi
+        chibi_file = catalog.brand_style().chibi
         image = QPixmap(str(ROOT / "assets" / chibi_file)) if chibi_file else QPixmap()
         # 原图朝左，翻过来让她朝前进的方向跑。
         self._chibi = image.transformed(QTransform().scale(-1, 1), Qt.SmoothTransformation) if not image.isNull() else None

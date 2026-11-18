@@ -22,10 +22,11 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFileDialog, QGridLay
 from . import __version__, audio, catalog, hotkey, theme
 from .backend import (CONTENT_TYPES, DEFAULT_URL, DEFAULT_PITCH_PRESET, ROOT, START_SCRIPT, BackendClient, BackendError,
                       BackendLauncher, stop_process_tree, PITCH_PRESETS)
+from . import backend as backend_module
 from .live import LiveMonitor
 from .settings import Settings
 from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, ToggleSwitch,
-                      VoiceCarousel, divider, label, make_icon, set_state)
+                      VoiceCarousel, app_pixmap, divider, label, make_icon, set_state)
 
 ASSETS = ROOT / "assets"
 MAX_RESULTS = 8
@@ -156,12 +157,11 @@ class MainWindow(QWidget):
         self._startup_reported = False
         self._last_dir = str(ROOT)
         self._avatars: dict[str, QPixmap | None] = {}
-        self._avatar = self._pixmap("taffy")
+        self._avatar = self._pixmap(catalog.BRAND_VOICE)
 
         self.setObjectName("root")
         self.setWindowTitle("角色变声器")
-        if self._avatar is not None:
-            self.setWindowIcon(QIcon(self._avatar))
+        self.setWindowIcon(QIcon(self._avatar if self._avatar is not None else app_pixmap()))
         self._build()
         self._wire()
         self._populate_devices(announce=False)
@@ -197,7 +197,7 @@ class MainWindow(QWidget):
 
         top = QHBoxLayout()
         top.setSpacing(10)
-        chibi = QPixmap(str(ASSETS / catalog.voice_style("taffy").chibi)) if catalog.voice_style("taffy").chibi else QPixmap()
+        chibi = QPixmap(str(ASSETS / catalog.brand_style().chibi)) if catalog.brand_style().chibi else QPixmap()
         if not chibi.isNull():
             self.mascot = QLabel()
             ratio = self.devicePixelRatioF() or 1.0
@@ -272,10 +272,15 @@ class MainWindow(QWidget):
         self.carousel = VoiceCarousel()
         self.carousel.setToolTip("点两侧的三角或旁边的角色切换；也可以用键盘左右键")
         card.body.addWidget(self.carousel)
-        self.voices_placeholder = label("连接后端后，这里显示 /api/voices 返回的角色。")
+        self.voices_placeholder = label("连接变声引擎后，这里显示可用的声线。")
         self.voices_placeholder.setWordWrap(True)
         self.voices_placeholder.setAlignment(Qt.AlignCenter)
         card.body.addWidget(self.voices_placeholder)
+        self.import_voice_button = QPushButton("＋ 导入声线")
+        self.import_voice_button.setObjectName("ghost")
+        self.import_voice_button.setFocusPolicy(Qt.TabFocus)
+        self.import_voice_button.setToolTip("把 RVC v2 声线包（.pth 模型 + .index 索引）装进变声器")
+        card.body.addWidget(self.import_voice_button, 0, Qt.AlignHCenter)
         card.body.addWidget(divider())
         strength = QHBoxLayout()
         strength.addWidget(label("音色强度", "sectionLabel"))
@@ -571,6 +576,7 @@ class MainWindow(QWidget):
         self.send_toggle.toggled.connect(self._route_changed)
         self.monitor_toggle.toggled.connect(self._route_changed)
         self.settings_button.clicked.connect(self.open_settings)
+        self.import_voice_button.clicked.connect(self.open_voice_import)
         self.detail_button.toggled.connect(self.live_detail.setVisible)
         self.rescan_button.clicked.connect(self.rescan_devices)
         self.rec_button.toggled.connect(self._on_rec_toggled)
@@ -669,6 +675,29 @@ class MainWindow(QWidget):
         from .dialogs import SettingsDialog
         SettingsDialog(self).exec()
 
+    def open_voice_import(self) -> None:
+        from .dialogs import VoiceImportDialog
+        VoiceImportDialog(self).exec()
+
+    def reload_backend(self, select: str | None = None) -> bool:
+        """导入声线后重启由本程序启动的引擎，让它读到新声线。不是本程序启动的引擎时返回 False。"""
+        if select:
+            self.settings.voice_id = select
+            self.voice_id = None
+            backend_module.WARM_FIRST = select  # 重启后先加载新声线
+        if self.owned_backend is None:
+            return False
+        if self.live is not None:
+            self.live_switch.setChecked(False)
+            self.live.request_stop(abort=True)
+            self.live.join(3.0)
+        stop_process_tree(self.owned_backend)
+        self.owned_backend = None
+        self.voices, self.voice_names = [], {}
+        self._set_backend(False, "正在重新启动变声引擎以载入新声线…")
+        self.connect_backend()
+        return True
+
     def maybe_onboard(self) -> None:
         """第一次打开时显示新手引导。只在正式启动时调用。"""
         if self.config.desktop and not self.settings.onboarded:
@@ -760,7 +789,8 @@ class MainWindow(QWidget):
             "正在转换" if converting else
             "后端未连接" if not self.backend_ok else
             "先结束录音" if recording else
-            "先录音或导入一段音频" if self.input is None else "先选择角色")
+            "先录音或导入一段音频" if self.input is None else
+            "还没有声线，先导入一个声线包" if not self.voice_names else "先选择角色")
         self.busy_bar.setVisible(converting)
 
         if self.ab == "result" and result is None:
@@ -790,10 +820,11 @@ class MainWindow(QWidget):
             "正在转换文件，完成后才能变声" if converting else
             "先结束录音" if recording else
             "变声引擎未连接" if not self.backend_ok else
+            ("还没有声线，先导入一个声线包" if not self.voice_names else "先选择角色") if self.voice_id is None else
             "没有找到麦克风" if not has_mic else
             "“发到语音软件”和“耳返”至少打开一个" if not sending and not monitoring else
             "没有找到虚拟麦克风，先安装 VB-CABLE，或者打开耳返试听" if sending and not monitoring else
-            "没有找到耳机或音箱" if not has_out else "先选择角色")
+            "没有找到耳机或音箱")
         if not live_on:
             self.live_title.setText("点一下开始变声" if self.live_switch.isEnabled() else
                                     self.live_switch.toolTip())
@@ -976,8 +1007,16 @@ class MainWindow(QWidget):
         self.category_bar.blockSignals(False)
         self.voices_placeholder.setVisible(not ids)
         if not ids:
+            # 公开版刚装好时还没有任何声线：照常进入主界面，引导用户导入声线包
             self.carousel.set_items([], None)
-            self._on_voices_failed("后端返回了空的角色列表。")
+            self.voice_id = None
+            self._show_voice(None)
+            self.hero_name.setText("还没有声线")
+            self.hero_caption.hide()
+            self.voices_placeholder.setText("点下面的“导入声线”，把声线包（.pth 模型 + .index 索引）装进来就能开始用。")
+            self.set_status("还没有声线，先导入一个声线包。")
+            self._refresh()
+            self._report_startup(True)
             return
         remembered = self.settings.voice_id
         target = (self.voice_id if self.voice_id in ids else remembered if remembered in ids
@@ -1008,8 +1047,8 @@ class MainWindow(QWidget):
         self.voice_mode.setEnabled(voice_id is not None)
         self.pitch_combo.setEnabled(voice_id is not None and self.pitch_supported and voice_id not in self.reference_voices)
         self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
-        style = theme.voice_style(voice_id or "taffy")
-        self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
+        style = theme.voice_style(voice_id) if voice_id else theme.brand_style()
+        self.hero.set_voice(style, self._pixmap(voice_id or catalog.BRAND_VOICE))
         self.live_switch.set_color(style.color)
         self.send_toggle.set_color(style.color)
         self.monitor_toggle.set_color(style.color)
@@ -1345,7 +1384,7 @@ class MainWindow(QWidget):
     def _sync_preview_buttons(self) -> None:
         playing = self.playing_tag == ("preview", "reference")
         self.reference_button.setText("停止" if playing else "角色原声")
-        color = theme.voice_style(self.voice_id or "taffy").color
+        color = (theme.voice_style(self.voice_id) if self.voice_id else theme.brand_style()).color
         self.reference_button.setIcon(make_icon("stop" if playing else "play", color, 11))
 
     def toggle_preview(self, name: str = "reference") -> None:

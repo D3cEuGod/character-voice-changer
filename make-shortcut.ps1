@@ -1,6 +1,6 @@
 # Creates the launcher shortcut next to this script. Run it again if the project folder moves:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File make-shortcut.ps1
-# The shortcut runs start-gui.cmd (minimized console), uses assets\taffy-avatar.ico, and carries the same
+# The shortcut runs start-gui.cmd (minimized console), uses assets\taffy-avatar.ico (or assets\app-icon.ico), and carries the same
 # AppUserModelID that gui\taskbar.py sets, so a taskbar pin of this shortcut and the running window share one icon.
 # Keep this file ASCII: Windows PowerShell 5.1 reads scripts without a BOM in the ANSI code page.
 param(
@@ -102,6 +102,7 @@ namespace VoiceGui {
 $lnk = Join-Path $root ($Name + '.lnk')
 $cmd = Join-Path $env:SystemRoot 'System32\cmd.exe'
 $icon = Join-Path $root 'assets\taffy-avatar.ico'
+if (-not (Test-Path -LiteralPath $icon)) { $icon = Join-Path $root 'assets\app-icon.ico' }  # public edition has no character art
 if (-not (Test-Path -LiteralPath (Join-Path $root 'start-gui.cmd'))) { throw "start-gui.cmd not found in $root" }
 if (-not (Test-Path -LiteralPath $icon)) { throw "icon not found: $icon" }
 [VoiceGui.Shortcut]::Create($lnk, $cmd, '/d /c ".\start-gui.cmd"', $root, $icon, $Name, $AppId)

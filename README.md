@@ -122,6 +122,16 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 0.5.2 起，后端一启动就把首个角色要用的约 1 GB 模型文件读进系统缓存，与导入程序库同时进行；D 盘是机械硬盘，这一步对冷启动最有用，`VOICE_PREFETCH=0` 可关闭。后台加载其余角色前先等界面取完角色列表，有转换或实时变声时暂停，开始转换或实时变声前也会等正在进行的加载完成，避免加载占住 Python 全局锁时音频卡顿。
 
+### 公开版（上传 GitHub 用）
+
+这个仓库含有角色头像、原声片段、VB-CABLE 安装包和私人笔记，历史里也有，所以**不要把它本身设为公开**。要分享源代码时，导出一份公开版到新仓库：
+
+```powershell
+python tools\build_public_release.py D:\VoiceChanger-public --git
+```
+
+导出的是当前提交（HEAD），不含 Git 历史；`notes/`、`docs/`、`voices/`、头像、角色音频、`third_party/installers/` 和可选的 Seed-VC 都会去掉，`tools/public/` 里的公开版 README、MIT 许可、更新记录和许可说明覆盖到根目录，并放上 `PUBLIC_EDITION` 标记。公开版没有内置角色，朋友在界面里用“＋ 导入声线”装自己的声线包。导出后脚本会逐个文件检查，发现模型、图片、音频或超过 2 MB 的文件就报错并删掉导出目录。
+
 ### 默认音高 +2 与试听
 
 0.5.1 按用户要求，让 GUI 的高松灯、永雏塔菲、千早爱音和诗歌剧都默认使用“自动音域再 +2”。左栏有以下三档，“原声 +4”仍已移除。实时和文件变声都生效；切档会重连实时会话，周期刷新保留所选档位。

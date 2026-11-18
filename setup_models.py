@@ -106,6 +106,11 @@ def prepare_export_environment():
 
 def main():
     MODELS.mkdir(exist_ok=True)
+    from backend.edition import PUBLIC
+    if PUBLIC:  # 公开版只下载共用的推理图，不下载任何角色模型
+        for file in ("contentvec_768l12.onnx", "rmvpe.onnx", "gtcrn_simple.onnx", "silero_vad_16k_op15.onnx"):
+            fetch(MODELS / file, *GRAPHS[file])
+        return
     from backend.local_rvc import profile
     fully_local = all(profile(voice) is not None for voice in ("tomori", "taffy", "anon"))
     required = {"contentvec_768l12.onnx", "rmvpe.onnx", "gtcrn_simple.onnx", "silero_vad_16k_op15.onnx"}

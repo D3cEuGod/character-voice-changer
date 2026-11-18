@@ -1,5 +1,5 @@
 """配色与样式表：白色底，粉色点缀。粉色和向日葵黄取自 assets/taffy-avatar.jpg，文字用头像里的海军蓝。"""
-from .catalog import VoiceStyle, voice_style  # noqa: F401  角色美术由 assets/characters.json 提供
+from .catalog import VoiceStyle, brand_style, voice_style  # noqa: F401  角色美术由 assets/characters.json 提供
 
 BACKGROUND = "#FFF7F9"   # 窗口底色：带一点粉的白
 CARD = "#FFFFFF"         # 卡片

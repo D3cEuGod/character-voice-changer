@@ -52,6 +52,15 @@ def _load() -> tuple[tuple[Category, ...], dict[str, VoiceStyle]]:
     return categories, styles
 
 
+# 界面主色和 Q 版形象。私人版用塔菲的配色和形象；公开版没有角色素材时用中性的粉色和麦克风图案。
+DEFAULT_BRAND = VoiceStyle("#E9739B", "#F8C537", "mic", "")
+BRAND_VOICE = "taffy"
+
+
+def brand_style() -> VoiceStyle:
+    return _load()[1].get(BRAND_VOICE, DEFAULT_BRAND)
+
+
 def voice_style(voice_id: str) -> VoiceStyle:
     styles = _load()[1]
     if voice_id in styles:
@@ -70,5 +79,5 @@ def categories_for(voice_ids: list[str]) -> list[Category]:
             placed.update(members)
     rest = tuple(v for v in available if v not in placed)
     if rest:
-        result.append(Category(OTHER, "其他", rest))
+        result.append(Category(OTHER, "我的声线" if not result else "其他", rest))
     return result
