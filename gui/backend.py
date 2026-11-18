@@ -23,8 +23,8 @@ WARM_FIRST = "taffy"  # 界面一打开显示的角色；后端先加载它，�
 CONTENT_TYPES = {".wav": "audio/wav", ".flac": "audio/flac", ".mp3": "audio/mpeg", ".ogg": "audio/ogg"}
 PITCH_PRESETS = {
     "model": ("模型默认", None, 0),
-    "auto2": ("自动音域再 +2", None, 2),
-    "auto4": ("自动音域再 +4", None, 4),
+    "auto2": ("自动 +2", None, 2),
+    "auto4": ("自动 +4", None, 4),
 }
 DEFAULT_PITCH_PRESET = 'auto2'
 

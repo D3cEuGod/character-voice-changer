@@ -170,7 +170,9 @@ def main(argv=None) -> int:
 
     # ------------------------------------------------------------------ 启动
     window = MainWindow(Config(args.backend_url))
-    window.route_mode.setCurrentIndex(window.route_mode.findData("local"))
+    # 只开耳返：等同以前的“本机监听”，测试音频不会进入语音软件
+    window.send_toggle.setChecked(False)
+    window.monitor_toggle.setChecked(True)
     window.resize(1060, 700)
     window.show()
     wait(lambda: bool(window.voice_names) or window.notice.isVisible(), 30)
@@ -278,7 +280,8 @@ def main(argv=None) -> int:
                 and window.carousel.current_id() == voice["id"], window.hero_caption.text())
         c.check(f"角色原声与处理方式：{voice['name']}", window.reference_button.isEnabled()
                 and window.voice_mode.isVisible() and window.current_mode() == "character"
-                and window.hero_caption.text() == model_labels.get(voice["id"], voice["id"].upper()))
+                and window.hero_name.toolTip() == f"模型：{model_labels.get(voice['id'], voice['id'].upper())}",
+                window.hero_name.toolTip())
         c.check(f"默认自动音域再 +2：{voice['name']}", window.current_pitch() == "auto2"
                 and window.pitch_combo.count() == 3 and window.pitch_combo.findData("fixed4") == -1)
     pick(window, "taffy")
@@ -590,6 +593,48 @@ def main(argv=None) -> int:
                 and window.lamp.text() == "STANDBY", window.live_status.text())
         feeder.stop()
 
+        # 1.0：同时发到语音软件和耳返。VB-CABLE 通常是 Discord 的麦克风，除非明确允许，只用 Steam 那一对测。
+        pair = window.discord_pair
+        if not pair:
+            c.skip("同时发到语音软件和耳返", "没有找到虚拟麦克风")
+        elif "cable" in pair[0].name.casefold() and not args.allow_vb_cable:
+            c.skip("同时发到语音软件和耳返", f"虚拟麦克风是 {pair[1].name}，可能正接着 Discord；加 --allow-vb-cable 才测")
+        elif pair[1] == cable_in or pair[0] == default_out:
+            c.skip("同时发到语音软件和耳返", "虚拟麦克风和测试音频线是同一对设备，会形成回路")
+        else:
+            window.send_toggle.setChecked(True)
+            window.monitor_toggle.setChecked(True)
+            pump(100)
+            sent = audio.Recorder(pair[1], 30)
+            sent.start()
+            feed_cable(3)
+            click(window.live_switch)
+            both = window.live
+            flowing = wait(lambda: both is not None and both.frames_sent >= 12, 15)
+            peak_ear = 0.0
+            t0 = time.monotonic()
+            while time.monotonic() - t0 < 1.5:
+                pump(40)
+                peak_ear = max(peak_ear, getattr(both.speaker, "monitor_level", 0.0) if both else 0.0)
+            shot(window, "06b_send_and_monitor")
+            click(window.live_switch)
+            wait(lambda: window.live is None, 8)
+            heard_call = sent.stop()
+            feeder.stop()
+            call_rms = float(np.sqrt(np.mean(heard_call ** 2))) if len(heard_call) else 0.0
+            c.check("同时发到语音软件和耳返：两路都有声音", flowing and isinstance(both.speaker, audio.TeeSpeaker)
+                    and call_rms > .003 and peak_ear > .02 and not both.speaker.monitor.active,
+                    f"从 {pair[1].name} 录回 RMS {call_rms:.4f}；耳返 {default_out.name} 峰值 {peak_ear:.2f}")
+            window.send_toggle.setChecked(False)
+            window.monitor_toggle.setChecked(True)
+        window.send_toggle.setChecked(False)
+        window.monitor_toggle.setChecked(False)
+        pump(60)
+        c.check("两个输出都关掉时，开关不可用并说明原因", not window.live_switch.isEnabled()
+                and "至少打开一个" in window.live_switch.toolTip(), window.live_switch.toolTip())
+        window.monitor_toggle.setChecked(True)
+        pump(60)
+
         # Shorten only this test's threshold; production keeps 3000 packets.
         previous_limit = window.config.live_restart_packets
         window.config.live_restart_packets = 12
@@ -753,6 +798,30 @@ def main(argv=None) -> int:
         c.check("关闭窗口后，复用的后端保持运行", alive)
     else:
         c.check("关闭窗口后，由本程序启动的后端已停止", not alive)
+
+    # ------------------------------------------------------------------ 记住设置（临时设置文件，不碰用户的设置）
+    from .settings import Settings
+    settings_file = Path(tempfile.mkdtemp(prefix="voice-gui-settings-")) / "settings.json"
+    first = MainWindow(Config(args.backend_url, autostart=False, settings=Settings.load(settings_file)))
+    first.show()
+    wait(lambda: bool(first.voice_names), 15)
+    if "anon" in first.voice_names:
+        pick(first, "anon")
+    first.strength_slider.setValue(70)
+    first.voice_mode.setCurrentIndex(first.voice_mode.findData("call"))
+    first.monitor_toggle.setChecked(True)
+    first.send_toggle.setChecked(False)
+    first.close()
+    saved = Settings.load(settings_file)
+    second = MainWindow(Config(args.backend_url, autostart=False, settings=saved, pitch_preset=saved.pitch))
+    second.show()
+    wait(lambda: bool(second.voice_names), 15)
+    c.check("关闭后重开：记住角色、强度、风格和输出开关",
+            second.voice_id == ("anon" if "anon" in second.voice_names else second.voice_id)
+            and second.strength_pct == 70 and second.current_mode() == "call"
+            and second.monitor_toggle.isChecked() and not second.send_toggle.isChecked(),
+            f"{settings_file}：{saved}")
+    second.close()
 
     # ------------------------------------------------------------------ 未连接后端
     offline = MainWindow(Config(DEAD_URL, autostart=False))

@@ -141,6 +141,16 @@ def make_icon(kind: str, color: str, size: int = 18) -> QIcon:
         tip.lineTo(s * 0.56, s * 0.38)
         tip.closeSubpath()
         p.drawPath(tip)
+    elif kind == "gear":
+        p.translate(s / 2, s / 2)
+        for _ in range(8):
+            p.drawRoundedRect(QRectF(-s * 0.07, -s * 0.46, s * 0.14, s * 0.2), s * 0.03, s * 0.03)
+            p.rotate(45)
+        ring = QPainterPath()
+        ring.addEllipse(QPointF(0, 0), s * 0.32, s * 0.32)
+        hole = QPainterPath()
+        hole.addEllipse(QPointF(0, 0), s * 0.13, s * 0.13)
+        p.drawPath(ring.subtracted(hole))
     p.end()
     return QIcon(pixmap)
 
@@ -675,6 +685,56 @@ class LevelMeter(QWidget):
             p.setBrush(gradient)
             p.setClipRect(QRectF(0, 0, rect.width() * self._value, rect.height()))
             p.drawRoundedRect(rect, radius, radius)
+
+
+class ToggleSwitch(QAbstractButton):
+    """左边一个圆角小开关，右边一行字。和复选框一样用 isChecked / toggled。"""
+
+    TRACK_W, TRACK_H = 34, 20
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self.setText(text)
+        self.setCheckable(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setAttribute(Qt.WA_Hover)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setAccessibleName(text)
+        self._color = QColor(theme.SAKURA_DEEP)
+
+    def set_color(self, color: str) -> None:
+        self._color = QColor(color)
+        self.update()
+
+    def sizeHint(self) -> QSize:
+        return QSize(self.TRACK_W + 10 + self.fontMetrics().horizontalAdvance(self.text()) + 4,
+                     max(self.TRACK_H + 6, self.fontMetrics().height() + 6))
+
+    def minimumSizeHint(self) -> QSize:
+        return self.sizeHint()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        enabled, on = self.isEnabled(), self.isChecked()
+        track = QRectF(1, (self.height() - self.TRACK_H) / 2, self.TRACK_W, self.TRACK_H)
+        if on:
+            fill = QColor(self._color) if enabled else QColor(theme.DIM)
+            edge = fill
+        else:
+            fill = QColor(theme.FIELD)
+            edge = QColor(self._color if enabled and (self.underMouse() or self.hasFocus()) else theme.LINE)
+        p.setPen(_pen(edge, 1.2))
+        p.setBrush(fill)
+        p.drawRoundedRect(track, track.height() / 2, track.height() / 2)
+        knob = track.height() - 6
+        x = track.right() - 3 - knob if on else track.left() + 3
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(theme.WHITE if on else (theme.MUTED if enabled else theme.DIM)))
+        p.drawEllipse(QRectF(x, track.top() + 3, knob, knob))
+        p.setPen(QColor(theme.TEXT if enabled else theme.DIM))
+        text_rect = QRectF(track.right() + 10, 0, self.width() - track.right() - 10, self.height())
+        p.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, self.text())
 
 
 def set_state(widget: QWidget, state: str) -> None:

@@ -23,7 +23,7 @@ bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90
 ```
 
 - WO Mic Client 保持“已连接”，取消“设置 → 本地播放”，避免额外播放原声。
-- 变声器“麦克风”选择 `Microphone (WO Mic Device)`，模式选择“Discord 通话”，开启实时变声。
+- 变声器“麦克风”选择 `Microphone (WO Mic Device)`，打开“发到语音软件”（想自己也听到就再打开“耳返”），开启实时变声。
 - 软件自动优先使用 `CABLE Input (VB-Audio Virtual Cable)` 写入变声结果；没有 VB-CABLE 时才使用 Steam 备用设备。
 - Discord 的输入选择 **CABLE Output (VB-Audio Virtual Cable)**，输出仍选择自己的耳机。Discord 若选 WO Mic，会绕过变声处理。
 - 安装新驱动后重新打开变声器和 Discord，以重新枚举设备。
