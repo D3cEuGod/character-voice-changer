@@ -1,0 +1,22 @@
+{
+  "character": "Minato Yukina (湊友希那, Roselia)",
+  "display_name": "友希那",
+  "page": "https://bestdori.com/info/characters/21",
+  "avatar": {
+    "source": "https://bestdori.com/assets/jp/characters/resourceset/res021001_rip/trim_normal.png",
+    "source_sha256": "3a0b04c438e730c830fcfb117e0a091641fd43268adc7b496dad9633e72af7c7",
+    "file": "yukina-avatar.png",
+    "sha256": "24456b4d54427f6e1695c82cbe0149c1fd69e6a6b956b848c4cd17782bf8ff10",
+    "note": "Official BanG Dream! Girls Band Party card art (res021001) via bestdori: 480x480 crop at (255,185), scaled to 512x512 on a #F3EAF8 to #B98BD0 gradient"
+  },
+  "model": {
+    "source": "https://huggingface.co/Wanlau/RVC_BanGDream/tree/7f73089d0c405d605e90d76484b8679ad50fb85a/Yukina_v2",
+    "weights": "Yukina_v2.pth",
+    "weights_sha256": "e1ff930a5bfb7c622c59bbfa7747d8831faf915cffccebfc9ca5b1d77c4804fc",
+    "index": "added_IVF256_Flat_nprobe_1_Yukina_v2_v2.index",
+    "index_sha256": "d4c0e672ac0baceca71716191085aa2781a687788eea61a7e43ed8c9dd903715",
+    "format": "RVC v2, 40 kHz, pitch-conditioned; index 10000 vectors x 768"
+  },
+  "reference_f0_median_hz": 210.8,
+  "reference_note": "RMVPE (backend/pitch.py) median over 1032 voiced frames of five bestdori gacha voice lines (sound/voice/gacha/spin_rip/res021003, res021005, res021006, res021011, res021017.mp3; per-line medians 172.8 to 231.3 Hz, P10 159.0, P90 298.3). Imported with --target-hz 211."
+}
