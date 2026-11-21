@@ -86,6 +86,22 @@
       "mode": "call",
       "model": "诗歌剧 · RVC v2 48k",
       "sha256": "b2d079a445b32917b54b44aabac4e6fd94fadcf588ca4d9080fd07598f02c393"
+    },
+    {
+      "file": "yukina.wav",
+      "voice": "yukina",
+      "mode": "character",
+      "model": "友希那 · RVC v2 40k",
+      "sha256": "3fb5c4a67c417869a711e0afbb8de4177a876b55d303b95d082b62881bc36a3d",
+      "note": "Added 2026-11-21 with backend 1.0.0 (port 8796 test server), same input and pitch preset"
+    },
+    {
+      "file": "yukina-call.wav",
+      "voice": "yukina",
+      "mode": "call",
+      "model": "友希那 · RVC v2 40k",
+      "sha256": "ffba2680715c191bc5c8061dc49c871bec5d18dc9251d6a580baed91d187ce7d",
+      "note": "Added 2026-11-21 with backend 1.0.0 (port 8796 test server), same input and pitch preset"
     }
   ]
 }

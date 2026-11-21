@@ -2,6 +2,14 @@
 
 记录每个版本的变化。版本号写在根目录的 `VERSION` 里，0.x 是内测阶段。
 
+## 未发布：新增友希那（Roselia）声线（2026-11-21，分支 `voice/yukina`）
+
+- **新增友希那（Roselia）声线**：BanG Dream! Roselia 主唱湊友希那，`voice_id` 为 `yukina`，界面显示“友希那”。模型是 Wanlau 的 `Yukina_v2`（RVC v2 / 40k，pitch-conditioned，索引 10,000 条 768 维向量），取自 [Wanlau/RVC_BanGDream](https://huggingface.co/Wanlau/RVC_BanGDream/tree/7f73089d0c405d605e90d76484b8679ad50fb85a/Yukina_v2) 的固定提交 `7f73089d`，与爱音的 `Anon_v2` 同一来源。权重 SHA-256 `e1ff930a…`、索引 `d4c0e672…`，与 HF 的 LFS 记录一致；完整值见 `assets/yukina-source.json`。用 `tools/import_rvc.py` 导入，检索比例 / 清音保护用默认的 0.75 / 0.33，接缝 40 ms。模型文件只在本机 `models/local-rvc/`，没有进仓库。
+- **目标音域**：`--target-hz 211`。用 `backend/pitch.py` 的 RMVPE 测了 bestdori 上 5 句友希那抽卡语音（`res021003/005/006/011/017`），1,032 个有声帧的基频中位数 210.8 Hz（各句 172.8～231.3 Hz）。这只是初始校准，真人麦克风的效果还没有确认。
+- **界面**：`assets/characters.json` 新增“Roselia”分类，排在 MyGO!!!!! 后面；友希那用 Roselia 紫（`#881188` / `#C9A0DC`），图案为麦克风。头像 `assets/yukina-avatar.png` 是游戏官方卡面立绘 `res021001` 裁出的 512×512 半身像，背景为紫色渐变。友希那暂时没有“角色原声”片段（`assets/references/yukina.wav`），所以这个按钮对她不可用。
+- **试听**：`assets/previews/yukina.wav`（音色优先）和 `yukina-call.wav`（通话清晰），输入是同一段合成中文 `original.wav`，用单独的 8796 测试后端转换。输出基频中位数为 206.7 / 206.5 Hz（输入 197.3 Hz），峰值 0.673 / 0.675，无削波、无 NaN；静音帧比例 31%，与输入的句间停顿（33%）相当。两份试听已登记进 `assets/previews/manifest.json`。
+- **验证**：后端 `/api/health` 正常，`/api/voices` 列出 `yukina`=友希那。界面自检离屏运行（8796 后端，`--skip-autostart`），停止前 31 项通过、1 项失败。失败的是“角色原声与处理方式：友希那”，原因是缺少上面说的原声片段。自检在“角色原声”一段后由我手动停止，没有跑完：这一步会故意把输出换成第二个非虚拟线设备，不受 `--output` 控制，本机上选中了显示器音频 `24G4 (NVIDIA High Definition Audio)`，约 5 秒爱音原声从那里播了出来；后面的用例还要操作原生文件对话框。录音、实时变声、文件对话框和保存等后续用例这次没有覆盖。
+
 ## 1.0.0 正式版（2026-11-18）
 
 第一个正式版。目标是“打开就会用”：主界面只留常用的东西，其余收进设置；模型、音色和实时处理参数都没有改，音质与 0.5.3 相同。

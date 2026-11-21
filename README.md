@@ -2,14 +2,14 @@
 
 A local, real-time voice changer for Windows that turns your microphone into an anime character's voice and sends it to Discord.
 
-Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya or Matikanetannhauser, speak normally, and the app converts your speech on your own GPU. VB-CABLE uses 120 ms packets; Steam and file conversion retain 200 ms packets. It can also convert recorded or imported audio files. Conversion runs locally.
+Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya, Yukina Minato or Matikanetannhauser, speak normally, and the app converts your speech on your own GPU. VB-CABLE uses 120 ms packets; Steam and file conversion retain 200 ms packets. It can also convert recorded or imported audio files. Conversion runs locally.
 
 ## Key Features
 
 - **1.0:** one big switch with two independent outputs — *send to voice chat* (virtual microphone) and *ear return* (hear yourself in your headphones at the same time)
 - **1.0:** remembers your character, strength, style, pitch and devices; global hotkey (Ctrl+Alt+V by default) and a tray icon to toggle conversion while gaming
 - **1.0:** first-run guide (microphone test, VB-CABLE and Discord setup) and a live hint when the microphone is silent or clipping
-- Four installed RVC v2 voices (40k / 48k), with matched retrieval indexes and RMVPE pitch extraction
+- Five installed RVC v2 voices (40k / 48k), with matched retrieval indexes and RMVPE pitch extraction
 - Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
 - Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE and a session refresh every 3,000 packets
 - Discord output through a virtual microphone (VB-CABLE or Steam Streaming Microphone), optionally with ear return
@@ -93,7 +93,7 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Chinese Notes / 中文说明
 
-一个在本机运行的角色变声器。选择高松灯、永雏塔菲、千早爱音或赛马娘的诗歌剧，对着麦克风说话，变声后的声音发给 Discord，也可以转换录音和音频文件。
+一个在本机运行的角色变声器。选择高松灯、永雏塔菲、千早爱音、Roselia 的凑友希那或赛马娘的诗歌剧，对着麦克风说话，变声后的声音发给 Discord，也可以转换录音和音频文件。
 
 ## Latest 安装说明
 
@@ -154,8 +154,11 @@ python tools\build_public_release.py D:\VoiceChanger-public --git
 | 永雏塔菲 | `mygf-tf.pth` / 40k RVC v2 | 用户提供的 `Ai塔菲.zip` |
 | 千早爱音 | `Anon_v2.pth` / 40k RVC v2 | Wanlau 的 BanG Dream 对白模型及配套索引 |
 | 诗歌剧 | `uma-Matikane_Tannhauser.pth` / 48k RVC v2 | 用户提供的 `诗歌剧.zip` 与配套 v2 索引 |
+| 凑友希那 | `Yukina_v2.pth` / 40k RVC v2 | Wanlau 的 BanG Dream 对白模型及配套索引（10,000 条 768 维向量），固定提交与 SHA-256 见 `assets/yukina-source.json` |
 
 0.5.0 新增“赛马娘”分类，诗歌剧有官方头像和角色原声按钮，默认自动音域再 +2。初始自动目标音域 417.4 Hz 来自约 3 秒官方语音的基频中位数，仅作初始校准。当前版本的四份音色优先示例已重新生成：[灯](assets/previews/tomori.wav)、[塔菲](assets/previews/taffy.wav)、[爱音](assets/previews/anon.wav)、[诗歌剧](assets/previews/tannhauser.wav)；均使用同一段合成中文输入、自动再 +2，文件转换不代表实时延迟。参数和校验值见[试听清单](assets/previews/manifest.json)。
+
+1.0.0 之后新增“Roselia”分类和凑友希那（界面显示“友希那”），头像取自游戏官方卡面立绘，默认自动音域再 +2。自动目标音域 211 Hz 来自 5 句游戏抽卡语音的 RMVPE 基频中位数（210.8 Hz，共 1,032 个有声帧），仅作初始校准；检索比例 / 清音保护用导入默认的 0.75 / 0.33，接缝 40 ms。同一段合成输入的试听：[音色优先](assets/previews/yukina.wav)、[通话清晰](assets/previews/yukina-call.wav)，由 1.0.0 后端转换。
 
 另提供约一分钟的实时包处理示例：[塔菲长句 / 停顿](assets/previews/long/taffy.wav)、[诗歌剧长句 / 停顿](assets/previews/long/tannhauser.wav)、[合成输入](assets/previews/long/input.wav)。这些是重复中文句子、渐弱尾音与人工底噪，120 ms 包、自动再 +2；文件取自送入虚拟线之前的 PCM，不能代表 Discord 远端听感。[参数清单](assets/previews/long/manifest.json)。
 
@@ -176,6 +179,7 @@ python tools\build_public_release.py D:\VoiceChanger-public --git
 .venv\Scripts\python.exe tools\import_rvc.py --voice taffy --checkpoint "D:\模型\mygf-tf.pth" --index "D:\模型\taffy.index" --target-hz 429 --stream-crossfade-ms 40 --gate-full-rms .00045
 .venv\Scripts\python.exe tools\import_rvc.py --voice anon --checkpoint "D:\模型\Anon_v2.pth" --index "D:\模型\anon.index" --target-hz 310 --index-rate 0
 .venv\Scripts\python.exe tools\import_rvc.py --voice tannhauser --name "诗歌剧" --checkpoint "D:\模型\uma-Matikane_Tannhauser.pth" --index "D:\模型\added_IVF1310_Flat_nprobe_1_uma-Matikane_Tannhauser_v2.index" --target-hz 417.4 --stream-crossfade-ms 40 --index-rate .4 --protect .1 --stream-lookahead-ms 160
+.venv\Scripts\python.exe tools\import_rvc.py --voice yukina --name "友希那" --checkpoint "D:\模型\Yukina_v2.pth" --index "D:\模型\added_IVF256_Flat_nprobe_1_Yukina_v2_v2.index" --target-hz 211 --stream-crossfade-ms 40
 ```
 
 导入器使用 `torch.load(weights_only=True)`，验证 RVC v2 / f0 架构、已填充的 768 维索引、说话人编号和完整一秒输出，通过后才更新角色配置。导入后重启后端和界面。`--pitch 12` 可使用固定半音移调，默认按目标音域自动调整。`.index` 应与该权重配套，不能把别的角色索引混用。
@@ -347,7 +351,7 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 | `GET /api/voices` | 数组，每条记录包含 `id` 和中文 `name` |
 | `POST /api/convert?voice_id=taffy&strength=1` | 请求体直接放音频文件字节。成功返回 `audio/wav`，22,050 Hz 单声道 PCM16 |
 
-`voice_id` 以 `GET /api/voices` 为准；本机有 `tomori`、`taffy`、`anon`、`tannhauser`。额外角色导入后重启后端即可成为可用选项，未安装的角色不显示，非法 ID 返回 422。`strength` 范围 0 到 1。所有角色支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
+`voice_id` 以 `GET /api/voices` 为准；本机有 `tomori`、`taffy`、`anon`、`tannhauser`、`yukina`。额外角色导入后重启后端即可成为可用选项，未安装的角色不显示，非法 ID 返回 422。`strength` 范围 0 到 1。所有角色支持 `mode=character`（音色优先，默认）和 `mode=call`（通话清晰），文件接口和实时接口使用同一参数。支持 WAV、FLAC、MP3、OGG，单声道或双声道，8 到 96 kHz，0.35 到 60 秒，最多 24 MiB。
 
 RVC 音高参数同样适用于两个接口：GUI 当前默认发送 `pitch_offset=2`，在模型配置调整之后再升 2 半音。低层接口仍支持通用 `pitch_shift` 固定移调，便于已有客户端和导入配置继续工作；不再提供专门的原声 +4 预设。二者均为有限数值，范围 -24 至 +24；两者可同时给出，省略时保留旧客户端的原有模型配置。`GET /api/health` 的 `pitch_control` 表明支持，WebSocket 握手回显所用值。Seed-VC 参考路径未实现这两个音高控制，GUI 对相关角色禁用音高选择。
 
@@ -393,10 +397,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\eval\run_config.ps1 -T
 | 旧版兼容声线的灯、爱音模型 | TogetsuDo 发布的 RVC v2 权重和 FAISS 索引。[高松灯](https://huggingface.co/TogetsuDo/tomori-rvc) · [千早爱音](https://huggingface.co/TogetsuDo/anon-rvc) |
 | 旧版兼容声线的塔菲模型 | NyaruTaffy 32 kHz 的 So-VITS-SVC 3.0 权重，使用配置里的 `taffy` 说话人。[模型与配置](https://huggingface.co/spaces/ZilliaxOfficial/nyaru-svc-3.0/tree/main) |
 | 原始参考录音 | [灯官方角色 CM](https://www.youtube.com/watch?v=oo5DW-QZYeo)、[爱音官方角色 CM](https://www.youtube.com/watch?v=7GZ-7YQ-sKk) 分离配乐后的说话片段；[塔菲直播数据集](https://huggingface.co/datasets/KYOU-0/Ace-Taffy-voice)。固定版本、时间段和校验值见 `assets/references/sources.json`。旧第三方合成参考已替换 |
-| 本次导入的模型 | 灯与塔菲为用户提供的 `.pth` / `.index`；爱音取自 [Wanlau/RVC_BanGDream](https://huggingface.co/Wanlau/RVC_BanGDream)，使用 bestdori 对白数据训练。权重与索引的固定版本、SHA-256 见安装记录 |
+| 本次导入的模型 | 灯与塔菲为用户提供的 `.pth` / `.index`；爱音（`Anon_v2`）和友希那（`Yukina_v2`）取自 [Wanlau/RVC_BanGDream](https://huggingface.co/Wanlau/RVC_BanGDream)，使用 bestdori 对白数据训练，固定提交 `7f73089d`。权重与索引的固定版本、SHA-256 见安装记录 |
 | RVC 后端 | [RVC 官方项目](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI)，MIT 许可，固定导出版本与实现说明见 `third_party/rvc/` |
 | 可选对照引擎 | [Seed-VC](https://github.com/Plachtaa/seed-vc)，源码与 GPL v3 见 `third_party/seed_vc/`；下载地址与 SHA-256 见 `tools/seed_models.json`。默认不安装、不启动 |
 | 高松灯、千早爱音的头像 | 从动画《BanG Dream! It's MyGO!!!!!》官网的角色立绘裁出，版权归原权利方所有。[角色页](https://anime.bang-dream.com/mygo/character/) |
+| 凑友希那的头像与音域参考 | 游戏《BanG Dream! 少女乐团派对》的官方卡面立绘（res021001）和 5 句抽卡语音，经 [bestdori](https://bestdori.com/info/characters/21) 获取。头像裁切后缩放到 512×512；语音只用来测目标音域，没有放进仓库。来源与校验值见 `assets/yukina-source.json`，版权归原权利方所有 |
 | 永雏塔菲的头像 | 账号的公开头像。[账号主页](https://space.bilibili.com/1265680561) |
 | Q 版永雏塔菲 | 游戏《盲盒派对》联动角色“王牌发明家”的 Q 版形象，取自该游戏的 BWIKI 文件页，版权归原权利方所有。[角色页](https://wiki.biligame.com/gachaparty/?curid=378) |
 | 诗歌剧模型、头像与原声 | 模型来自用户的 `诗歌剧.zip`，训练数据未核实；头像与短语音为 [Cygames 官方角色页](https://umamusume.jp/character/matikanetannhauser) 提供的素材，来源与校验值见 `assets/tannhauser-source.json`，版权归原权利方所有 |
