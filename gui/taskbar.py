@@ -15,7 +15,8 @@ from .backend import ROOT
 
 APP_USER_MODEL_ID = "LocalVoiceChanger.Gui"
 DISPLAY_NAME = "角色变声器"
-ICON = ROOT / "assets" / "taffy-avatar.ico"
+ICON = next((path for path in (ROOT / "assets" / "taffy-avatar.ico", ROOT / "assets" / "app-icon.ico")
+             if path.exists()), ROOT / "assets" / "app-icon.ico")  # 公开版没有角色头像，用原创图标
 START_GUI = ROOT / "start-gui.cmd"
 
 _FMTID_APP_USER_MODEL = "{9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3}"

@@ -498,3 +498,94 @@ def encode_wav(samples: np.ndarray, rate: int) -> bytes:
     buffer = io.BytesIO()
     sf.write(buffer, np.clip(samples, -1.0, 1.0), rate, format="WAV", subtype="PCM_16")
     return buffer.getvalue()
+
+
+class TeeSpeaker:
+    """Send converted audio to the call (primary) and to headphones (ear return).
+
+    The primary stream drives timing, buffering and statistics exactly as
+    before. The ear-return stream gets its own resampler and is best effort:
+    if the headphones fail, the call keeps going and only the ear return stops.
+    """
+
+    def __init__(self, primary: SpeakerStream, monitor: SpeakerStream):
+        self.primary = primary
+        self.monitor = monitor
+        self.device = primary.device
+        self.name = primary.name
+        self.rate = primary.rate
+        self._resampler = (soxr.ResampleStream(primary.rate, monitor.rate, 1, dtype="float32")
+                           if monitor.rate != primary.rate else None)
+
+    def __getattr__(self, name):
+        # level, underruns, buffered_seconds, target_buffer_seconds, latency, slack_seconds, fifo ...
+        return getattr(self.primary, name)
+
+    def write(self, samples: np.ndarray) -> None:
+        self.primary.write(samples)
+        if self.monitor is not None and self.monitor.active:
+            out = self._resampler.resample_chunk(samples) if self._resampler is not None else samples
+            self.monitor.write(out)
+
+    @property
+    def active(self) -> bool:
+        return self.primary.active
+
+    @property
+    def monitor_level(self) -> float:
+        return self.monitor.level if self.monitor is not None else 0.0
+
+    def start(self) -> None:
+        self.primary.start()
+        try:
+            self.monitor.start()
+        except AudioDeviceError:
+            self.monitor.close()
+
+    def fade_out(self, seconds: float = .02) -> None:
+        self.primary.fade_out(seconds)
+        if self.monitor.active:
+            self.monitor.fade_out(seconds)
+
+    def begin_drain(self) -> None:
+        self.primary.begin_drain()
+        self.monitor.begin_drain()
+
+    def close(self) -> None:
+        self.primary.close()
+        self.monitor.close()
+
+
+# 麦克风电平建议。峰值是每 20 ms 一块的最大绝对值。
+QUIET_PEAK = .01     # 几秒内峰值都低于它：多半是麦克风选错、被静音或系统音量太低
+LOUD_PEAK = .98      # 经常到这里：已经削波，变声会破音
+ADVICE_SECONDS = 6.0
+
+
+class MicAdvisor:
+    """看最近几秒的麦克风峰值，给出“太小 / 爆音 / 正常”的提示。界面线程按固定间隔调用 feed()。"""
+
+    def __init__(self, interval: float = .04, window: float = ADVICE_SECONDS):
+        self._size = max(1, round(window / interval))
+        self._peaks: list[float] = []
+
+    def reset(self) -> None:
+        self._peaks.clear()
+
+    def feed(self, peak: float) -> tuple[str, str]:
+        self._peaks.append(float(peak))
+        del self._peaks[:-self._size]
+        return self.advice()
+
+    def advice(self) -> tuple[str, str]:
+        """返回 (状态, 提示)。状态是 "" 、"quiet"、"loud" 或 "ok"；数据不够时不下结论。"""
+        if len(self._peaks) < self._size:
+            return "", ""
+        loudest = max(self._peaks)
+        clipped = sum(p >= LOUD_PEAK for p in self._peaks)
+        if clipped >= 3:
+            return "loud", "麦克风声音太大，已经爆音。请把系统里的麦克风音量调低一些，或离麦克风远一点。"
+        if loudest < QUIET_PEAK:
+            return "quiet", ("没有检测到说话声。如果你正在说话，请确认选对了麦克风、没有被静音，"
+                             "或者在系统声音设置里调大麦克风音量。")
+        return "ok", ""

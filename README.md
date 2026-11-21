@@ -6,17 +6,20 @@ Pick Tomori Takamatsu, Ace Taffy, Anon Chihaya or Matikanetannhauser, speak norm
 
 ## Key Features
 
+- **1.0:** one big switch with two independent outputs — *send to voice chat* (virtual microphone) and *ear return* (hear yourself in your headphones at the same time)
+- **1.0:** remembers your character, strength, style, pitch and devices; global hotkey (Ctrl+Alt+V by default) and a tray icon to toggle conversion while gaming
+- **1.0:** first-run guide (microphone test, VB-CABLE and Discord setup) and a live hint when the microphone is silent or clipping
 - Four installed RVC v2 voices (40k / 48k), with matched retrieval indexes and RMVPE pitch extraction
 - Install user-supplied `.pth` / `.index` pairs with checksum verification and a one-second inference check
 - Real-time conversion over a local WebSocket, with reduced buffering for VB-CABLE and a session refresh every 3,000 packets
-- Discord output through a virtual microphone (Steam Streaming Microphone or VB-CABLE), or local monitoring
+- Discord output through a virtual microphone (VB-CABLE or Steam Streaming Microphone), optionally with ear return
 - Streaming noise suppression (GTCRN) and voice activity detection (Silero VAD), silent during pauses
 - File mode: record or import WAV / FLAC / MP3 / OGG, compare original and result, save as WAV
 - Desktop GUI that starts and stops the backend by itself; unchanged model checks and compatible optimized graphs are cached locally
 - Objective evaluation tools: character error rate, speaker similarity and packet-join energy
 - Characters grouped by franchise (MyGO!!!!!, VTubers, Umamusume), switched with a carousel; custom RVC IDs and display names are supported by the importer and API
 - Original character recordings playable directly in the GUI
-- Versioned releases with a changelog; current internal beta is 0.5.3
+- Versioned releases with a changelog; current release is 1.0.0
 
 ## Tech Stack
 
@@ -94,13 +97,22 @@ All images are captures of the running app on Windows 11, taken while the self-c
 
 ## Latest 安装说明
 
-当前版本：`0.5.3`（内测版）
+当前版本：`1.0.0`（正式版）
 
 需要 Windows 10 或 11、Python 3.13 和 Git。默认后端是 ONNX / DirectML 的 RVC v2，本机验证为 RTX 5060 Ti 16 GB。常规运行不需要额外的 CUDA / PyTorch 环境。
 
 1. 克隆仓库，双击 `start-gui.cmd`。
 2. 首次启动会建立虚拟环境并安装依赖。已安装三套本地角色模型时，只准备 ContentVec、RMVPE、GTCRN 和 VAD 等必要推理图。没有本地模型时会准备原来的兼容声线（约 2 GB 权重及导出环境）；这与本次导入的新声线有区别。权重均校验 SHA-256。
-3. 窗口右上角显示“后端：已连接”后即可使用。之后可以离线运行。
+3. 窗口右上角显示“引擎就绪”后即可使用。之后可以离线运行。第一次打开会有三步新手引导：选麦克风并试音、连到 Discord、记住快捷键。
+
+### 1.0 用法速览
+
+- **一个大开关**：选好角色，点中间的大圆键开始变声，再点一次停止。
+- **两个输出开关**：“发到语音软件”把变声送进虚拟麦克风（Discord、QQ、YY、游戏语音都能用）；“耳返（自己听）”同时从“耳机”里听到自己的变声。两个可以一起开，耳机出问题不会打断通话。
+- **快捷键与托盘**：默认 `Ctrl+Alt+V` 在任何程序里开关变声；关掉窗口后程序留在托盘里继续运行，右键托盘图标可以开关变声或退出。快捷键和“关闭即退出”在右上角“设置”里改。
+- **记住设置**：角色、强度、风格、音高、麦克风、耳机和两个输出开关会自动保存到 `%APPDATA%\CharacterVoiceChanger\settings.json`，下次打开直接用。命令行参数 `--fresh` 可以临时忽略保存的设置。
+- **麦克风提醒**：变声时几秒都没有声音，或者声音大到爆音，界面会提示检查麦克风。延迟、每包处理时间和断流次数收进了“详细信息”。
+- **风格**：“音色优先”更像角色；“通话清晰”咬字更清楚，适合语速快或环境吵的时候。
 
 后续启动会复用已成功校验、且文件标识和时间等属性未变化的模型校验结果。共享推理图的优化结果保存在本机 `.run/ort-cache/`，按原图、运行库、系统与显卡驱动区分；角色 RVC 图仍从原文件加载。首次运行、模型或驱动变化时会重新准备缓存，首个角色的真实语音预热与其他角色的生成器预热仍会执行。需要强制重算所有校验值时设置 `VOICE_VERIFY_MODELS=1`；排查图缓存问题时设置 `VOICE_ORT_CACHE=0`。这些本机缓存不上传 Git。
 
@@ -109,6 +121,16 @@ All images are captures of the running app on Windows 11, taken while the self-c
 0.5.1 的启动页显示检查与模型加载进度，Q 版塔菲拉着进度条往前跑。首个角色准备好后进入主界面，其余角色在后台加载并预热独立生成器；第一次切到尚未准备好的角色仍需要等待。后台不会并发调用正在通话使用的共享特征 / 音高模型。
 
 0.5.2 起，后端一启动就把首个角色要用的约 1 GB 模型文件读进系统缓存，与导入程序库同时进行；D 盘是机械硬盘，这一步对冷启动最有用，`VOICE_PREFETCH=0` 可关闭。后台加载其余角色前先等界面取完角色列表，有转换或实时变声时暂停，开始转换或实时变声前也会等正在进行的加载完成，避免加载占住 Python 全局锁时音频卡顿。
+
+### 公开版（上传 GitHub 用）
+
+这个仓库含有角色头像、原声片段、VB-CABLE 安装包和私人笔记，历史里也有，所以**不要把它本身设为公开**。要分享源代码时，导出一份公开版到新仓库：
+
+```powershell
+python tools\build_public_release.py D:\VoiceChanger-public --git
+```
+
+导出的是当前提交（HEAD），不含 Git 历史；`notes/`、`docs/`、`voices/`、头像、角色音频、`third_party/installers/` 和可选的 Seed-VC 都会去掉，`tools/public/` 里的公开版 README、MIT 许可、更新记录和许可说明覆盖到根目录，并放上 `PUBLIC_EDITION` 标记。公开版没有内置角色，朋友在界面里用“＋ 导入声线”装自己的声线包。导出后脚本会逐个文件检查，发现模型、图片、音频或超过 2 MB 的文件就报错并删掉导出目录。
 
 ### 默认音高 +2 与试听
 
@@ -171,7 +193,7 @@ Seed-VC 作为对照实现保留，需要显式设置 `VOICE_REFERENCE_ENGINE=se
 ### 在 Discord 里用
 
 1. 在界面底部的“麦克风”里选原声输入。如果用手机，通过 WO Mic 接入时这里选 `Microphone (WO Mic Device)`；WO Mic Client 保持已连接，并取消“设置 → 本地播放”。
-2. 选角色，在“实时变声”页选“Discord 通话”，点一下大圆键。
+2. 选角色，在“实时变声”页打开“发到语音软件”（想自己也听到就再打开“耳返”），点一下大圆键。
 3. 界面会显示 Discord 该选的输入设备名。在 Discord 的“用户设置 → 语音与视频 → 输入设备”里选它。安装 VB-CABLE 后选 `CABLE Output (VB-Audio Virtual Cable)`，Steam 为备用。Discord 的输出设备继续用耳机。
 4. 在 Discord 的 Input Profile 里选择 **Studio**（无额外音频处理），避免 Voice Isolation / Krisp 再次切掉变声结果。旧界面没有此选项时，检查噪声抑制和输入灵敏度。然后用麦克风测试或让朋友确认句首和轻声。
 
@@ -235,6 +257,10 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 - `backend/character.py`，降噪、语音检测、音高跟踪和三位角色的模型推理
 - `backend/live.py`，按包渲染、SOLA 对齐和接缝交叉淡化
 - `gui/app.py`，主窗口
+- `gui/dialogs.py`，设置面板和首次新手引导
+- `gui/settings.py`，保存和读取用户设置
+- `gui/hotkey.py`，Windows 全局快捷键
+- `THIRD_PARTY_NOTICES.md`，第三方组件、模型与素材的许可说明
 - `gui/widgets.py`、`gui/theme.py`，自绘控件（含角色转盘）和配色
 - `gui/catalog.py`、`assets/characters.json`，角色分类和每位角色的颜色、头像
 - `gui/audio.py`，设备、录音、播放和实时通道的缓冲
@@ -256,11 +282,12 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 ### 实时变声
 
 - 麦克风输入连续重采样到 22,050 Hz；VB-CABLE 默认每 120 毫秒送一包，Steam 为 200 毫秒
-- 输出发往 Discord 用的虚拟麦克风，或从耳机监听
+- 输出发往 Discord 用的虚拟麦克风，可同时开耳返从耳机听自己
 - 说话时切换角色或强度会自动重连
 - 默认每 3,000 包自动刷新实时会话，不重启程序或重载模型
 - 停顿时输出静音，不会把底噪变成角色的声音
-- 界面显示延迟、每包处理时间、丢弃的输入和播放断流次数
+- 界面显示延迟和运行状态；“详细信息”里有每包处理时间、丢弃的输入和播放断流次数
+- 麦克风几秒没声音或爆音时提示检查
 
 ### 文件变声
 
@@ -274,7 +301,8 @@ WO Mic 是原声输入，Steam 虚拟麦克风是变声输出。Discord 继续�
 - 角色列表来自后端，按分类显示；左右三角切换，当前角色居中，其余角色在两侧虚化
 - 每位角色都能播放原始配音或直播录音作对照
 - 白色底，粉色点缀
-- 启动时检查后端，没有运行就启动，关闭窗口时一并停止
+- 启动时检查后端，没有运行就启动，退出时一并停止
+- 记住上次的选择；全局快捷键和托盘图标开关变声；首次打开有新手引导
 - 后端启动失败时显示脚本的退出码和最后几行输出
 - 设备被拔出、引擎被占用时给出原因并释放设备
 

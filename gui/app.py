@@ -1,4 +1,8 @@
-"""主窗口：左边选角色和强度，右边是实时变声与文件变声两页。只在 QApplication 创建之后导入。"""
+"""主窗口：左边选角色和强度，右边是实时变声与文件变声两页。只在 QApplication 创建之后导入。
+
+1.0 起界面只放常用的东西：角色、强度、一个大开关、“发到语音软件”和“耳返”两个开关。
+技术数字收进“详细信息”，快捷键、托盘和高级选项放进设置面板；上次的选择会被记住。
+"""
 from __future__ import annotations
 
 import io
@@ -10,16 +14,19 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 from PySide6.QtCore import QObject, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import (QButtonGroup, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
-                               QPushButton, QSizePolicy, QSlider, QStackedWidget, QVBoxLayout, QWidget)
+from PySide6.QtGui import QAction, QIcon, QPixmap
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QFileDialog, QGridLayout, QHBoxLayout, QLabel, QMenu,
+                               QProgressBar, QPushButton, QSizePolicy, QSlider, QStackedWidget, QSystemTrayIcon,
+                               QVBoxLayout, QWidget)
 
-from . import __version__, audio, catalog, theme
+from . import __version__, audio, catalog, hotkey, theme
 from .backend import (CONTENT_TYPES, DEFAULT_URL, DEFAULT_PITCH_PRESET, ROOT, START_SCRIPT, BackendClient, BackendError,
                       BackendLauncher, stop_process_tree, PITCH_PRESETS)
+from . import backend as backend_module
 from .live import LiveMonitor
-from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, VoiceCarousel,
-                      divider, label, make_icon, set_state)
+from .settings import Settings
+from .widgets import (Card, ConsoleCombo, HeroArt, LevelMeter, LiveButton, RecButton, Segmented, ToggleSwitch,
+                      VoiceCarousel, app_pixmap, divider, label, make_icon, set_state)
 
 ASSETS = ROOT / "assets"
 MAX_RESULTS = 8
@@ -39,6 +46,10 @@ class Config:
     live_packet_ms: int = 120
     pitch_preset: str = DEFAULT_PITCH_PRESET
     prestarted: object = None  # 界面初始化前已经拉起的后端进程（gui.backend.start_early）
+    # 用户设置。默认只在内存里（path=None），自检不会读写用户的设置文件。
+    settings: Settings = field(default_factory=Settings)
+    # 托盘图标、全局快捷键和首次引导。正式启动时打开；自检和测试保持关闭，行为与以前一致。
+    desktop: bool = False
 
 
 @dataclass
@@ -113,7 +124,15 @@ class MainWindow(QWidget):
         self.categories: list[catalog.Category] = []
         self.category_id: str | None = None           # 角色转盘当前显示的分类
         self._last_voice: dict[str, str] = {}         # 每个分类上次选中的角色
-        self.strength_pct = 100
+        self.settings = self.config.settings
+        self.strength_pct = self.settings.strength
+        self.mic_advisor = audio.MicAdvisor()
+        self.discord_pair = None
+        self.tray: QSystemTrayIcon | None = None
+        self.hotkey: hotkey.GlobalHotkey | None = None
+        self.hotkey_error = ""
+        self._quitting = False
+        self._tray_hint_shown = False
         self.input: InputClip | None = None
         self.results: dict[tuple, ResultClip] = {}
         self.converting_key: tuple | None = None
@@ -138,12 +157,11 @@ class MainWindow(QWidget):
         self._startup_reported = False
         self._last_dir = str(ROOT)
         self._avatars: dict[str, QPixmap | None] = {}
-        self._avatar = self._pixmap("taffy")
+        self._avatar = self._pixmap(catalog.BRAND_VOICE)
 
         self.setObjectName("root")
         self.setWindowTitle("角色变声器")
-        if self._avatar is not None:
-            self.setWindowIcon(QIcon(self._avatar))
+        self.setWindowIcon(QIcon(self._avatar if self._avatar is not None else app_pixmap()))
         self._build()
         self._wire()
         self._populate_devices(announce=False)
@@ -162,6 +180,12 @@ class MainWindow(QWidget):
         self._strength_timer.setSingleShot(True)
         self._strength_timer.setInterval(450)
         self._strength_timer.timeout.connect(self._restart_live)
+        self._save_timer = QTimer(self)
+        self._save_timer.setSingleShot(True)
+        self._save_timer.setInterval(400)
+        self._save_timer.timeout.connect(self.save_settings)
+        if self.config.desktop:
+            self._setup_desktop()
 
         QTimer.singleShot(0, self.connect_backend)
 
@@ -173,27 +197,39 @@ class MainWindow(QWidget):
 
         top = QHBoxLayout()
         top.setSpacing(10)
-        chibi = QPixmap(str(ASSETS / catalog.voice_style("taffy").chibi)) if catalog.voice_style("taffy").chibi else QPixmap()
+        chibi = QPixmap(str(ASSETS / catalog.brand_style().chibi)) if catalog.brand_style().chibi else QPixmap()
+        ratio = self.devicePixelRatioF() or 1.0
+        self.mascot = QLabel()
         if not chibi.isNull():
-            self.mascot = QLabel()
-            ratio = self.devicePixelRatioF() or 1.0
             scaled = chibi.scaled(int(40 * ratio), int(40 * ratio), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            scaled.setDevicePixelRatio(ratio)
-            self.mascot.setPixmap(scaled)
             self.mascot.setToolTip("Q 版永雏塔菲")
-            top.addWidget(self.mascot, 0, Qt.AlignVCenter)
+        else:
+            scaled = app_pixmap(int(30 * ratio))  # 公开版没有 Q 版形象，用程序图标
+        scaled.setDevicePixelRatio(ratio)
+        self.mascot.setPixmap(scaled)
+        top.addWidget(self.mascot, 0, Qt.AlignVCenter)
         top.addWidget(label("角色变声器", "appTitle"))
-        top.addWidget(label(f"v{__version__} 内测", "version"), 0, Qt.AlignBottom)
+        top.addWidget(label(f"v{__version__}", "version"), 0, Qt.AlignBottom)
         top.addStretch(1)
         self.lamp = label("STANDBY", "lamp")
         self.lamp.hide()
         top.addWidget(self.lamp, 0, Qt.AlignVCenter)
-        self.backend_pill = label("后端：检查中", "pill")
+        self.backend_pill = label("● 引擎检查中", "pill")
+        self.backend_pill.setToolTip("本机变声引擎的状态")
         top.addWidget(self.backend_pill, 0, Qt.AlignVCenter)
         self.reconnect_button = QPushButton("重新连接")
         self.reconnect_button.setObjectName("ghost")
-        self.reconnect_button.setToolTip("检查本地后端；没有运行时启动 start-backend.cmd")
+        self.reconnect_button.setToolTip("检查本机变声引擎；没有运行时启动它")
+        self.reconnect_button.hide()  # 只在引擎没连上时出现
         top.addWidget(self.reconnect_button, 0, Qt.AlignVCenter)
+        self.settings_button = QPushButton("设置")
+        self.settings_button.setObjectName("ghost")
+        self.settings_button.setIcon(make_icon("gear", theme.MUTED, 14))
+        self.settings_button.setIconSize(QSize(14, 14))
+        self.settings_button.setToolTip("快捷键、托盘、高级选项和关于")
+        for ghost in (self.reconnect_button, self.settings_button):
+            ghost.setFocusPolicy(Qt.TabFocus)  # 鼠标点过后不留焦点框
+        top.addWidget(self.settings_button, 0, Qt.AlignVCenter)
         root.addLayout(top)
 
         self.notice = QLabel()
@@ -238,10 +274,15 @@ class MainWindow(QWidget):
         self.carousel = VoiceCarousel()
         self.carousel.setToolTip("点两侧的三角或旁边的角色切换；也可以用键盘左右键")
         card.body.addWidget(self.carousel)
-        self.voices_placeholder = label("连接后端后，这里显示 /api/voices 返回的角色。")
+        self.voices_placeholder = label("连接变声引擎后，这里显示可用的声线。")
         self.voices_placeholder.setWordWrap(True)
         self.voices_placeholder.setAlignment(Qt.AlignCenter)
         card.body.addWidget(self.voices_placeholder)
+        self.import_voice_button = QPushButton("＋ 导入声线")
+        self.import_voice_button.setObjectName("ghost")
+        self.import_voice_button.setFocusPolicy(Qt.TabFocus)
+        self.import_voice_button.setToolTip("把 RVC v2 声线包（.pth 模型 + .index 索引）装进变声器")
+        card.body.addWidget(self.import_voice_button, 0, Qt.AlignHCenter)
         card.body.addWidget(divider())
         strength = QHBoxLayout()
         strength.addWidget(label("音色强度", "sectionLabel"))
@@ -253,34 +294,39 @@ class MainWindow(QWidget):
         self.strength_slider.setRange(0, 100)
         self.strength_slider.setSingleStep(5)
         self.strength_slider.setPageStep(10)
-        self.strength_slider.setValue(100)
+        self.strength_slider.setValue(self.strength_pct)
         self.strength_slider.setMinimumHeight(22)
         self.strength_slider.setAccessibleName("音色强度")
         self.strength_slider.setToolTip("0% 是原声，100% 最接近角色")
         card.body.addWidget(self.strength_slider)
-        bottom = QHBoxLayout()
-        bottom.setSpacing(8)
-        self.voice_mode = ConsoleCombo()
+        mode_row = QHBoxLayout()
+        mode_row.setSpacing(8)
+        mode_row.addWidget(label("风格", "sectionLabel"))
+        mode_row.addStretch(1)
+        self.voice_mode = Segmented()
         for mode, name in MODE_NAMES.items():
             self.voice_mode.addItem(name, mode)
-        self.voice_mode.setMinimumContentsLength(6)
+        self.voice_mode.setCurrentIndex(max(0, self.voice_mode.findData(self.settings.mode)))
         self.voice_mode.setAccessibleName("处理方式")
-        self.voice_mode.setToolTip("音色优先加强角色模型检索；通话清晰降低检索比例、加强发音保护。角色名下方显示实际加载的模型。")
-        bottom.addWidget(self.voice_mode, 1)
-        self.reference_button = QPushButton("角色原声")
-        self.reference_button.setIconSize(QSize(11, 11))
-        self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来对照变声效果")
-        bottom.addWidget(self.reference_button)
-        card.body.addLayout(bottom)
+        self.voice_mode.setToolTip("音色优先：更像角色。通话清晰：咬字更清楚，适合语速快或环境吵的时候。")
+        mode_row.addWidget(self.voice_mode)
+        card.body.addLayout(mode_row)
         pitch_row = QHBoxLayout()
+        pitch_row.setSpacing(8)
         pitch_row.addWidget(label("音高", "sectionLabel"))
         self.pitch_combo = ConsoleCombo()
         for preset, (name, _, _) in PITCH_PRESETS.items():
             self.pitch_combo.addItem(name, preset)
-        self.pitch_combo.setCurrentIndex(self.pitch_combo.findData(self.config.pitch_preset))
+        self.pitch_combo.setCurrentIndex(max(0, self.pitch_combo.findData(self.config.pitch_preset)))
+        self.pitch_combo.setMinimumContentsLength(6)
         self.pitch_combo.setAccessibleName("音高")
-        self.pitch_combo.setToolTip("默认先按角色音域自动调整，再升 2 个半音；也可手动选 +4 或模型默认。")
+        self.pitch_combo.setToolTip("推荐“自动 +2”：先按角色音域自动调整，再升 2 个半音。声音太尖选“模型默认”，不够高选“自动 +4”。")
         pitch_row.addWidget(self.pitch_combo, 1)
+        self._any_reference = any((ASSETS / "references").glob("*.wav"))
+        self.reference_button = QPushButton("角色原声")
+        self.reference_button.setIconSize(QSize(11, 11))
+        self.reference_button.setToolTip("播放当前角色的原始配音 / 直播录音，用来对照变声效果")
+        pitch_row.addWidget(self.reference_button)
         card.body.addLayout(pitch_row)
         return card
 
@@ -324,10 +370,19 @@ class MainWindow(QWidget):
         self.live_title = label("点一下开始变声", "liveTitle")
         self.live_title.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.live_title)
-        self.route_mode = Segmented()
-        self.route_mode.addItem("Discord 通话", "discord")
-        self.route_mode.addItem("本机监听", "local")
-        layout.addWidget(self.route_mode, 0, Qt.AlignHCenter)
+        switches = QHBoxLayout()
+        switches.setSpacing(28)
+        switches.addStretch(1)
+        self.send_toggle = ToggleSwitch("发到语音软件")
+        self.send_toggle.setToolTip("把变声后的声音送进虚拟麦克风，Discord、QQ、YY、游戏语音都能用")
+        self.send_toggle.setChecked(self.settings.send_to_call)
+        switches.addWidget(self.send_toggle)
+        self.monitor_toggle = ToggleSwitch("耳返（自己听）")
+        self.monitor_toggle.setToolTip("同时从下面选的耳机里听到变声后的声音。请戴耳机，外放会被麦克风收回去。")
+        self.monitor_toggle.setChecked(self.settings.monitor)
+        switches.addWidget(self.monitor_toggle)
+        switches.addStretch(1)
+        layout.addLayout(switches)
         self.route_hint = label("")
         self.route_hint.setWordWrap(True)
         self.route_hint.setAlignment(Qt.AlignCenter)
@@ -345,11 +400,30 @@ class MainWindow(QWidget):
         meters.addWidget(self.live_out_meter, 1, 1)
         meters.setColumnStretch(1, 1)
         layout.addLayout(meters)
+        self.mic_hint = label("")
+        self.mic_hint.setObjectName("micHint")
+        self.mic_hint.setWordWrap(True)
+        self.mic_hint.hide()
+        layout.addWidget(self.mic_hint)
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
         self.live_status = label("")
         self.live_status.setWordWrap(True)
-        self.live_status.setMinimumHeight(34)
-        self.live_status.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        layout.addWidget(self.live_status)
+        self.live_status.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        status_row.addWidget(self.live_status, 1)
+        self.detail_button = QPushButton("详细信息")
+        self.detail_button.setObjectName("ghost")
+        self.detail_button.setCheckable(True)
+        self.detail_button.setToolTip("显示设备、延迟和每包处理时间等技术数字")
+        self.detail_button.hide()
+        status_row.addWidget(self.detail_button, 0, Qt.AlignTop)
+        layout.addLayout(status_row)
+        self.live_detail = label("")
+        self.live_detail.setObjectName("detail")
+        self.live_detail.setWordWrap(True)
+        self.live_detail.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.live_detail.hide()
+        layout.addWidget(self.live_detail)
         layout.addStretch(1)
         return page
 
@@ -458,8 +532,8 @@ class MainWindow(QWidget):
         self.rescan_button.setToolTip("插拔耳机或麦克风后点这里重新扫描")
         # 一行一个设备，下拉框够宽，系统报告的完整设备名不被截断
         grid.setVerticalSpacing(8)
-        output_label = label("耳机或音箱", "sectionLabel")
-        output_label.setToolTip("试听和本机监听从这里播放。Discord 通话不经过它。")
+        output_label = label("耳机", "sectionLabel")
+        output_label.setToolTip("耳返、试听和角色原声从这里播放。发到语音软件的声音不经过它。")
         grid.addWidget(label("麦克风", "sectionLabel"), 0, 0)
         grid.addWidget(self.mic_combo, 0, 1)
         grid.addWidget(output_label, 1, 0)
@@ -502,7 +576,11 @@ class MainWindow(QWidget):
         self.category_bar.currentIndexChanged.connect(self._on_category_changed)
         self.mic_combo.currentIndexChanged.connect(self._on_device_changed)
         self.out_combo.currentIndexChanged.connect(self._on_device_changed)
-        self.route_mode.currentIndexChanged.connect(self._route_changed)
+        self.send_toggle.toggled.connect(self._route_changed)
+        self.monitor_toggle.toggled.connect(self._route_changed)
+        self.settings_button.clicked.connect(self.open_settings)
+        self.import_voice_button.clicked.connect(self.open_voice_import)
+        self.detail_button.toggled.connect(self.live_detail.setVisible)
         self.rescan_button.clicked.connect(self.rescan_devices)
         self.rec_button.toggled.connect(self._on_rec_toggled)
         self.import_button.clicked.connect(self.import_dialog)
@@ -516,6 +594,131 @@ class MainWindow(QWidget):
         self.seek_slider.sliderReleased.connect(self._on_seek)
         self.save_button.clicked.connect(self.save_dialog)
         self.live_switch.toggled.connect(self._on_live_toggled)
+        for signal in (self.strength_slider.valueChanged, self.voice_mode.currentIndexChanged,
+                       self.pitch_combo.currentIndexChanged, self.mic_combo.currentIndexChanged,
+                       self.out_combo.currentIndexChanged, self.send_toggle.toggled, self.monitor_toggle.toggled):
+            signal.connect(self._schedule_save)
+
+    # ---- 设置、托盘与快捷键 ----------------------------------------------------
+    def _schedule_save(self, *_) -> None:
+        self._save_timer.start()
+
+    def save_settings(self) -> None:
+        """把当前选择写回设置。设备按名称记；没找到设备时保留原来记住的名称。"""
+        s = self.settings
+        if self.voice_id is not None:
+            s.voice_id = self.voice_id
+        s.strength = self.strength_pct
+        s.mode = self.current_mode()
+        s.pitch = self.pitch_combo.currentData()
+        for combo, key in ((self.mic_combo, "mic"), (self.out_combo, "output")):
+            if combo.currentData() is not None:
+                setattr(s, key, combo.currentData().name)
+        s.send_to_call = self.send_toggle.isChecked()
+        s.monitor = self.monitor_toggle.isChecked()
+        s.save()
+
+    def _setup_desktop(self) -> None:
+        """托盘图标和全局快捷键。只在正式启动时打开。"""
+        icon = self.windowIcon()
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray = QSystemTrayIcon(icon, self)
+            self.tray.setToolTip("角色变声器")
+            menu = QMenu()
+            self.tray_show = QAction("打开主窗口", menu)
+            self.tray_show.triggered.connect(self.bring_to_front)
+            self.tray_toggle = QAction("开始变声", menu)
+            self.tray_toggle.triggered.connect(self.toggle_live)
+            self.tray_quit = QAction("退出", menu)
+            self.tray_quit.triggered.connect(self.quit_app)
+            for action in (self.tray_show, self.tray_toggle):
+                menu.addAction(action)
+            menu.addSeparator()
+            menu.addAction(self.tray_quit)
+            self.tray_menu = menu  # 托盘不持有菜单的所有权，留一个引用
+            self.tray.setContextMenu(menu)
+            self.tray.activated.connect(lambda reason: reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick)
+                                        and self.bring_to_front())
+            self.tray.show()
+            QApplication.instance().setQuitOnLastWindowClosed(False)
+            # 注销或关机时 Qt 直接退出事件循环，也要停掉由本程序启动的后端
+            QApplication.instance().aboutToQuit.connect(self.quit_app)
+        self.hotkey = hotkey.GlobalHotkey(self)
+        self.hotkey.activated.connect(self.toggle_live)
+        self.apply_hotkey(self.settings.hotkey)
+
+    def apply_hotkey(self, name: str) -> str:
+        """注册全局快捷键，返回出错原因（成功时为空）。"""
+        if self.hotkey is None:
+            return ""
+        self.hotkey_error = self.hotkey.register(name) or ""
+        if self.hotkey_error and name:
+            self.set_status(self.hotkey_error, "error")
+        return self.hotkey_error
+
+    def hotkey_text(self) -> str:
+        return self.hotkey.current if self.hotkey is not None else ""
+
+    def bring_to_front(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def toggle_live(self) -> None:
+        """快捷键和托盘菜单用：和点大圆键一样。开关不可用时说明原因。"""
+        if self.live_switch.isEnabled():
+            self.live_switch.click()
+        else:
+            self.set_status(f"现在不能开始变声：{self.live_switch.toolTip()}", "error")
+            if self.tray is not None and not self.isVisible():
+                self.tray.showMessage("角色变声器", f"现在不能开始变声：{self.live_switch.toolTip()}",
+                                      QSystemTrayIcon.Warning, 3000)
+
+    def open_settings(self) -> None:
+        from .dialogs import SettingsDialog
+        SettingsDialog(self).exec()
+
+    def open_voice_import(self) -> None:
+        from .dialogs import VoiceImportDialog
+        VoiceImportDialog(self).exec()
+
+    def reload_backend(self, select: str | None = None) -> bool:
+        """导入声线后重启由本程序启动的引擎，让它读到新声线。不是本程序启动的引擎时返回 False。"""
+        if select:
+            self.settings.voice_id = select
+            self.voice_id = None
+            backend_module.WARM_FIRST = select  # 重启后先加载新声线
+        if self.owned_backend is None:
+            return False
+        if self.live is not None:
+            self.live_switch.setChecked(False)
+            self.live.request_stop(abort=True)
+            self.live.join(3.0)
+        stop_process_tree(self.owned_backend)
+        self.owned_backend = None
+        self.voices, self.voice_names = [], {}
+        self._set_backend(False, "正在重新启动变声引擎以载入新声线…")
+        self.connect_backend()
+        return True
+
+    def maybe_onboard(self) -> None:
+        """第一次打开时显示新手引导。只在正式启动时调用。"""
+        if self.config.desktop and not self.settings.onboarded:
+            QTimer.singleShot(300, self.run_onboarding)
+
+    def run_onboarding(self) -> None:
+        from .dialogs import OnboardingDialog
+        if self.live is not None or self.recorder is not None:
+            return
+        OnboardingDialog(self).exec()
+        self.settings.onboarded = True
+        self.save_settings()
+
+    def quit_app(self) -> None:
+        """真正退出（托盘菜单“退出”、加载页“退出”）。"""
+        self._quitting = True
+        if not self._closing:
+            self.close()
 
     # ---- 通用 -----------------------------------------------------------
     def set_status(self, text: str, state: str = "") -> None:
@@ -589,7 +792,8 @@ class MainWindow(QWidget):
             "正在转换" if converting else
             "后端未连接" if not self.backend_ok else
             "先结束录音" if recording else
-            "先录音或导入一段音频" if self.input is None else "先选择角色")
+            "先录音或导入一段音频" if self.input is None else
+            "还没有声线，先导入一个声线包" if not self.voice_names else "先选择角色")
         self.busy_bar.setVisible(converting)
 
         if self.ab == "result" and result is None:
@@ -610,19 +814,28 @@ class MainWindow(QWidget):
         self.save_button.setToolTip("" if result is not None else "只有与当前输入、角色、强度对应的结果才能保存")
         self._update_result_tag(result)
 
-        self.live_switch.setEnabled(live_on or (self.backend_ok and has_mic and has_out and not converting
+        sending, monitoring = self.send_toggle.isChecked(), self.monitor_toggle.isChecked()
+        route_ok = (sending and bool(self.discord_pair)) or (monitoring and has_out)
+        self.live_switch.setEnabled(live_on or (self.backend_ok and has_mic and route_ok and not converting
                                                 and not recording and self.voice_id is not None))
         self.live_switch.setToolTip(
             "" if self.live_switch.isEnabled() else
-            "正在转换文件，完成后才能监听" if converting else
+            "正在转换文件，完成后才能变声" if converting else
             "先结束录音" if recording else
-            "后端未连接" if not self.backend_ok else
+            "变声引擎未连接" if not self.backend_ok else
+            ("还没有声线，先导入一个声线包" if not self.voice_names else "先选择角色") if self.voice_id is None else
             "没有找到麦克风" if not has_mic else
-            "没有找到输出设备" if not has_out else "先选择角色")
+            "“发到语音软件”和“耳返”至少打开一个" if not sending and not monitoring else
+            "没有找到虚拟麦克风，先安装 VB-CABLE，或者打开耳返试听" if sending and not monitoring else
+            "没有找到耳机或音箱")
         if not live_on:
             self.live_title.setText("点一下开始变声" if self.live_switch.isEnabled() else
                                     self.live_switch.toolTip())
         self.hero.set_on_air(live_on)
+        if self.tray is not None:
+            self.tray_toggle.setText("停止变声" if live_on else "开始变声")
+            self.tray.setToolTip(f"角色变声器 · {'正在变声' if live_on else '未在变声'}"
+                                 + (f"\n快捷键 {self.hotkey_text()} 开关变声" if self.hotkey_text() else ""))
         self.lamp.setText("ON AIR" if live_on else "REC" if recording else "STANDBY")
         set_state(self.lamp, "live" if live_on else "rec" if recording else "")
         self.lamp.setVisible(live_on or recording)
@@ -655,7 +868,7 @@ class MainWindow(QWidget):
         if self._launcher is not None or self._closing:
             return
         self.notice.hide()
-        self.backend_pill.setText("后端：检查中")
+        self.backend_pill.setText("● 引擎检查中")
         set_state(self.backend_pill, "busy")
         self.reconnect_button.setEnabled(False)
         launcher = BackendLauncher(
@@ -674,7 +887,7 @@ class MainWindow(QWidget):
         if self._launcher is not None:
             self.set_status(text)
             if "启动" in text:
-                self.backend_pill.setText("后端：启动中")
+                self.backend_pill.setText("● 引擎启动中")
 
     def _on_backend_stage(self, launcher, stage, fraction, text: str) -> None:
         if launcher is self._launcher:
@@ -708,7 +921,8 @@ class MainWindow(QWidget):
             self.notice.setText(f"音色优先暂时使用兼容引擎：{health['reference_error']}")
             self.notice.show()
         how = "由本程序启动（关闭窗口时一并停止）" if started else "复用已在运行的后端"
-        self.set_status(f"已连接 {self.client.base_url} · {health.get('engine', '')} · {how}", "ok")
+        self.set_status("变声引擎已就绪。", "ok")
+        self.status_label.setToolTip(f"{self.client.base_url} · {health.get('engine', '')} · {how}")
         self._load_voices()
 
     def _on_backend_failed(self, launcher, reason: str) -> None:
@@ -724,12 +938,13 @@ class MainWindow(QWidget):
     def _set_backend(self, ok: bool, reason: str = "") -> None:
         self.backend_ok = ok
         self._health_failures = 0
-        self.backend_pill.setText("后端：已连接" if ok else "后端：未连接")
+        self.backend_pill.setText("● 引擎就绪" if ok else "● 引擎未连接")
         set_state(self.backend_pill, "ok" if ok else "bad")
+        self.reconnect_button.setVisible(not ok)
         if ok:
             self.notice.hide()
         else:
-            self.notice.setText(f"后端未连接：{reason}\n点右上角“重新连接”会再检查一次，并在需要时启动 start-backend.cmd。")
+            self.notice.setText(f"变声引擎未连接：{reason}\n点右上角“重新连接”会再检查一次，需要时自动启动引擎。")
             self.notice.show()
         self._refresh()
 
@@ -795,10 +1010,20 @@ class MainWindow(QWidget):
         self.category_bar.blockSignals(False)
         self.voices_placeholder.setVisible(not ids)
         if not ids:
+            # 公开版刚装好时还没有任何声线：照常进入主界面，引导用户导入声线包
             self.carousel.set_items([], None)
-            self._on_voices_failed("后端返回了空的角色列表。")
+            self.voice_id = None
+            self._show_voice(None)
+            self.hero_name.setText("还没有声线")
+            self.hero_caption.hide()
+            self.voices_placeholder.setText("点下面的“导入声线”，把声线包（.pth 模型 + .index 索引）装进来就能开始用。")
+            self.set_status("还没有声线，先导入一个声线包。")
+            self._refresh()
+            self._report_startup(True)
             return
-        target = self.voice_id if self.voice_id in ids else "taffy" if "taffy" in ids else ids[0]
+        remembered = self.settings.voice_id
+        target = (self.voice_id if self.voice_id in ids else remembered if remembered in ids
+                  else "taffy" if "taffy" in ids else ids[0])
         self.voice_id = None
         self.select_voice(target)
         self._report_startup(True)
@@ -824,18 +1049,24 @@ class MainWindow(QWidget):
     def _show_voice(self, voice_id: str | None) -> None:
         self.voice_mode.setEnabled(voice_id is not None)
         self.pitch_combo.setEnabled(voice_id is not None and self.pitch_supported and voice_id not in self.reference_voices)
-        self.reference_button.setEnabled(voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file())
-        style = theme.voice_style(voice_id or "taffy")
-        self.hero.set_voice(style, self._pixmap(voice_id or "taffy"))
+        has_reference = voice_id is not None and (ASSETS / "references" / f"{voice_id}.wav").is_file()
+        self.reference_button.setEnabled(has_reference)
+        self.reference_button.setVisible(has_reference or self._any_reference)  # 导入的声线没有原声片段
+        style = theme.voice_style(voice_id) if voice_id else theme.brand_style()
+        self.hero.set_voice(style, self._pixmap(voice_id or catalog.BRAND_VOICE))
         self.live_switch.set_color(style.color)
+        self.send_toggle.set_color(style.color)
+        self.monitor_toggle.set_color(style.color)
         self.reference_button.setIcon(make_icon("play", style.color, 11))
         if voice_id is None:
             self.hero_name.setText("…")
             self.hero_caption.setText("正在读取角色列表")
         else:
             self.hero_name.setText(self._voice_name(voice_id))
-            self.hero_caption.setText(self.voice_models.get(voice_id, voice_id.upper()))
+            self.hero_caption.setText("")
+            self.hero_name.setToolTip(f"模型：{self.voice_models.get(voice_id, voice_id.upper())}")
         self.hero_caption.setStyleSheet(f"color: {style.color};")
+        self.hero_caption.setVisible(voice_id is None)
 
     def select_voice(self, voice_id: str) -> None:
         if voice_id == self.voice_id or voice_id not in self.voice_names:
@@ -877,7 +1108,8 @@ class MainWindow(QWidget):
         counts = []
         for combo, kind, empty in ((self.mic_combo, "input", "未找到麦克风"),
                                    (self.out_combo, "output", "未找到输出设备")):
-            previous = combo.currentData().name if combo.currentData() is not None else None
+            previous = (combo.currentData().name if combo.currentData() is not None else
+                        self.settings.mic if combo is self.mic_combo else self.settings.output)
             try:
                 devices = audio.list_devices(kind)
             except audio.AudioDeviceError as exc:
@@ -905,14 +1137,21 @@ class MainWindow(QWidget):
         if announce:
             self.set_status(f"设备列表已刷新：{counts[0]} 个麦克风，{counts[1]} 个输出设备。")
 
-    def _route_changed(self):
-        if self.route_mode.currentData() == "discord":
-            pair = self.discord_pair
-            hint = (f"在 Discord 的“语音与视频”里，把输入设备选为\n{pair[1].name}"
-                    if pair else "没有找到虚拟麦克风。安装 VB-CABLE 后点“刷新”，或者改用本机监听。")
-        else:
-            hint = "变声后的声音从下面选的耳机或音箱播放。\n请戴耳机，外放会被麦克风收回去。"
-        self.route_hint.setText(hint)
+    def _route_changed(self, *_):
+        sending, monitoring = self.send_toggle.isChecked(), self.monitor_toggle.isChecked()
+        pair = self.discord_pair
+        warn = (sending and not pair) or not (sending or monitoring)
+        lines = []
+        if sending:
+            lines.append(f"在 Discord 等语音软件里，把输入设备（麦克风）选为 {pair[1].name}" if pair else
+                         "没有找到虚拟麦克风。安装 VB-CABLE 后点“刷新”，或者先打开耳返试听。")
+        if monitoring:
+            lines.append("耳返从下面选的耳机播放，请戴耳机，外放会被麦克风收回去。")
+        if not lines:
+            lines.append("打开“发到语音软件”或“耳返”，才能开始变声。")
+        self.route_hint.setText("\n".join(lines))
+        set_state(self.route_hint, "warn" if warn else "")
+        self._refresh()
         if self.live is not None:
             self._restart_live()
 
@@ -1150,7 +1389,7 @@ class MainWindow(QWidget):
     def _sync_preview_buttons(self) -> None:
         playing = self.playing_tag == ("preview", "reference")
         self.reference_button.setText("停止" if playing else "角色原声")
-        color = theme.voice_style(self.voice_id or "taffy").color
+        color = (theme.voice_style(self.voice_id) if self.voice_id else theme.brand_style()).color
         self.reference_button.setIcon(make_icon("stop" if playing else "play", color, 11))
 
     def toggle_preview(self, name: str = "reference") -> None:
@@ -1258,8 +1497,8 @@ class MainWindow(QWidget):
         if self._live_resume_monitor is not None:
             if not checked:
                 self._live_resume_monitor = None
-                self.live_status.setText("监听已关闭，已取消自动重开。")
-                self.set_status("监听已关闭。")
+                self.live_status.setText("变声已关闭，已取消自动重开。")
+                self.set_status("变声已关闭。")
                 self._refresh()
             return
         if checked and self.live is None:
@@ -1272,34 +1511,51 @@ class MainWindow(QWidget):
             self.live_title.setText("正在停止…")
 
     def _open_live_devices(self):
-        """在界面线程打开并启动采集和播放流，之后交给工作线程。"""
-        mic_device, out_device = self._device(self.mic_combo), self._device(self.out_combo)
+        """在界面线程打开并启动采集和播放流，之后交给工作线程。
+
+        发到语音软件时主输出是虚拟麦克风，耳返另开一路到耳机；只开耳返时主输出就是耳机。
+        主输出决定缓冲和统计，和以前的“Discord 通话 / 本机监听”完全一样；耳返那一路出错不影响通话。
+        """
+        mic_device, headphones = self._device(self.mic_combo), self._device(self.out_combo)
+        sending, monitoring = self.send_toggle.isChecked(), self.monitor_toggle.isChecked()
         receiver = None
-        if self.route_mode.currentData() == "discord":
-            if not self.discord_pair:
-                raise audio.AudioDeviceError("未找到 Steam 或 VB-CABLE 的成对虚拟音频设备。")
+        if not sending and not monitoring:
+            raise audio.AudioDeviceError("“发到语音软件”和“耳返”至少要打开一个。")
+        if sending and not self.discord_pair:
+            if not monitoring:
+                raise audio.AudioDeviceError("没有找到虚拟麦克风（VB-CABLE 或 Steam）。安装后点“刷新”，或者先只用耳返试听。")
+            sending = False  # 没有虚拟麦克风时先只开耳返，提示已经写在开关下面
+        if sending:
             out_device, receiver = self.discord_pair
             if mic_device == receiver:
-                raise audio.AudioDeviceError("采集设备请选择你说话用的麦克风，以免形成回路。")
+                raise audio.AudioDeviceError("麦克风请选择你说话用的设备，不要选虚拟麦克风，以免形成回路。")
+        else:
+            out_device = headphones
         if mic_device is None:
-            raise audio.AudioDeviceError("没有找到麦克风，无法监听。")
+            raise audio.AudioDeviceError("没有找到麦克风，无法变声。")
         if out_device is None:
-            raise audio.AudioDeviceError("没有找到输出设备，无法监听。")
+            raise audio.AudioDeviceError("没有找到耳机或音箱，无法播放耳返。")
+        ear = headphones if (sending and monitoring and headphones is not None
+                             and headphones.name != out_device.name) else None
         mic = audio.MicStream(mic_device)
+        opened = [mic]
         try:
             # Virtual output keeps more headroom for inference and device jitter.
             slack = audio.live_slack(self.voice_id in self.reference_voices, self.voice_id, self.current_mode(),
                                      receiver is not None, out_device.name)
             speaker = audio.SpeakerStream(out_device, slack_seconds=slack, receiver=receiver)
-        except audio.AudioDeviceError:
-            mic.close()
-            raise
-        try:
+            opened.append(speaker)
+            if ear is not None:
+                try:
+                    speaker = audio.TeeSpeaker(speaker, audio.SpeakerStream(
+                        ear, slack_seconds=audio.live_slack(False, self.voice_id, self.current_mode(), False)))
+                except audio.AudioDeviceError as exc:
+                    self.set_status(f"耳返没有打开（{exc}），只发到语音软件。", "error")
             mic.start()
             speaker.start()
         except audio.AudioDeviceError:
-            mic.close()
-            speaker.close()
+            for stream in opened:
+                stream.close()
             raise
         return mic, speaker
 
@@ -1311,7 +1567,8 @@ class MainWindow(QWidget):
             mic, speaker = self._retry_after_rescan(self._open_live_devices)
         except audio.AudioDeviceError as exc:
             self.live_switch.setChecked(False)
-            self.live_status.setText(f"监听没有打开：{exc}")
+            self.live_status.setText(f"变声没有打开：{exc}")
+            set_state(self.live_status, "error")
             self.set_status(str(exc), "error")
             self._refresh()
             return
@@ -1333,8 +1590,12 @@ class MainWindow(QWidget):
         monitor.pitch_preset = pitch_preset
         self.live = monitor
         self._live_stats = {}
+        self.mic_advisor.reset()
         self.live_title.setText("正在连接…")
-        self.live_status.setText(f"{mic.name} → {speaker.name}")
+        self.live_status.setText("正在连接变声引擎…")
+        set_state(self.live_status, "")
+        self.live_detail.setText(f"{mic.name} → {speaker.name}")
+        self.detail_button.show()
         monitor.start()
         self._refresh()
 
@@ -1349,9 +1610,12 @@ class MainWindow(QWidget):
     def _on_live_connected(self, monitor, hello: dict) -> None:
         if monitor is not self.live:
             return
-        self.live_title.setText(f"正在变声 · {monitor.label}")
-        self.set_status(f"{self.route_mode.currentText()}已连接：{hello['sample_rate']} Hz，"
-                        f"每包 {hello['frame_samples']} 个样本。", "ok")
+        self.live_title.setText(f"正在变声 · {self._voice_name(self.voice_id)}")
+        speaker = monitor.speaker
+        where = ("语音软件和耳返" if isinstance(speaker, audio.TeeSpeaker) else
+                 "语音软件" if self.discord_pair and speaker.name == self.discord_pair[0].name else "耳返")
+        self.set_status(f"实时变声已开始，输出到{where}。", "ok")
+        self.status_label.setToolTip(f"{hello['sample_rate']} Hz，每包 {hello['frame_samples']} 个样本")
 
     def _on_live_stats(self, monitor, stats: dict) -> None:
         if monitor is not self.live:
@@ -1368,9 +1632,18 @@ class MainWindow(QWidget):
                  + getattr(speaker, "target_buffer_seconds", getattr(speaker, "slack_seconds", 0)) * 1000 + overlap_ms
                  + (getattr(speaker, "latency", 0) + getattr(monitor.mic, "latency", 0)) * 1000
                  + stats.get("resampler_delay_ms", 0)) / 1000
-        self.live_status.setText(
-            f"{monitor.mic.name} → {speaker.name}\n"
-            f"{PITCH_PRESETS[monitor.pitch_preset][0]} · 延迟约 {delay:.1f} 秒 · 每包处理 {stats['avg_ms']:.0f} 毫秒"
+        if stats["avg_ms"] > frame_ms * .9:
+            health, state = "电脑处理不过来，声音可能断续。请关掉占用显卡的程序再试。", "warn"
+        elif stats["underruns"] > 3 and stats["underruns"] * 50 > stats["frames"]:
+            health, state = f"声音有断续（{stats['underruns']} 次），请关掉占用显卡的程序再试。", "warn"
+        else:
+            health, state = "运行正常", "ok"
+        self.live_status.setText(f"延迟约 {delay:.1f} 秒 · {health}")
+        set_state(self.live_status, state)
+        ear = getattr(speaker, "monitor", None)
+        self.live_detail.setText(
+            f"{monitor.mic.name} → {speaker.name}" + (f" + 耳返 {ear.name}" if ear is not None else "") + "\n"
+            f"{PITCH_PRESETS[monitor.pitch_preset][0]} · {MODE_NAMES[self.current_mode()]} · 每包处理 {stats['avg_ms']:.0f} 毫秒"
             f" · 本轮 {min(stats['frames'],limit) if limit else stats['frames']}"
             f"{f'/{limit}' if limit else ''} 包 · 自动刷新 {self._live_auto_refreshes} 次"
             f" · 丢弃输入 {stats['mic_dropped']} 块 · 播放断流 {stats['underruns']} 次")
@@ -1382,6 +1655,7 @@ class MainWindow(QWidget):
         restart, self._live_restart = self._live_restart, False
         self.live_in_meter.reset()
         self.live_out_meter.reset()
+        self.mic_hint.hide()
         if (restart and kind == "user" or kind == "refresh") and self.live_switch.isChecked() and not self._closing:
             if kind == "refresh":
                 self._live_auto_refreshes += 1
@@ -1393,12 +1667,18 @@ class MainWindow(QWidget):
             QTimer.singleShot(LIVE_DEVICE_SETTLE_MS, lambda: self._resume_live(monitor))
             return
         self.live_switch.setChecked(False)
+        self.detail_button.setChecked(False)
+        self.detail_button.hide()
         if kind == "error":
-            self.live_status.setText(f"监听已停止：{message}")
+            self.live_status.setText(f"变声已停止：{message}")
+            set_state(self.live_status, "error")
             self.set_status(message, "error")
+            if self.tray is not None and not self.isVisible():
+                self.tray.showMessage("角色变声器", f"变声已停止：{message}", QSystemTrayIcon.Warning, 4000)
         else:
-            self.live_status.setText("监听已关闭，麦克风和输出设备已释放。")
-            self.set_status("监听已关闭。")
+            self.live_status.setText("变声已关闭，麦克风已释放。")
+            set_state(self.live_status, "")
+            self.set_status("变声已关闭。")
         self._refresh()
 
     def _resume_live(self, monitor) -> None:
@@ -1434,12 +1714,35 @@ class MainWindow(QWidget):
         if self.live is not None:
             self.live_in_meter.set_peak(self.live.mic.level)
             self.live_out_meter.set_peak(getattr(self.live.speaker, "level", 0.0))
+            if self.live.hello:
+                state, text = self.mic_advisor.feed(self.live.mic.level)
+                if state:
+                    self.mic_hint.setText(text)
+                    self.mic_hint.setVisible(bool(text))
         if self.converting_key is not None:
             self.convert_button.setText(f"变声中… {time.monotonic() - self._convert_started:.0f} 秒")
 
     # ---- 退出 -----------------------------------------------------------
     def closeEvent(self, event) -> None:
-        """关闭窗口：停止播放和录音，结束监听并释放设备，停掉由本程序启动的后端。"""
+        """关闭窗口：停止播放和录音，结束监听并释放设备，停掉由本程序启动的后端。
+
+        有托盘图标且设置里选了“关闭时最小化到托盘”时，只隐藏窗口，变声继续。
+        """
+        if (self.tray is not None and self.settings.close_to_tray and not self._quitting
+                and QApplication.instance() is not None and not QApplication.instance().closingDown()):
+            event.ignore()
+            self.hide()
+            if not self._tray_hint_shown:
+                self._tray_hint_shown = True
+                self.tray.showMessage("角色变声器还在运行",
+                                      "在托盘图标上右键可以开关变声或退出。可以在设置里改成关闭即退出。",
+                                      QSystemTrayIcon.Information, 4000)
+            return
+        if self._closing:
+            event.accept()
+            return
+        self._save_timer.stop()
+        self.save_settings()
         self._closing = True
         self._live_resume_monitor = None
         self._tick_timer.stop()
@@ -1456,4 +1759,9 @@ class MainWindow(QWidget):
             self._launcher.cancel()
             stop_process_tree(self._launcher.process)
         stop_process_tree(self.owned_backend)
+        if self.hotkey is not None:
+            self.hotkey.close()
+        if self.tray is not None:
+            self.tray.hide()
+            QApplication.instance().quit()
         event.accept()

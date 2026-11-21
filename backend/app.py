@@ -69,7 +69,7 @@ def health():
     current_engine = "Seed-VC / RVC" if ready else "RVC v2" if all(profiles.values()) else "RVC v2 / So-VITS-SVC 3.0"
     # ContentVec is loaded before the server reports ready, so asking it never starts a model load here.
     provider = ("PyTorch CUDA" if ready else graph("contentvec_768l12").get_providers()[0]
-                if any(profiles.values()) else graph("taffy_svc").get_providers()[0])
+                if any(profiles.values()) or not profiles else graph("taffy_svc").get_providers()[0])
     return {"status": "ok", "version": __version__, "engine": current_engine,
             "reference_engine": ready, "reference_error": reference.client().failure,
             "reference_voices": sorted(references), "voice_models": models,
@@ -77,6 +77,7 @@ def health():
             "sample_rate": engine.RATE,
             "live_packet_ms": [80, 100, 120, 200],
             "pitch_control": True,
+            "public_edition": engine.PUBLIC, "voice_import": True,
             "max_seconds": engine.MAX_SECONDS, "max_bytes": MAX_BYTES,
             "voices_loading": state["pending"], "ready_seconds": state["ready_seconds"]}
 

@@ -51,8 +51,9 @@ class Startup:
     # ---- loading -------------------------------------------------------------------------
     @staticmethod
     def first_voice() -> str:
+        """先加载的声线；还没有导入任何声线（公开版刚装好）时为空字符串。"""
         wanted = os.environ.get("VOICE_WARM_FIRST", "taffy")
-        return wanted if wanted in engine.VOICES else next(iter(engine.VOICES))
+        return wanted if wanted in engine.VOICES else next(iter(engine.VOICES), "")
 
     def start(self, busy=None) -> None:
         """busy() is true while a conversion or live session runs; background voices wait for it."""
@@ -125,7 +126,7 @@ class Startup:
 
     def _run(self) -> None:
         first = self.first_voice()
-        name = engine.VOICES[first]
+        name = engine.VOICES.get(first, "")
         others = [v for v in engine.VOICES if v != first]
         self._update(first_voice=first, pending=list(engine.VOICES))
         local = all(local_rvc.profile(v) is not None for v in engine.VOICES)
@@ -136,8 +137,9 @@ class Startup:
                        lambda: (graph("gtcrn_simple"), graph("silero_vad_16k_op15"))),
                       (0.9, "加载发音特征模型（ContentVec）", lambda: graph("contentvec_768l12")),
                       (0.4, "加载音高模型（RMVPE）", pitch_model)]
-        steps += [(1.0, f"加载{name}的声线模型", lambda: self._load_voice(first)),
-                  (0.4, f"预热{name}", lambda: self._warm(first))]
+        if first:
+            steps += [(1.0, f"加载{name}的声线模型", lambda: self._load_voice(first)),
+                      (0.4, f"预热{name}", lambda: self._warm(first))]
         total = sum(weight for weight, _, _ in steps)
         done = 0.0
         try:

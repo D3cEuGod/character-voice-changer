@@ -1,5 +1,5 @@
 """配色与样式表：白色底，粉色点缀。粉色和向日葵黄取自 assets/taffy-avatar.jpg，文字用头像里的海军蓝。"""
-from .catalog import VoiceStyle, voice_style  # noqa: F401  角色美术由 assets/characters.json 提供
+from .catalog import VoiceStyle, brand_style, voice_style  # noqa: F401  角色美术由 assets/characters.json 提供
 
 BACKGROUND = "#FFF7F9"   # 窗口底色：带一点粉的白
 CARD = "#FFFFFF"         # 卡片
@@ -48,6 +48,24 @@ QLabel#pill[state="busy"] {{ color: {WARN}; }}
 QLabel#pill[state="bad"] {{ color: {DANGER}; }}
 QLabel#sectionLabel {{ color: {MUTED}; font-size: 9pt; font-weight: 600; }}
 QLabel#muted {{ color: {MUTED}; font-size: 9pt; }}
+QLabel#muted[state="ok"] {{ color: {OK}; }}
+QLabel#muted[state="warn"] {{ color: {WARN}; }}
+QLabel#muted[state="error"] {{ color: {DANGER}; }}
+QLabel#detail {{
+    color: {MUTED}; background: {FIELD}; border-radius: 10px; padding: 7px 11px; font-size: 8.5pt;
+}}
+QLabel#micHint {{
+    color: {TEXT}; background: #FFF4D6; border: 1px solid #F6DE9A; border-radius: 10px;
+    padding: 7px 11px; font-size: 9pt;
+}}
+QLabel#heading {{ font-size: 13pt; font-weight: 800; }}
+QLabel#body {{ color: {TEXT}; font-size: 10pt; }}
+QDialog {{ background: {BACKGROUND}; }}
+QCheckBox {{ spacing: 8px; }}
+QCheckBox::indicator {{
+    width: 16px; height: 16px; border-radius: 5px; border: 1px solid {LINE}; background: {FIELD};
+}}
+QCheckBox::indicator:checked {{ background: {SAKURA_DEEP}; border-color: {SAKURA_DEEP}; }}
 QLabel#value {{ color: {TEXT}; font-size: 10pt; font-weight: 700; }}
 QLabel#clock {{ font-size: 14pt; font-weight: 700; font-family: "Consolas", "Segoe UI", monospace; }}
 QLabel#heroName {{ font-size: 17pt; font-weight: 800; }}
